@@ -7,11 +7,14 @@ from docs import schems as sh
 
 
 def _build_selection(selection_id: str) -> dict:
+    icon_key = "restaurants"
     return {
         "selection_id": selection_id,
         "category_id": "cat_restaurants",
         "name": "Restaurants",
         "subtitle": "Кэшбэк в кафе и ресторанах",
+        "icon_key": icon_key,
+        "icon_url": f"/icons/{icon_key}.svg",
         "rate": {
             "min": 5,
             "max": 15,

@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, calculate, selection)
+from api import (categories, audit, calculate, selection, icons)
 
 from database.functions import init_db
 
@@ -74,6 +74,7 @@ if __name__ == "__main__":
         web.post(prefix + 'api/v1/admin/categories', categories.create_category),
         web.get(prefix + 'api/v1/admin/categories/{category_id}', categories.get_category),
         web.patch(prefix + 'api/v1/admin/categories/{category_id}', categories.update_category),
+        web.post(prefix + 'api/v1/admin/icons/{icon_key}', icons.upload_icon),
         web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
 
         web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
