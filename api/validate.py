@@ -144,7 +144,8 @@ class EmailError(Exception):
         self.errors = errors or []
         super().__init__(self.message)
 
-def validate[T: BaseModel](model: type[T], require_auth: bool = False) -> Callable:
+
+def validate(model: type[T], require_auth: bool = False) -> Callable:
     def decorator(handler: Callable[[web.Request, Any], Awaitable[web.Response]]):
         @wraps(handler)
         async def wrapper(request: web.Request) -> web.Response:
@@ -314,10 +315,10 @@ class Club_new(BaseModel):
     max_members_counts: Optional[int] = 0
     class_limit_min: Optional[int] = 1
     class_limit_max: Optional[int] = 11
-    telegram_url: Optional[str] = None  # Явно указываем Optional
+    telegram_url: Optional[str] = None
     
     @field_validator('class_limit_max')
-    def validate_telegram_url(cls, v):
+    def validate_class_limit_max(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
@@ -325,7 +326,7 @@ class Club_new(BaseModel):
         raise ValueError("class_limit_max in 1-11")
     
     @field_validator('class_limit_min')
-    def validate_telegram_url(cls, v):
+    def validate_class_limit_min(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
@@ -333,7 +334,7 @@ class Club_new(BaseModel):
         raise ValueError("class_limit_min in 1-11")
     
     @field_validator('max_members_counts')
-    def validate_telegram_url(cls, v):
+    def validate_max_members_counts(cls, v):
         if v is None:
             return v
         if 0 < v < 4:
@@ -390,7 +391,7 @@ class Club_edit(BaseModel):
     telegram_url: Optional[str] = None
 
     @field_validator('class_limit_max')
-    def validate_telegram_url(cls, v):
+    def validate_class_limit_max(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
@@ -398,7 +399,7 @@ class Club_edit(BaseModel):
         raise ValueError("class_limit_max in 1-11")
     
     @field_validator('class_limit_min')
-    def validate_telegram_url(cls, v):
+    def validate_class_limit_min(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
@@ -406,7 +407,7 @@ class Club_edit(BaseModel):
         raise ValueError("class_limit_min in 1-11")
     
     @field_validator('max_members_counts')
-    def validate_telegram_url(cls, v):
+    def validate_max_members_counts(cls, v):
         if v is None:
             return v
         if 0 < v < 4:
