@@ -49,6 +49,6 @@ async def calculate(request: web.Request, parsed: validate.Client_calculate) -> 
             },
         ]
         return web.json_response({"period_id": period_id, "items": items}, status=200)
-    except Exception as e:
-        logger.error("calculate error: ", e)
+    except Exception:
+        logger.exception("calculate handler failed")
         return validate.format_500_error(request)

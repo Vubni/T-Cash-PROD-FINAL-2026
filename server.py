@@ -57,7 +57,7 @@ if __name__ == "__main__":
         title="API doc",
         version="v1",
         url="/swagger.json",
-        swagger_path="/doc",
+        swagger_path="/",
         security_definitions={
             "Bearer": {
                 "type": "apiKey",
