@@ -20,11 +20,13 @@ test:
   script:
     - pytest --cov=. --cov-report=term-missing --cov-report=xml
   artifacts:
-    reports:
-      cobertura: coverage.xml
     paths:
+      - coverage.xml
       - .pytest_cache/
     expire_in: 1 week
+  only:
+    - master
+    - experiment
 
 deploy_prod:
   stage: deploy
