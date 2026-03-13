@@ -59,6 +59,6 @@ async def list_audit(request: web.Request, parsed: validate.Audit_list) -> web.R
             }
         ]
         return web.json_response({"items": items, "total": len(items)}, status=200)
-    except Exception as e:
-        logger.error("list_audit error: ", e)
+    except Exception:
+        logger.exception("list_audit handler failed")
         return validate.format_500_error(request)

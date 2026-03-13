@@ -24,6 +24,18 @@ services:
     ports:
       - "8080:8080"
 
+  tests:
+    build: .
+    environment:
+      DB_IP: db
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_DB: prod
+      RANDOM_SECRET: "AJd27GqoS#gvxp@V"
+    depends_on:
+      - db
+    command: ["pytest", "--cov=.", "--cov-report=term-missing", "-q"]
+
 volumes:
   db-data:
 

@@ -7,11 +7,14 @@ from docs import schems as sh
 
 
 def _build_selection(selection_id: str) -> dict:
+    icon_key = "restaurants"
     return {
         "selection_id": selection_id,
         "category_id": "cat_restaurants",
         "name": "Restaurants",
         "subtitle": "Кэшбэк в кафе и ресторанах",
+        "icon_key": icon_key,
+        "icon_url": f"/icons/{icon_key}.svg",
         "rate": {
             "min": 5,
             "max": 15,
@@ -45,8 +48,8 @@ def _build_selection(selection_id: str) -> dict:
 async def get_selection(request: web.Request, parsed: validate.Selection_id_path) -> web.Response:
     try:
         return web.json_response(_build_selection(parsed.selection_id), status=200)
-    except Exception as e:
-        logger.error("get_selection error: ", e)
+    except Exception:
+        logger.exception("get_selection handler failed")
         return validate.format_500_error(request)
 
 
@@ -88,6 +91,6 @@ async def confirm_selection(request: web.Request, parsed: validate.Selection_con
             "message": "Выбор принят и сохранён на стороне сервера",
         }
         return web.json_response(response, status=200)
-    except Exception as e:
-        logger.error("confirm_selection error: ", e)
+    except Exception:
+        logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)

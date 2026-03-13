@@ -247,6 +247,7 @@ class CategoryListItemSchema(Schema):
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    icon_url = fields.Str(required=False, description="Путь до иконки категории")
     status = fields.Str(required=True, description="Текущий статус категории")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
@@ -257,6 +258,7 @@ class CategoryDetailSchema(Schema):
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    icon_url = fields.Str(required=False, description="Путь до иконки категории")
     status = fields.Str(required=True, description="Текущий статус категории")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
@@ -359,6 +361,7 @@ class CalculateCategoryItemSchema(Schema):
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    icon_url = fields.Str(required=False, description="Путь до иконки категории")
     rate = fields.Nested(CategoryRateSchema, required=True)
     expected_benefit_amount = fields.Float(
         required=True,
@@ -390,6 +393,8 @@ class SelectionDetailSchema(Schema):
     category_id = fields.Str(required=True, description="Идентификатор категории")
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    icon_key = fields.Str(required=False, description="Ключ иконки категории")
+    icon_url = fields.Str(required=False, description="Путь до иконки категории")
     rate = fields.Nested(CategoryRateSchema, required=True)
     expected_benefit_amount = fields.Float(
         required=True,

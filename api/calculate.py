@@ -27,6 +27,7 @@ async def calculate(request: web.Request, parsed: validate.Client_calculate) -> 
                 "name": "Restaurants",
                 "subtitle": "Кэшбэк в кафе и ресторанах",
                 "icon_key": "restaurants",
+                "icon_url": "/icons/restaurants.svg",
                 "rate": {"min": 5, "max": 15},
                 "expected_benefit_amount": 850,
                 "currency": "RUB",
@@ -39,6 +40,7 @@ async def calculate(request: web.Request, parsed: validate.Client_calculate) -> 
                 "name": "Fuel",
                 "subtitle": "Кэшбэк на АЗС",
                 "icon_key": "fuel",
+                "icon_url": "/icons/fuel.svg",
                 "rate": {"min": 3, "max": 8},
                 "expected_benefit_amount": 420,
                 "currency": "RUB",
@@ -47,6 +49,6 @@ async def calculate(request: web.Request, parsed: validate.Client_calculate) -> 
             },
         ]
         return web.json_response({"period_id": period_id, "items": items}, status=200)
-    except Exception as e:
-        logger.error("calculate error: ", e)
+    except Exception:
+        logger.exception("calculate handler failed")
         return validate.format_500_error(request)

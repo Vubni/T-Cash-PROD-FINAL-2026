@@ -11,8 +11,20 @@ variables:
 
 test:
   stage: test
+  image: python:3.12-slim
+  variables:
+    PIP_NO_CACHE_DIR: "1"
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
   script:
-    - echo 'ok'
+    - pytest --cov=. --cov-report=term-missing --cov-report=xml
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+    paths:
+      - .pytest_cache/
+    expire_in: 1 week
 
 deploy_prod:
   stage: deploy

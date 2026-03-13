@@ -7,11 +7,13 @@ from docs import schems as sh
 
 
 def _build_category_detail(category_id: str) -> dict:
+    icon_key = "restaurants"
     return {
         "id": category_id,
         "name": "Restaurants",
         "subtitle": "Кэшбэк в кафе и ресторанах",
-        "icon_key": "restaurants",
+        "icon_key": icon_key,
+        "icon_url": f"/icons/{icon_key}.svg",
         "status": "active",
         "budget": {
             "amount": 1500000,
@@ -82,14 +84,15 @@ async def list_categories(request: web.Request, parsed: validate.Admin_categorie
                 "name": "Restaurants",
                 "subtitle": "Кэшбэк в кафе и ресторанах",
                 "icon_key": "restaurants",
+                "icon_url": "/icons/restaurants.svg",
                 "status": parsed.status or "active",
                 "budget": {"amount": 1500000, "currency": "RUB"},
                 "rate": {"min": 5, "max": 15},
             }
         ]
         return web.json_response({"items": items, "total": len(items)}, status=200)
-    except Exception as e:
-        logger.error("list_categories error: ", e)
+    except Exception:
+        logger.exception("list_categories handler failed")
         return validate.format_500_error(request)
 
 
@@ -106,11 +109,13 @@ async def list_categories(request: web.Request, parsed: validate.Admin_categorie
 @validate.validate(validate.Admin_category_create)
 async def create_category(request: web.Request, parsed: validate.Admin_category_create) -> web.Response:
     try:
+        icon_url = f"/icons/{parsed.icon_key}.svg"
         response = {
             "id": "cat_new",
             "name": parsed.name,
             "subtitle": parsed.subtitle,
             "icon_key": parsed.icon_key,
+            "icon_url": icon_url,
             "status": parsed.status,
             "budget": {
                 "amount": parsed.budget_amount,
@@ -131,8 +136,8 @@ async def create_category(request: web.Request, parsed: validate.Admin_category_
             "history": [],
         }
         return web.json_response(response, status=201)
-    except Exception as e:
-        logger.error("create_category error: ", e)
+    except Exception:
+        logger.exception("create_category handler failed")
         return validate.format_500_error(request)
 
 
@@ -158,8 +163,8 @@ async def create_category(request: web.Request, parsed: validate.Admin_category_
 async def get_category(request: web.Request, parsed: validate.Category_id_path) -> web.Response:
     try:
         return web.json_response(_build_category_detail(parsed.category_id), status=200)
-    except Exception as e:
-        logger.error("get_category error: ", e)
+    except Exception:
+        logger.exception("get_category handler failed")
         return validate.format_500_error(request)
 
 
@@ -213,7 +218,12 @@ async def update_category(request: web.Request, parsed: validate.Admin_category_
         if parsed.rule_fallback_message is not None:
             response["rule"]["fallback_message"] = parsed.rule_fallback_message
 
+        # пересчитываем icon_url по актуальному icon_key
+        icon_key = response.get("icon_key")
+        if icon_key:
+            response["icon_url"] = f"/icons/{icon_key}.svg"
+
         return web.json_response(response, status=200)
-    except Exception as e:
-        logger.error("update_category error: ", e)
+    except Exception:
+        logger.exception("update_category handler failed")
         return validate.format_500_error(request)
