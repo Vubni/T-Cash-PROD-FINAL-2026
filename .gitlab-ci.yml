@@ -29,8 +29,8 @@ deploy_prod:
     - rsync -az --delete ./ ubuntu@178.154.217.140:${APP_DIR}
     - ssh ubuntu@178.154.217.140 "
         cd ${APP_DIR} &&
-        docker compose pull || true &&
-        docker compose up -d --build
+        sudo docker compose pull || true &&
+        sudo docker compose up -d --build
       "
 
 deploy_test:
@@ -48,6 +48,6 @@ deploy_test:
     - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
     - ssh ubuntu@158.160.20.196 "
         cd ${APP_DIR} &&
-        docker compose pull || true &&
-        docker compose up -d --build
+        sudo docker compose pull || true &&
+        sudo docker compose up -d --build
       "
