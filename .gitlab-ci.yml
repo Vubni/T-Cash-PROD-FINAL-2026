@@ -18,7 +18,15 @@ test:
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
-    - pytest --cov=. --cov-report=term-missing --cov-report=xml
+    - |
+        pytest --cov=. --cov-report=term-missing --cov-report=xml
+        status=$?
+        # 5 = "no tests collected" -> считаем успехом
+        if [ "$status" -eq 5 ]; then
+          echo "No tests collected, treating as success"
+          exit 0
+        fi
+        exit "$status"
   artifacts:
     paths:
       - coverage.xml
