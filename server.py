@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (auth, profile)
+from api import (categories, audit, calculate, selection)
 
 from database.functions import init_db
 
@@ -70,21 +70,15 @@ if __name__ == "__main__":
 
     prefix = "/"
     routes = [
-        # web.post(prefix + 'reg', auth.register),
-        web.post(prefix + 'auth', auth.auth),
-        web.get(prefix + 'auth/telegram/url', auth.telegram_url),
-        web.post(prefix + 'auth/telegram', auth.telegram),
-        web.post(prefix + 'email', auth.email_verify),
-        web.get(prefix + 'verify-email', auth.email_verify_confirm),
-        web.post(prefix + 'auth/forgot_password', auth.forgot_password),
-        web.get(prefix + 'auth/forgot_password/confirm', auth.forgot_password_confirm),
-        
-        web.get(prefix + 'settings/info', profile.info),
-        web.post(prefix + 'settings/login/set', profile.set_login),
-        web.post(prefix + 'settings/password/change', profile.set_password),
-        web.post(prefix + 'settings/email/set', profile.set_email),
-        web.get(prefix + 'settings/telegram/connect', profile.telegram_connect),
-        web.delete(prefix + 'settings/telegram/out', profile.telegram_out),
+        web.get(prefix + 'api/v1/admin/categories', categories.list_categories),
+        web.post(prefix + 'api/v1/admin/categories', categories.create_category),
+        web.get(prefix + 'api/v1/admin/categories/{category_id}', categories.get_category),
+        web.patch(prefix + 'api/v1/admin/categories/{category_id}', categories.update_category),
+        web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
+
+        web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
+        web.get(prefix + 'api/v1/client/selection/{selection_id}', selection.get_selection),
+        web.post(prefix + 'api/v1/client/selection/{selection_id}', selection.confirm_selection),
 
         web.get('/{path:.*}', handle_get_file)
     ]

@@ -1,8 +1,5 @@
 from dotenv import load_dotenv
 import os, json
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 
 load_dotenv()
 
@@ -21,12 +18,16 @@ DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"),
 SECRET = os.getenv("RANDOM_SECRET", "AJd27GqoS#gvxp@V")
 
 
-bot = Bot(token=os.getenv("BOT_TOKEN"), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-
 LOG_DIR = "logs"
 LOG_MAX_BYTES = 10 * 1024 * 1024
 LOG_BACKUP_COUNT = 3
+
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger("backend")
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 def _utc_iso_timestamp(record: logging.LogRecord) -> str:
     from time import gmtime
@@ -50,13 +51,6 @@ class StructuredJsonFormatter(logging.Formatter):
         if record.exc_info:
             log_obj["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_obj, ensure_ascii=False)
-
-import logging
-from logging.handlers import RotatingFileHandler
-
-logger = logging.getLogger("backend")
-logger.setLevel(logging.INFO)
-logger.propagate = False
 
 _formatter = StructuredJsonFormatter()
 

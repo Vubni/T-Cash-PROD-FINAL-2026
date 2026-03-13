@@ -199,3 +199,229 @@ class Error400Schema(Schema):
 class AlreadyBeenTaken(Schema):
     name = fields.Str(description="Название переменной, которая занята")
     error = fields.Str(description="Описание, что переменная занята")
+
+
+class CategoryAudienceSchema(Schema):
+    segments = fields.List(
+        fields.Str(),
+        required=True,
+        description="Список сегментов аудитории, для которых категория доступна",
+    )
+
+
+class CategoryBudgetSchema(Schema):
+    amount = fields.Float(required=True, description="Бюджет категории на период")
+    currency = fields.Str(required=True, description="Валюта бюджета, например RUB")
+
+
+class CategoryRateSchema(Schema):
+    min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
+    max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
+
+
+class CategoryRuleSchema(Schema):
+    personalized = fields.Bool(
+        required=True,
+        description="Признак, что категория участвует в персональном ранжировании",
+    )
+    budget_mode = fields.Str(
+        required=True,
+        description="Режим контроля бюджета, например hard_limit или soft_limit",
+    )
+    fallback_message = fields.Str(
+        required=True,
+        description="Текст, который можно показать пользователю, если категория недоступна",
+    )
+
+
+class CategoryHistoryItemSchema(Schema):
+    changed_at = fields.Str(required=True, description="Дата и время изменения в ISO 8601")
+    changed_by = fields.Str(required=True, description="Кто изменил категорию")
+    field = fields.Str(required=True, description="Какое поле изменили")
+    old_value = fields.Raw(required=False, allow_none=True, description="Старое значение")
+    new_value = fields.Raw(required=False, allow_none=True, description="Новое значение")
+
+
+class CategoryListItemSchema(Schema):
+    id = fields.Str(required=True, description="Идентификатор категории")
+    name = fields.Str(required=True, description="Название категории")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    status = fields.Str(required=True, description="Текущий статус категории")
+    budget = fields.Nested(CategoryBudgetSchema, required=True)
+    rate = fields.Nested(CategoryRateSchema, required=True)
+
+
+class CategoryDetailSchema(Schema):
+    id = fields.Str(required=True, description="Идентификатор категории")
+    name = fields.Str(required=True, description="Название категории")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    status = fields.Str(required=True, description="Текущий статус категории")
+    budget = fields.Nested(CategoryBudgetSchema, required=True)
+    rate = fields.Nested(CategoryRateSchema, required=True)
+    audience = fields.Nested(CategoryAudienceSchema, required=True)
+    rule = fields.Nested(CategoryRuleSchema, required=True)
+    history = fields.List(
+        fields.Nested(CategoryHistoryItemSchema),
+        required=True,
+        description="История изменений категории",
+    )
+
+
+class CategoryListResponseSchema(Schema):
+    items = fields.List(
+        fields.Nested(CategoryListItemSchema),
+        required=True,
+        description="Список категорий",
+    )
+    total = fields.Int(required=True, description="Количество категорий в ответе")
+
+
+class CategoryCreateSchema(Schema):
+    name = fields.Str(required=True, description="Название категории")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    status = fields.Str(required=True, description="Статус категории, например active или disabled")
+    budget_amount = fields.Float(required=True, description="Бюджет категории на период")
+    budget_currency = fields.Str(required=True, description="Валюта бюджета")
+    rate_min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
+    rate_max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
+    audience_segments = fields.List(
+        fields.Str(),
+        required=True,
+        description="Сегменты аудитории категории",
+    )
+    rule_personalized = fields.Bool(
+        required=True,
+        description="Участвует ли категория в персональном подборе",
+    )
+    rule_budget_mode = fields.Str(
+        required=True,
+        description="Режим бюджетного контроля для категории",
+    )
+    rule_fallback_message = fields.Str(
+        required=True,
+        description="Сообщение для пользователя, если категория недоступна",
+    )
+
+
+class CategoryUpdateSchema(Schema):
+    name = fields.Str(required=False, description="Новое название категории")
+    subtitle = fields.Str(required=False, description="Новый подзаголовок категории")
+    icon_key = fields.Str(required=False, description="Новый ключ иконки категории")
+    status = fields.Str(required=False, description="Новый статус категории")
+    budget_amount = fields.Float(required=False, description="Новый бюджет категории")
+    budget_currency = fields.Str(required=False, description="Новая валюта бюджета")
+    rate_min = fields.Float(required=False, description="Новая минимальная ставка кэшбэка")
+    rate_max = fields.Float(required=False, description="Новая максимальная ставка кэшбэка")
+    audience_segments = fields.List(
+        fields.Str(),
+        required=False,
+        description="Новый список сегментов аудитории",
+    )
+    rule_personalized = fields.Bool(required=False, description="Новый флаг персонализации")
+    rule_budget_mode = fields.Str(required=False, description="Новый режим бюджетного контроля")
+    rule_fallback_message = fields.Str(
+        required=False,
+        description="Новое fallback-сообщение для пользователя",
+    )
+
+
+class AuditEventSchema(Schema):
+    id = fields.Str(required=True, description="Идентификатор события аудита")
+    entity_type = fields.Str(required=True, description="Тип сущности")
+    entity_id = fields.Str(required=True, description="Идентификатор сущности")
+    action = fields.Str(required=True, description="Действие, например create или update")
+    actor = fields.Str(required=True, description="Кто выполнил действие")
+    created_at = fields.Str(required=True, description="Дата и время события в ISO 8601")
+
+
+class AuditListResponseSchema(Schema):
+    items = fields.List(
+        fields.Nested(AuditEventSchema),
+        required=True,
+        description="Список событий аудита",
+    )
+    total = fields.Int(required=True, description="Количество событий в ответе")
+
+
+class CalculateRequestSchema(Schema):
+    period_id = fields.Str(
+        required=False,
+        description="Идентификатор периода расчёта. Если не передан, backend использует текущий период",
+    )
+
+
+class CalculateCategoryItemSchema(Schema):
+    selection_id = fields.Str(required=True, description="Идентификатор выбора для дальнейшего перехода в selection")
+    category_id = fields.Str(required=True, description="Идентификатор категории")
+    name = fields.Str(required=True, description="Название категории")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    rate = fields.Nested(CategoryRateSchema, required=True)
+    expected_benefit_amount = fields.Float(
+        required=True,
+        description="Ожидаемая выгода пользователя по категории",
+    )
+    currency = fields.Str(required=True, description="Валюта ожидаемой выгоды")
+    availability_status = fields.Str(
+        required=True,
+        description="Статус доступности категории, например available или budget_limited",
+    )
+    availability_reason = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Пояснение, если категория ограничена или недоступна",
+    )
+
+
+class CalculateResponseSchema(Schema):
+    period_id = fields.Str(required=True, description="Период, по которому выполнен расчёт")
+    items = fields.List(
+        fields.Nested(CalculateCategoryItemSchema),
+        required=True,
+        description="Список всех категорий, возвращённых calculate",
+    )
+
+
+class SelectionDetailSchema(Schema):
+    selection_id = fields.Str(required=True, description="Идентификатор выбора")
+    category_id = fields.Str(required=True, description="Идентификатор категории")
+    name = fields.Str(required=True, description="Название категории")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории")
+    rate = fields.Nested(CategoryRateSchema, required=True)
+    expected_benefit_amount = fields.Float(
+        required=True,
+        description="Ожидаемая выгода пользователя по выбранной категории",
+    )
+    currency = fields.Str(required=True, description="Валюта выгоды")
+    status = fields.Str(required=True, description="Статус выбора")
+    budget_message = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Сообщение о бюджетных ограничениях, если они есть",
+    )
+
+
+class SelectionConfirmSchema(Schema):
+    period_id = fields.Str(
+        required=False,
+        description="Период подтверждения. Если не передан, используется текущий период",
+    )
+    confirm = fields.Bool(
+        required=False,
+        description="Флаг подтверждения выбора. По умолчанию true",
+    )
+
+
+class SelectionConfirmResponseSchema(Schema):
+    selection_id = fields.Str(required=True, description="Идентификатор подтверждённого выбора")
+    category_id = fields.Str(required=True, description="Идентификатор выбранной категории")
+    status = fields.Str(required=True, description="Статус подтверждения выбора")
+    expected_benefit_amount = fields.Float(
+        required=True,
+        description="Ожидаемая выгода после подтверждения выбора",
+    )
+    currency = fields.Str(required=True, description="Валюта выгоды")
+    message = fields.Str(required=True, description="Комментарий backend по результату подтверждения")
