@@ -1,14 +1,4 @@
-from dotenv import load_dotenv
 import os, json
-
-load_dotenv()
-
-API_KEY = os.getenv("API_KEY")
-
-EMAIL_HOSTNAME = os.getenv("EMAIL_HOSTNAME")
-EMAIL_PORT = os.getenv("EMAIL_PORT")
-EMAIL_USERNAME = os.getenv("EMAIL_USERNAME")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
 DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"), 
              "user": os.getenv("DB_USER"), 
