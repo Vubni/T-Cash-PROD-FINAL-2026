@@ -269,10 +269,6 @@ async def get_category(request: web.Request, parsed: validate.Category_id_path) 
             raise web.HTTPNotFound()
 
         return web.json_response(_row_to_category(row), status=200)
-    except Exception as e:
-        logger.error("get_category error: ", e)
-=======
-        return web.json_response(_build_category_detail(parsed.category_id), status=200)
     except Exception:
         logger.exception("get_category handler failed")
         return validate.format_500_error(request)
