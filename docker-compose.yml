@@ -34,7 +34,7 @@ services:
       RANDOM_SECRET: "AJd27GqoS#gvxp@V"
     depends_on:
       - db
-    command: ["pytest", "--cov=.", "--cov-report=term-missing", "-q"]
+    command: ["pytest", "--cov=.", "--cov-report=term-missing", "-q", "--override-ini=asyncio_default_fixture_loop_scope=function", "-W", "ignore::DeprecationWarning"]
 
 volumes:
   db-data:

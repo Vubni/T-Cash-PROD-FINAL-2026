@@ -1,10 +1,45 @@
 from aiohttp import web
 from aiohttp_apispec import docs, request_schema
+from pydantic import BaseModel, field_validator
 
 from api import validate
 from config import logger
 from docs import schems as sh
 from functions import selection as sel_fns
+
+
+SELECTION_ID_MAX_LENGTH = 128
+
+
+class Selection_id_path(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    selection_id: str
+
+    @field_validator("selection_id")
+    @classmethod
+    def selection_id_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("selection_id cannot be empty")
+        if len(v) > SELECTION_ID_MAX_LENGTH:
+            raise ValueError(f"selection_id cannot exceed {SELECTION_ID_MAX_LENGTH} characters")
+        return v
+
+
+class Selection_confirm(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    selection_id: str
+    confirm: bool = True
+
+    @field_validator("selection_id")
+    @classmethod
+    def selection_id_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("selection_id cannot be empty")
+        if len(v) > SELECTION_ID_MAX_LENGTH:
+            raise ValueError(f"selection_id cannot exceed {SELECTION_ID_MAX_LENGTH} characters")
+        return v
 
 
 @docs(
@@ -25,8 +60,8 @@ from functions import selection as sel_fns
         }
     ],
 )
-@validate.validate(validate.Selection_id_path)
-async def get_selection(request: web.Request, parsed: validate.Selection_id_path) -> web.Response:
+@validate.validate(Selection_id_path)
+async def get_selection(request: web.Request, parsed: Selection_id_path) -> web.Response:
     try:
         detail = await sel_fns.get_selection(parsed.selection_id)
         if detail is None:
@@ -65,8 +100,8 @@ async def get_selection(request: web.Request, parsed: validate.Selection_id_path
     ],
 )
 @request_schema(sh.SelectionConfirmSchema)
-@validate.validate(validate.Selection_confirm)
-async def confirm_selection(request: web.Request, parsed: validate.Selection_confirm) -> web.Response:
+@validate.validate(Selection_confirm)
+async def confirm_selection(request: web.Request, parsed: Selection_confirm) -> web.Response:
     try:
         selection_id = parsed.selection_id
         idempotency_key = request.headers.get("Idempotency-Key")
@@ -79,7 +114,6 @@ async def confirm_selection(request: web.Request, parsed: validate.Selection_con
             "category_id": detail["category_id"],
             "status": detail["status"],
             "expected_benefit_amount": detail["expected_benefit_amount"],
-            "currency": detail["currency"],
             "message": "Выбор принят и сохранён на стороне сервера",
         }
         return web.json_response(response, status=200)

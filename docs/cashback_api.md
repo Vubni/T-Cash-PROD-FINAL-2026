@@ -168,7 +168,6 @@ Dry-run по сегменту: сколько пользователей eligibl
 {
   "period_id": "2026-03",
   "limit_amount": 5000000,
-  "currency": "RUB",
   "reserve_policy": {
     "mode": "hard_cap",
     "safety_buffer_pct": 10

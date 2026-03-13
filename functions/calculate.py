@@ -15,14 +15,12 @@ async def get_calculate_items(period_id: str) -> list[dict]:
                 s.selection_id,
                 s.category_id,
                 s.expected_benefit_amount,
-                s.currency,
                 s.availability_status,
                 s.availability_reason,
                 c.name,
                 c.subtitle,
                 c.icon_key,
                 c.budget_amount,
-                c.budget_currency,
                 c.target_users,
                 c.avg_spend_per_user
             FROM selections s
@@ -48,7 +46,6 @@ async def get_calculate_items(period_id: str) -> list[dict]:
                 "icon_url": f"/icons/{icon_key}.svg",
                 "rate": rate,
                 "expected_benefit_amount": row["expected_benefit_amount"],
-                "currency": row["currency"] or row["budget_currency"],
                 "availability_status": row["availability_status"],
                 "availability_reason": row["availability_reason"],
             }

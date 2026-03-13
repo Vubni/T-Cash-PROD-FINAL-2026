@@ -211,7 +211,6 @@ class CategoryAudienceSchema(Schema):
 
 class CategoryBudgetSchema(Schema):
     amount = fields.Float(required=True, description="Бюджет категории на период")
-    currency = fields.Str(required=True, description="Валюта бюджета, например RUB")
 
 
 class CategoryRateSchema(Schema):
@@ -248,7 +247,6 @@ class CategoryListItemSchema(Schema):
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
     icon_url = fields.Str(required=False, description="Путь до иконки категории")
-    status = fields.Str(required=True, description="Текущий статус категории")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
 
@@ -277,7 +275,7 @@ class CategoryListResponseSchema(Schema):
         required=True,
         description="Список категорий",
     )
-    total = fields.Int(required=True, description="Количество категорий в ответе")
+    total = fields.Int(required=True, description="Общее количество категорий (для пагинации)")
 
 
 class CategoryCreateSchema(Schema):
@@ -286,7 +284,6 @@ class CategoryCreateSchema(Schema):
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
     status = fields.Str(required=True, description="Статус категории, например active или disabled")
     budget_amount = fields.Float(required=True, description="Бюджет категории на период")
-    budget_currency = fields.Str(required=True, description="Валюта бюджета")
     rate_min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
     rate_max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
     audience_segments = fields.List(
@@ -314,7 +311,6 @@ class CategoryUpdateSchema(Schema):
     icon_key = fields.Str(required=False, description="Новый ключ иконки категории")
     status = fields.Str(required=False, description="Новый статус категории")
     budget_amount = fields.Float(required=False, description="Новый бюджет категории")
-    budget_currency = fields.Str(required=False, description="Новая валюта бюджета")
     rate_min = fields.Float(required=False, description="Новая минимальная ставка кэшбэка")
     rate_max = fields.Float(required=False, description="Новая максимальная ставка кэшбэка")
     audience_segments = fields.List(
@@ -367,7 +363,6 @@ class CalculateCategoryItemSchema(Schema):
         required=True,
         description="Ожидаемая выгода пользователя по категории",
     )
-    currency = fields.Str(required=True, description="Валюта ожидаемой выгоды")
     availability_status = fields.Str(
         required=True,
         description="Статус доступности категории, например available или budget_limited",
@@ -400,7 +395,6 @@ class SelectionDetailSchema(Schema):
         required=True,
         description="Ожидаемая выгода пользователя по выбранной категории",
     )
-    currency = fields.Str(required=True, description="Валюта выгоды")
     status = fields.Str(required=True, description="Статус выбора")
     budget_message = fields.Str(
         required=False,
@@ -410,10 +404,6 @@ class SelectionDetailSchema(Schema):
 
 
 class SelectionConfirmSchema(Schema):
-    period_id = fields.Str(
-        required=False,
-        description="Период подтверждения. Если не передан, используется текущий период",
-    )
     confirm = fields.Bool(
         required=False,
         description="Флаг подтверждения выбора. По умолчанию true",
@@ -428,5 +418,4 @@ class SelectionConfirmResponseSchema(Schema):
         required=True,
         description="Ожидаемая выгода после подтверждения выбора",
     )
-    currency = fields.Str(required=True, description="Валюта выгоды")
     message = fields.Str(required=True, description="Комментарий backend по результату подтверждения")

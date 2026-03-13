@@ -1,12 +1,9 @@
-"""Расчёт диапазона ставки кэшбэка по бюджету и ожидаемым тратам."""
-
 
 def calc_rate(
     budget_amount: int,
     target_users: int,
     avg_spend_per_user: int,
 ) -> dict:
-    """Вычисляет min/max ставку (в процентах) по бюджету и целевой аудитории."""
     try:
         if not budget_amount or not target_users or not avg_spend_per_user:
             return {"min": 5, "max": 15}

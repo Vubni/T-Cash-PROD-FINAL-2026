@@ -201,6 +201,14 @@ def validate(model: type[T], require_auth: bool = False) -> Callable:
             all_data.update(dict(request.query))
             all_data.update(data)
 
+            MAX_REQUEST_FIELDS = 128
+            if len(all_data) > MAX_REQUEST_FIELDS:
+                return format_400_error(
+                    request,
+                    "Слишком много полей в запросе",
+                    details={"max_fields": MAX_REQUEST_FIELDS},
+                )
+
             for key, value in all_data.items():
                 if isinstance(value, str):
                     if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
@@ -452,93 +460,3 @@ class Email_verify_confirm(BaseModel):
     token: str
 
 
-class Admin_categories_list(BaseModel):
-    status: Optional[str] = None
-    limit: int = 50
-    cursor: Optional[str] = None
-
-
-class Admin_category_create(BaseModel):
-    name: str
-    subtitle: str
-    icon_key: str
-    status: str
-    budget_amount: float
-    budget_currency: str
-    rate_min: float
-    rate_max: float
-    audience_segments: list[str]
-    rule_personalized: bool
-    rule_budget_mode: str
-    rule_fallback_message: str
-
-    @field_validator("name", "subtitle", "icon_key", "status", "budget_currency", "rule_budget_mode", "rule_fallback_message")
-    def check_non_empty_strings(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Field cannot be empty")
-        return v
-
-    @field_validator("audience_segments")
-    def check_segments(cls, v: list[str]) -> list[str]:
-        if not v:
-            raise ValueError("At least one audience segment is required")
-        return v
-
-    @model_validator(mode="after")
-    def check_rate_range(self):
-        if self.rate_min > self.rate_max:
-            raise ValueError("rate_min cannot be greater than rate_max")
-        if self.budget_amount < 0:
-            raise ValueError("budget_amount cannot be negative")
-        return self
-
-
-class Admin_category_update(BaseModel):
-    name: Optional[str] = None
-    subtitle: Optional[str] = None
-    icon_key: Optional[str] = None
-    status: Optional[str] = None
-    budget_amount: Optional[float] = None
-    budget_currency: Optional[str] = None
-    rate_min: Optional[float] = None
-    rate_max: Optional[float] = None
-    audience_segments: Optional[list[str]] = None
-    rule_personalized: Optional[bool] = None
-    rule_budget_mode: Optional[str] = None
-    rule_fallback_message: Optional[str] = None
-
-    @model_validator(mode="after")
-    def check_payload(self):
-        has_any_value = any(value is not None for value in self.model_dump().values())
-        if not has_any_value:
-            raise ValueError("At least one field must be provided")
-        if self.rate_min is not None and self.rate_max is not None and self.rate_min > self.rate_max:
-            raise ValueError("rate_min cannot be greater than rate_max")
-        if self.budget_amount is not None and self.budget_amount < 0:
-            raise ValueError("budget_amount cannot be negative")
-        return self
-
-
-class Category_id_path(BaseModel):
-    category_id: str
-
-
-class Audit_list(BaseModel):
-    entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
-    action: Optional[str] = None
-    limit: int = 50
-
-
-class Client_calculate(BaseModel):
-    period_id: Optional[str] = None
-
-
-class Selection_id_path(BaseModel):
-    selection_id: str
-
-
-class Selection_confirm(BaseModel):
-    selection_id: str
-    period_id: Optional[str] = None
-    confirm: bool = True

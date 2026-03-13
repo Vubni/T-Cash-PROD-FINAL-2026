@@ -1,10 +1,32 @@
+from typing import Optional
+
 from aiohttp import web
 from aiohttp_apispec import docs
+from pydantic import BaseModel, field_validator
 
 from api import validate
 from config import logger
 from docs import schems as sh
 from functions import audit as audit_fns
+
+
+LIMIT_MAX = 500
+
+
+class Audit_list(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    action: Optional[str] = None
+    limit: int = 50
+
+    @field_validator("limit")
+    @classmethod
+    def limit_in_range(cls, v: int) -> int:
+        if v < 1 or v > LIMIT_MAX:
+            raise ValueError(f"limit must be between 1 and {LIMIT_MAX}")
+        return v
 
 
 @docs(
@@ -46,8 +68,8 @@ from functions import audit as audit_fns
         },
     ],
 )
-@validate.validate(validate.Audit_list)
-async def list_audit(request: web.Request, parsed: validate.Audit_list) -> web.Response:
+@validate.validate(Audit_list)
+async def list_audit(request: web.Request, parsed: Audit_list) -> web.Response:
     try:
         limit = parsed.limit or 50
         items = await audit_fns.list_audit(

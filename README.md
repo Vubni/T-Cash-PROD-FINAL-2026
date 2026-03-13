@@ -113,7 +113,7 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
   - `id` — внутренний автоинкрементный ID.
   - `category_id` — бизнес‑ID категории (используется в API и связях).
   - `name`, `subtitle`, `icon_key`, `status` — метаданные категории.
-  - `budget_amount`, `budget_currency` — общий бюджет и код валюты.
+  - `budget_amount` — общий бюджет.
   - `target_users` — целевое число уникальных пользователей в период.
   - `avg_spend_per_user` — средний чек/траты одного пользователя по категории (заглушка для будущего ML).
   - `audience_segments` — список сегментов аудитории, для которых категория доступна.
@@ -128,7 +128,7 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
   - `period_id` — период расчёта (например, `2026-03`).
   - `category_id` — ссылка на `categories.category_id`.
   - `status` — статус выбора.
-  - `expected_benefit_amount`, `currency` — ожидаемая выгода и её валюта.
+  - `expected_benefit_amount` — ожидаемая выгода.
   - `availability_status`, `availability_reason` — технический и человекочитаемый статусы доступности.
   - `idempotency_key` — ключ идемпотентности для подтверждения.
   - `created_at`, `updated_at` — временные метки.

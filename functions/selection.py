@@ -1,11 +1,9 @@
-"""Работа с выборами кэшбэка: БД и преобразование строк в DTO."""
 
 from database.database import Database
 from functions.rate import calc_rate
 
 
 def row_to_selection_detail(row: dict) -> dict:
-    """Преобразует строку (selection + category) в DTO детали выбора для API."""
     rate = calc_rate(
         budget_amount=row.get("budget_amount") or 0,
         target_users=row.get("target_users") or 0,
@@ -20,9 +18,7 @@ def row_to_selection_detail(row: dict) -> dict:
         "icon_key": icon_key,
         "icon_url": f"/icons/{icon_key}.svg",
         "rate": rate,
-        "expected_benefit_amount": row["expected_benefit_amount"],
-        "currency": row["currency"] or row["budget_currency"],
-        "status": row["status"],
+        "expected_benefit_amount": row["expected_benefit_amount"], 
         "budget_message": row["availability_reason"],
     }
 
@@ -32,14 +28,12 @@ _SELECTION_JOIN_SQL = """
         s.selection_id,
         s.category_id,
         s.expected_benefit_amount,
-        s.currency,
         s.status,
         s.availability_reason,
         c.name,
         c.subtitle,
         c.icon_key,
         c.budget_amount,
-        c.budget_currency,
         c.target_users,
         c.avg_spend_per_user
     FROM selections s
@@ -49,7 +43,6 @@ _SELECTION_JOIN_SQL = """
 
 
 async def get_selection(selection_id: str) -> dict | None:
-    """Возвращает один выбор по id или None."""
     async with Database() as db:
         row = await db.execute(_SELECTION_JOIN_SQL, (selection_id,))
         if row is None:
@@ -62,7 +55,6 @@ async def confirm_selection(
     new_status: str,
     idempotency_key: str | None,
 ) -> dict | None:
-    """Обновляет статус выбора и возвращает обновлённый DTO или None."""
     async with Database() as db:
         sql_update = """
             UPDATE selections

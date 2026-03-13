@@ -1,4 +1,3 @@
-"""Работа с категориями кэшбэка: БД и преобразование строк в DTO."""
 
 from uuid import uuid4
 
@@ -7,7 +6,6 @@ from functions.rate import calc_rate
 
 
 def row_to_category(item: dict) -> dict:
-    """Преобразует строку из БД (categories) в DTO категории для API."""
     rate = calc_rate(
         budget_amount=item.get("budget_amount") or 0,
         target_users=item.get("target_users") or 0,
@@ -21,10 +19,7 @@ def row_to_category(item: dict) -> dict:
         "icon_key": icon_key,
         "icon_url": f"/icons/{icon_key}.svg",
         "status": item["status"],
-        "budget": {
-            "amount": item["budget_amount"],
-            "currency": item["budget_currency"],
-        },
+        "budget": item["budget_amount"],
         "rate": rate,
         "audience": {
             "segments": item["audience_segments"],
@@ -38,6 +33,25 @@ def row_to_category(item: dict) -> dict:
     }
 
 
+def row_to_category_list_item(item: dict) -> dict:
+    """Элемент списка без status (для list_categories)."""
+    rate = calc_rate(
+        budget_amount=item.get("budget_amount") or 0,
+        target_users=item.get("target_users") or 0,
+        avg_spend_per_user=item.get("avg_spend_per_user") or 0,
+    )
+    icon_key = item["icon_key"]
+    return {
+        "id": item["category_id"],
+        "name": item["name"],
+        "subtitle": item["subtitle"],
+        "icon_key": icon_key,
+        "icon_url": f"/icons/{icon_key}.svg",
+        "budget": item["budget_amount"],
+        "rate": rate,
+    }
+
+
 _CATEGORY_SELECT_FIELDS = """
     category_id,
     name,
@@ -45,7 +59,6 @@ _CATEGORY_SELECT_FIELDS = """
     icon_key,
     status,
     budget_amount,
-    budget_currency,
     target_users,
     avg_spend_per_user,
     audience_segments,
@@ -55,19 +68,23 @@ _CATEGORY_SELECT_FIELDS = """
 """
 
 
-async def list_categories(status: str | None, limit: int) -> list[dict]:
-    """Возвращает список категорий из БД с фильтром по статусу."""
+async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
     async with Database() as db:
+        count_sql = "SELECT COUNT(*) AS n FROM categories"
+        row_count = await db.execute(count_sql, ())
+        total = row_count["n"] if row_count else 0
+
         sql = f"""
             SELECT
                 {_CATEGORY_SELECT_FIELDS}
             FROM categories
-            WHERE ($1::text IS NULL OR status = $1)
             ORDER BY created_at DESC, category_id
+            OFFSET $1
             LIMIT $2
         """
-        rows = await db.execute_all(sql, (status, limit)) or []
-        return [row_to_category(row) for row in rows]
+        rows = await db.execute_all(sql, (offset, limit)) or []
+        items = [row_to_category_list_item(row) for row in rows]
+        return items, total
 
 
 async def create_category(
@@ -78,7 +95,6 @@ async def create_category(
     icon_key: str,
     status: str,
     budget_amount: int,
-    budget_currency: str,
     target_users: int,
     avg_spend_per_user: int,
     audience_segments: list,
@@ -86,7 +102,6 @@ async def create_category(
     rule_budget_mode: str,
     rule_fallback_message: str,
 ) -> dict | None:
-    """Создаёт категорию в БД. Если category_id не передан — генерирует. Возвращает DTO или None."""
     if not category_id:
         category_id = f"cat_{uuid4().hex[:8]}"
     async with Database() as db:
@@ -98,7 +113,6 @@ async def create_category(
                 icon_key,
                 status,
                 budget_amount,
-                budget_currency,
                 target_users,
                 avg_spend_per_user,
                 audience_segments,
@@ -123,7 +137,6 @@ async def create_category(
                 icon_key,
                 status,
                 budget_amount,
-                budget_currency,
                 target_users,
                 avg_spend_per_user,
                 audience_segments,
@@ -136,7 +149,6 @@ async def create_category(
 
 
 async def get_category(category_id: str) -> dict | None:
-    """Возвращает одну категорию по id или None."""
     async with Database() as db:
         return await _get_category(db, category_id)
 
@@ -162,7 +174,6 @@ async def update_category(
     icon_key: str | None = None,
     status: str | None = None,
     budget_amount: int | None = None,
-    budget_currency: str | None = None,
     target_users: int | None = None,
     avg_spend_per_user: int | None = None,
     audience_segments: list | None = None,
@@ -170,7 +181,6 @@ async def update_category(
     rule_budget_mode: str | None = None,
     rule_fallback_message: str | None = None,
 ) -> dict | None:
-    """Частично обновляет категорию. Возвращает обновлённый DTO или None."""
     fields = []
     params = []
 
@@ -184,7 +194,6 @@ async def update_category(
     add("icon_key", icon_key)
     add("status", status)
     add("budget_amount", budget_amount)
-    add("budget_currency", budget_currency)
     add("target_users", target_users)
     add("avg_spend_per_user", avg_spend_per_user)
     add("audience_segments", audience_segments)
