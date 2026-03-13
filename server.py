@@ -54,7 +54,7 @@ if __name__ == "__main__":
     
     setup_aiohttp_apispec(
         app,
-        title="API doc",
+        title="Cashback API",
         version="v1",
         url="/swagger.json",
         swagger_path="/",

@@ -22,7 +22,7 @@ def _build_icons_dir() -> str:
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Загрузить иконку категории",
     description=(
         "Загружает файл иконки и сохраняет его на сервере в каталоге static/icons. "

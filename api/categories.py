@@ -8,7 +8,7 @@ from functions import categories as cat_fns
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Список категорий кэшбэка",
     description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок.",
     responses={
@@ -51,7 +51,7 @@ async def list_categories(request: web.Request, parsed: validate.Admin_categorie
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Создать категорию кэшбэка",
     description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации.",
     responses={
@@ -88,7 +88,7 @@ async def create_category(request: web.Request, parsed: validate.Admin_category_
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Получить категорию кэшбэка",
     description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений.",
     responses={
@@ -120,7 +120,7 @@ async def get_category(request: web.Request, parsed: validate.Category_id_path) 
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Изменить категорию кэшбэка",
     description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию, статус и правило категории.",
     responses={

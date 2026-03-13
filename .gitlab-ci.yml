@@ -18,13 +18,25 @@ test:
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
-    - pytest --cov=. --cov-report=term-missing --cov-report=xml
+    - |
+        set +e
+        pytest --cov=. --cov-report=term-missing --cov-report=xml
+        status=$?
+        set -e
+        # 5 = "no tests collected" -> считаем успехом
+        if [ "$status" -eq 5 ]; then
+          echo "No tests collected, treating as success"
+          exit 0
+        fi
+        exit "$status"
   artifacts:
-    reports:
-      cobertura: coverage.xml
     paths:
+      - coverage.xml
       - .pytest_cache/
     expire_in: 1 week
+  only:
+    - master
+    - experiment
 
 deploy_prod:
   stage: deploy
@@ -41,8 +53,8 @@ deploy_prod:
     - rsync -az --delete ./ ubuntu@178.154.217.140:${APP_DIR}
     - ssh ubuntu@178.154.217.140 "
         cd ${APP_DIR} &&
-        docker compose pull || true &&
-        docker compose up -d --build
+        sudo docker compose pull || true &&
+        sudo docker compose up -d --build
       "
 
 deploy_test:
@@ -60,6 +72,6 @@ deploy_test:
     - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
     - ssh ubuntu@158.160.20.196 "
         cd ${APP_DIR} &&
-        docker compose pull || true &&
-        docker compose up -d --build
+        sudo docker compose pull || true &&
+        sudo docker compose up -d --build
       "

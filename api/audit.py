@@ -8,7 +8,7 @@ from functions import audit as audit_fns
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Журнал аудита",
     description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке.",
     responses={
