@@ -24,4 +24,4 @@ Thumbs.db
 ### Project-specific
 logs/
 *.sqlite3
-
+test.py
