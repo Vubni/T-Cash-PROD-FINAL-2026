@@ -3,43 +3,55 @@ from aiohttp_apispec import docs, request_schema
 
 from api import validate
 from config import logger
+from database.database import Database
 from docs import schems as sh
 
 
-def _build_category_detail(category_id: str) -> dict:
-    icon_key = "restaurants"
+def _calc_rate(budget_amount: int, target_users: int, avg_spend_per_user: int) -> dict:
+    try:
+        if not budget_amount or not target_users or not avg_spend_per_user:
+            return {"min": 5, "max": 15}
+        total_expected_spend = target_users * avg_spend_per_user
+        if total_expected_spend <= 0:
+            return {"min": 5, "max": 15}
+        base_rate = round(100 * budget_amount / total_expected_spend)
+        base_rate = max(1, min(base_rate, 30))
+        return {
+            "min": max(1, base_rate - 2),
+            "max": min(30, base_rate + 2),
+        }
+    except Exception:
+        return {"min": 5, "max": 15}
+
+
+def _row_to_category(item: dict) -> dict:
+    rate = _calc_rate(
+        budget_amount=item.get("budget_amount") or 0,
+        target_users=item.get("target_users") or 0,
+        avg_spend_per_user=item.get("avg_spend_per_user") or 0,
+    )
+    icon_key = item["icon_key"]
     return {
-        "id": category_id,
-        "name": "Restaurants",
-        "subtitle": "Кэшбэк в кафе и ресторанах",
+        "id": item["category_id"],
+        "name": item["name"],
+        "subtitle": item["subtitle"],
         "icon_key": icon_key,
         "icon_url": f"/icons/{icon_key}.svg",
-        "status": "active",
+        "status": item["status"],
         "budget": {
-            "amount": 1500000,
-            "currency": "RUB",
+            "amount": item["budget_amount"],
+            "currency": item["budget_currency"],
         },
-        "rate": {
-            "min": 5,
-            "max": 15,
-        },
+        "rate": rate,
         "audience": {
-            "segments": ["mass", "active_spenders"],
+            "segments": item["audience_segments"],
         },
         "rule": {
-            "personalized": True,
-            "budget_mode": "hard_limit",
-            "fallback_message": "Категория временно недоступна из-за лимита бюджета",
+            "personalized": item["rule_personalized"],
+            "budget_mode": item["rule_budget_mode"],
+            "fallback_message": item["rule_fallback_message"],
         },
-        "history": [
-            {
-                "changed_at": "2026-03-13T10:00:00Z",
-                "changed_by": "admin@example.com",
-                "field": "budget_amount",
-                "old_value": 1000000,
-                "new_value": 1500000,
-            }
-        ],
+        "history": [],
     }
 
 
@@ -78,18 +90,34 @@ def _build_category_detail(category_id: str) -> dict:
 @validate.validate(validate.Admin_categories_list)
 async def list_categories(request: web.Request, parsed: validate.Admin_categories_list) -> web.Response:
     try:
-        items = [
-            {
-                "id": "cat_restaurants",
-                "name": "Restaurants",
-                "subtitle": "Кэшбэк в кафе и ресторанах",
-                "icon_key": "restaurants",
-                "icon_url": "/icons/restaurants.svg",
-                "status": parsed.status or "active",
-                "budget": {"amount": 1500000, "currency": "RUB"},
-                "rate": {"min": 5, "max": 15},
-            }
-        ]
+        async with Database() as db:
+            if db is None:
+                return validate.format_500_error(request)
+
+            limit = parsed.limit or 50
+            status = parsed.status
+            sql = """
+                SELECT
+                    category_id,
+                    name,
+                    subtitle,
+                    icon_key,
+                    status,
+                    budget_amount,
+                    budget_currency,
+                    target_users,
+                    avg_spend_per_user,
+                    audience_segments,
+                    rule_personalized,
+                    rule_budget_mode,
+                    rule_fallback_message
+                FROM categories
+                WHERE ($1::text IS NULL OR status = $1)
+                ORDER BY created_at DESC, category_id
+                LIMIT $2
+            """
+            rows = await db.execute_all(sql, (status, limit)) or []
+        items = [_row_to_category(row) for row in rows]
         return web.json_response({"items": items, "total": len(items)}, status=200)
     except Exception as e:
         logger.error("list_categories error: ", e)
@@ -109,32 +137,83 @@ async def list_categories(request: web.Request, parsed: validate.Admin_categorie
 @validate.validate(validate.Admin_category_create)
 async def create_category(request: web.Request, parsed: validate.Admin_category_create) -> web.Response:
     try:
-        icon_url = f"/icons/{parsed.icon_key}.svg"
-        response = {
-            "id": "cat_new",
-            "name": parsed.name,
-            "subtitle": parsed.subtitle,
-            "icon_key": parsed.icon_key,
-            "icon_url": icon_url,
-            "status": parsed.status,
-            "budget": {
-                "amount": parsed.budget_amount,
-                "currency": parsed.budget_currency,
-            },
-            "rate": {
-                "min": parsed.rate_min,
-                "max": parsed.rate_max,
-            },
-            "audience": {
-                "segments": parsed.audience_segments,
-            },
-            "rule": {
-                "personalized": parsed.rule_personalized,
-                "budget_mode": parsed.rule_budget_mode,
-                "fallback_message": parsed.rule_fallback_message,
-            },
-            "history": [],
-        }
+        async with Database() as db:
+            if db is None:
+                return validate.format_500_error(request)
+
+            sql = """
+                INSERT INTO categories (
+                    category_id,
+                    name,
+                    subtitle,
+                    icon_key,
+                    status,
+                    budget_amount,
+                    budget_currency,
+                    target_users,
+                    avg_spend_per_user,
+                    audience_segments,
+                    rule_personalized,
+                    rule_budget_mode,
+                    rule_fallback_message
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5,
+                    $6, $7,
+                    $8, $9,
+                    $10,
+                    $11, $12, $13
+                )
+            """
+            category_id = parsed.category_id if hasattr(parsed, "category_id") else None
+            if not category_id:
+                from uuid import uuid4
+
+                category_id = f"cat_{uuid4().hex[:8]}"
+
+            await db.execute(
+                sql,
+                (
+                    category_id,
+                    parsed.name,
+                    parsed.subtitle,
+                    parsed.icon_key,
+                    parsed.status,
+                    parsed.budget_amount,
+                    parsed.budget_currency,
+                    parsed.target_users,
+                    parsed.avg_spend_per_user,
+                    parsed.audience_segments,
+                    parsed.rule_personalized,
+                    parsed.rule_budget_mode,
+                    parsed.rule_fallback_message,
+                ),
+            )
+
+            row_sql = """
+                SELECT
+                    category_id,
+                    name,
+                    subtitle,
+                    icon_key,
+                    status,
+                    budget_amount,
+                    budget_currency,
+                    target_users,
+                    avg_spend_per_user,
+                    audience_segments,
+                    rule_personalized,
+                    rule_budget_mode,
+                    rule_fallback_message
+                FROM categories
+                WHERE category_id = $1
+            """
+            row = await db.execute(row_sql, (category_id,))
+
+        if row is None:
+            return validate.format_500_error(request)
+
+        response = _row_to_category(row)
         return web.json_response(response, status=201)
     except Exception as e:
         logger.error("create_category error: ", e)
@@ -162,7 +241,34 @@ async def create_category(request: web.Request, parsed: validate.Admin_category_
 @validate.validate(validate.Category_id_path)
 async def get_category(request: web.Request, parsed: validate.Category_id_path) -> web.Response:
     try:
-        return web.json_response(_build_category_detail(parsed.category_id), status=200)
+        async with Database() as db:
+            if db is None:
+                return validate.format_500_error(request)
+
+            sql = """
+                SELECT
+                    category_id,
+                    name,
+                    subtitle,
+                    icon_key,
+                    status,
+                    budget_amount,
+                    budget_currency,
+                    target_users,
+                    avg_spend_per_user,
+                    audience_segments,
+                    rule_personalized,
+                    rule_budget_mode,
+                    rule_fallback_message
+                FROM categories
+                WHERE category_id = $1
+            """
+            row = await db.execute(sql, (parsed.category_id,))
+
+        if row is None:
+            raise web.HTTPNotFound()
+
+        return web.json_response(_row_to_category(row), status=200)
     except Exception as e:
         logger.error("get_category error: ", e)
         return validate.format_500_error(request)
@@ -191,38 +297,62 @@ async def get_category(request: web.Request, parsed: validate.Category_id_path) 
 async def update_category(request: web.Request, parsed: validate.Admin_category_update) -> web.Response:
     try:
         category_id = request.match_info["category_id"]
-        response = _build_category_detail(category_id)
 
-        if parsed.name is not None:
-            response["name"] = parsed.name
-        if parsed.subtitle is not None:
-            response["subtitle"] = parsed.subtitle
-        if parsed.icon_key is not None:
-            response["icon_key"] = parsed.icon_key
-        if parsed.status is not None:
-            response["status"] = parsed.status
-        if parsed.budget_amount is not None:
-            response["budget"]["amount"] = parsed.budget_amount
-        if parsed.budget_currency is not None:
-            response["budget"]["currency"] = parsed.budget_currency
-        if parsed.rate_min is not None:
-            response["rate"]["min"] = parsed.rate_min
-        if parsed.rate_max is not None:
-            response["rate"]["max"] = parsed.rate_max
-        if parsed.audience_segments is not None:
-            response["audience"]["segments"] = parsed.audience_segments
-        if parsed.rule_personalized is not None:
-            response["rule"]["personalized"] = parsed.rule_personalized
-        if parsed.rule_budget_mode is not None:
-            response["rule"]["budget_mode"] = parsed.rule_budget_mode
-        if parsed.rule_fallback_message is not None:
-            response["rule"]["fallback_message"] = parsed.rule_fallback_message
+        async with Database() as db:
+            if db is None:
+                return validate.format_500_error(request)
 
-        # пересчитываем icon_url по актуальному icon_key
-        icon_key = response.get("icon_key")
-        if icon_key:
-            response["icon_url"] = f"/icons/{icon_key}.svg"
+            fields = []
+            params = []
 
+            def add(field_name: str, value):
+                if value is not None:
+                    params.append(value)
+                    fields.append(f"{field_name} = ${len(params)}")
+
+            add("name", parsed.name)
+            add("subtitle", parsed.subtitle)
+            add("icon_key", parsed.icon_key)
+            add("status", parsed.status)
+            add("budget_amount", parsed.budget_amount)
+            add("budget_currency", parsed.budget_currency)
+            add("target_users", getattr(parsed, "target_users", None))
+            add("avg_spend_per_user", getattr(parsed, "avg_spend_per_user", None))
+            add("audience_segments", parsed.audience_segments)
+            add("rule_personalized", parsed.rule_personalized)
+            add("rule_budget_mode", parsed.rule_budget_mode)
+            add("rule_fallback_message", parsed.rule_fallback_message)
+
+            if fields:
+                fields.append("updated_at = NOW()")
+                params.append(category_id)
+                sql_update = f"UPDATE categories SET {', '.join(fields)} WHERE category_id = ${len(params)}"
+                await db.execute(sql_update, tuple(params))
+
+            sql_select = """
+                SELECT
+                    category_id,
+                    name,
+                    subtitle,
+                    icon_key,
+                    status,
+                    budget_amount,
+                    budget_currency,
+                    target_users,
+                    avg_spend_per_user,
+                    audience_segments,
+                    rule_personalized,
+                    rule_budget_mode,
+                    rule_fallback_message
+                FROM categories
+                WHERE category_id = $1
+            """
+            row = await db.execute(sql_select, (category_id,))
+
+        if row is None:
+            raise web.HTTPNotFound()
+
+        response = _row_to_category(row)
         return web.json_response(response, status=200)
     except Exception as e:
         logger.error("update_category error: ", e)
