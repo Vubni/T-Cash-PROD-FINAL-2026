@@ -119,8 +119,8 @@ async def list_categories(request: web.Request, parsed: validate.Admin_categorie
             rows = await db.execute_all(sql, (status, limit)) or []
         items = [_row_to_category(row) for row in rows]
         return web.json_response({"items": items, "total": len(items)}, status=200)
-    except Exception as e:
-        logger.error("list_categories error: ", e)
+    except Exception:
+        logger.exception("list_categories handler failed")
         return validate.format_500_error(request)
 
 
@@ -215,8 +215,8 @@ async def create_category(request: web.Request, parsed: validate.Admin_category_
 
         response = _row_to_category(row)
         return web.json_response(response, status=201)
-    except Exception as e:
-        logger.error("create_category error: ", e)
+    except Exception:
+        logger.exception("create_category handler failed")
         return validate.format_500_error(request)
 
 
@@ -271,6 +271,10 @@ async def get_category(request: web.Request, parsed: validate.Category_id_path) 
         return web.json_response(_row_to_category(row), status=200)
     except Exception as e:
         logger.error("get_category error: ", e)
+=======
+        return web.json_response(_build_category_detail(parsed.category_id), status=200)
+    except Exception:
+        logger.exception("get_category handler failed")
         return validate.format_500_error(request)
 
 
@@ -354,6 +358,6 @@ async def update_category(request: web.Request, parsed: validate.Admin_category_
 
         response = _row_to_category(row)
         return web.json_response(response, status=200)
-    except Exception as e:
-        logger.error("update_category error: ", e)
+    except Exception:
+        logger.exception("update_category handler failed")
         return validate.format_500_error(request)

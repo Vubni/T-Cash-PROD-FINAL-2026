@@ -96,8 +96,8 @@ async def get_selection(request: web.Request, parsed: validate.Selection_id_path
             raise web.HTTPNotFound()
 
         return web.json_response(_row_to_selection_detail(row), status=200)
-    except Exception as e:
-        logger.error("get_selection error: ", e)
+    except Exception:
+        logger.exception("get_selection handler failed")
         return validate.format_500_error(request)
 
 
@@ -182,6 +182,6 @@ async def confirm_selection(request: web.Request, parsed: validate.Selection_con
             "message": "Выбор принят и сохранён на стороне сервера",
         }
         return web.json_response(response, status=200)
-    except Exception as e:
-        logger.error("confirm_selection error: ", e)
+    except Exception:
+        logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)
