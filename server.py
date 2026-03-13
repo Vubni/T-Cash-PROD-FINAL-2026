@@ -91,6 +91,6 @@ if __name__ == "__main__":
     logger.info("Запуск сервера. . .")
     web.run_app(
         app,
-        host=os.environ.get('INSTANCE_HOST', 'localhost'),
+        host=os.environ.get('INSTANCE_HOST', '0.0.0.0'),
         port=int(os.environ.get('PORT', 8080))
     )

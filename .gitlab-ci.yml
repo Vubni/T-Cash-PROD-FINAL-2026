@@ -2,11 +2,52 @@
 # NOTE: You should not delete this file!
 
 stages:
-  - build
   - test
   - deploy
+
+variables:
+  SSH_KNOWN_HOSTS: "178.154.217.140 158.160.20.196"
+  APP_DIR: "/home/ubuntu/backend"
 
 test:
   stage: test
   script:
     - echo 'ok'
+
+deploy_prod:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - master
+  before_script:
+    - apk add --no-cache openssh rsync
+    - mkdir -p ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" | xargs -n1 ssh-keyscan -H >> ~/.ssh/known_hosts
+    - echo "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+  script:
+    - rsync -az --delete ./ ubuntu@178.154.217.140:${APP_DIR}
+    - ssh ubuntu@178.154.217.140 "
+        cd ${APP_DIR} &&
+        docker compose pull || true &&
+        docker compose up -d --build
+      "
+
+deploy_test:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - experiment
+  before_script:
+    - apk add --no-cache openssh rsync
+    - mkdir -p ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" | xargs -n1 ssh-keyscan -H >> ~/.ssh/known_hosts
+    - echo "$TEST_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+  script:
+    - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
+    - ssh ubuntu@158.160.20.196 "
+        cd ${APP_DIR} &&
+        docker compose pull || true &&
+        docker compose up -d --build
+      "

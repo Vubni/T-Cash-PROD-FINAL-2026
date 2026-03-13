@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: applocalpass
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  app:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DB_IP: db
+      DB_USER: appuser
+      DB_PASSWORD: applocalpass
+      DB_DB: appdb
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
+

@@ -28,15 +28,12 @@ class Database:
                 await self.transaction.start()
                 self._retry_count = 0
                 return self
-            except PostgresConnectionError as e:
+            except Exception as e:
                 self._retry_count += 1
-                logger.error(
+                logger.warning(
                     f"Попытка подключения {self._retry_count}/{self.MAX_RETRIES} failed: {e}"
                 )
                 await asyncio.sleep(self.RETRY_DELAY)
-            except Exception as e:
-                logger.error(f"Неожиданная ошибка подключения: {e}")
-                break
 
         logger.error("Превышено максимальное количество попыток подключения")
         return None

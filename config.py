@@ -22,6 +22,8 @@ LOG_DIR = "logs"
 LOG_MAX_BYTES = 10 * 1024 * 1024
 LOG_BACKUP_COUNT = 3
 
+os.makedirs(LOG_DIR, exist_ok=True)
+
 import logging
 from logging.handlers import RotatingFileHandler
 
