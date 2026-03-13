@@ -19,8 +19,10 @@ test:
     - pip install -r requirements.txt
   script:
     - |
+        set +e
         pytest --cov=. --cov-report=term-missing --cov-report=xml
         status=$?
+        set -e
         # 5 = "no tests collected" -> считаем успехом
         if [ "$status" -eq 5 ]; then
           echo "No tests collected, treating as success"
