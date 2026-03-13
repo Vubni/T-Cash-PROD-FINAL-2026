@@ -7,7 +7,7 @@ from docs import schems as sh
 
 
 @docs(
-    tags=["Cashback Client"],
+    tags=["Client"],
     summary="Рассчитать список категорий для клиента",
     description="Возвращает список всех категорий для клиентского экрана. Backend сам решает, вернуть новый расчёт или уже актуальное состояние.",
     responses={

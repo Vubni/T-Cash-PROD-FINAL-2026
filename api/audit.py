@@ -7,7 +7,7 @@ from docs import schems as sh
 
 
 @docs(
-    tags=["Cashback Admin"],
+    tags=["Admin"],
     summary="Журнал аудита",
     description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке.",
     responses={

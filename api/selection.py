@@ -27,7 +27,7 @@ def _build_selection(selection_id: str) -> dict:
 
 
 @docs(
-    tags=["Cashback Client"],
+    tags=["Client"],
     summary="Получить выбор по идентификатору",
     description="Возвращает данные по конкретному выбору до подтверждения: категорию, диапазон ставки, ожидаемую выгоду и текущие ограничения.",
     responses={
@@ -54,7 +54,7 @@ async def get_selection(request: web.Request, parsed: validate.Selection_id_path
 
 
 @docs(
-    tags=["Cashback Client"],
+    tags=["Client"],
     summary="Подтвердить выбор по идентификатору",
     description="Подтверждает конкретный выбор пользователя. Идентификатор выбора передаётся в path, а в теле можно дополнительно передать период подтверждения.",
     responses={
