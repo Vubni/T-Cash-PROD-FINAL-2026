@@ -15,7 +15,6 @@ from database.functions import (
     ensure_selections_user_id_column,
 )
 from functions import admin_users as admin_users_fns
-from functions import users as users_fns
 
 
 async def handle_get_file(request: web.Request) -> web.Response:
@@ -52,7 +51,6 @@ if __name__ == "__main__":
         await admin_users_fns.ensure_main_admin(main_login, main_password)
         logger.info("Главный админ создан.")
         await ensure_users_from_csv()
-        await users_fns.ensure_test_user()
         await ensure_selections_user_id_column()
 
     asyncio.run(startup())
@@ -81,6 +79,7 @@ if __name__ == "__main__":
 
         web.post(prefix + '/admin/auth/register', admin_auth.register_admin),
         web.post(prefix + '/admin/auth/login', admin_auth.login_admin),
+        web.get(prefix + '/admin/auth/pending', admin_auth.list_pending),
         web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
 
         web.post(prefix + '/client/calculate', calculate.calculate),

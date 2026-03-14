@@ -68,8 +68,11 @@ async def create_admin(login: str, password: str) -> dict | None:
     async with Database() as db:
         await db.execute(
             """
-            INSERT INTO admin_users (login, password)
-            VALUES ($1, $2)""", (login, password))
+            INSERT INTO admin_users (main_admin, login, password, approved)
+            VALUES (FALSE, $1, $2, FALSE)
+            """,
+            (login, password),
+        )
     return await get_admin_by_login(login)
 
 
@@ -99,4 +102,19 @@ async def set_admin_approved(admin_id: int) -> dict | None:
         await db.execute(
             "UPDATE admin_users SET approved = TRUE WHERE admin_id = $1", (admin_id,),)
     return await get_admin_by_id(admin_id)
+
+
+async def list_pending_admins() -> list[dict]:
+    """Список заявок на админа (main_admin = FALSE, approved = FALSE). Только для супер-админа."""
+    async with Database() as db:
+        rows = await db.execute_all(
+            """
+            SELECT admin_id, login
+            FROM admin_users
+            WHERE main_admin = FALSE AND approved = FALSE
+            ORDER BY admin_id
+            """,
+            (),
+        )
+    return rows or []
 

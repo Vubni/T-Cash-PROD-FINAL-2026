@@ -349,6 +349,19 @@ class AdminApproveSchema(Schema):
     admin_id = fields.Int(required=True, description="ID обычного администратора, которого нужно одобрить (Authorization: Bearer <токен супер-админа>)")
 
 
+class PendingAdminItemSchema(Schema):
+    admin_id = fields.Int(required=True, description="ID заявки")
+    login = fields.Str(required=True, description="Логин")
+
+
+class PendingAdminsResponseSchema(Schema):
+    items = fields.List(
+        fields.Nested(PendingAdminItemSchema),
+        required=True,
+        description="Список заявок на админа (approved = false)",
+    )
+
+
 class AdminAuthResponseSchema(Schema):
     admin_id = fields.Int(required=True, description="ID администратора")
     login = fields.Str(required=True, description="Логин администратора")
