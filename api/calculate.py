@@ -12,13 +12,13 @@ from functions import users as users_fns
 class Client_calculate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: str
+    user_id: int
 
     @field_validator("user_id")
     @classmethod
-    def user_id_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("user_id не может быть пустым")
+    def user_id_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("user_id должен быть положительным целым числом")
         return v
 
 
@@ -31,7 +31,13 @@ class Client_calculate(BaseModel):
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
-        {"in": "query", "name": "user_id", "type": "string", "required": True, "description": "UUID пользователя"},
+        {
+            "in": "query",
+            "name": "user_id",
+            "type": "integer",
+            "required": True,
+            "description": "ID пользователя (BIGINT)",
+        },
     ],
 )
 @validate.validate(Client_calculate)

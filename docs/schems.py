@@ -322,7 +322,7 @@ class RuleListResponseSchema(Schema):
 
 
 class UserExistsResponseSchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
     exists = fields.Bool(required=True, description="True, если пользователь есть в таблице users")
 
 
@@ -383,7 +383,7 @@ class AuditListResponseSchema(Schema):
 
 
 class UserSchema(Schema):
-    id = fields.Str(required=True, description="UUID пользователя")
+    id = fields.Int(required=True, description="ID пользователя (BIGINT)")
     name = fields.Str(required=True, description="Имя пользователя")
 
 
@@ -397,7 +397,7 @@ class UserListResponseSchema(Schema):
 
 
 class CalculateRequestSchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя (выбор на фронте)")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT, выбор на фронте)")
 
 
 class CalculateCategoryItemSchema(Schema):
@@ -430,7 +430,7 @@ class CalculateCategoryItemSchema(Schema):
 
 
 class CalculateResponseSchema(Schema):
-    user_id = fields.Str(required=True, description="Пользователь, для которого рассчитано")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT), для которого рассчитано")
     items = fields.List(
         fields.Nested(CalculateCategoryItemSchema),
         required=True,
@@ -477,7 +477,7 @@ class SelectionConfirmSchema(Schema):
 
 
 class SelectionSubmitBodySchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
     category_ids = fields.List(
         fields.Str(),
         required=True,
@@ -486,7 +486,7 @@ class SelectionSubmitBodySchema(Schema):
 
 
 class SelectionSubmitResponseSchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
     category_ids = fields.List(
         fields.Str(),
         required=True,

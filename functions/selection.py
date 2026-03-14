@@ -68,7 +68,7 @@ def _generate_selection_uuid() -> str:
 
 
 async def save_selection_batch(
-    user_id: str, category_ids: list[str], idempotency_key: str | None = None
+    user_id: int, category_ids: list[str], idempotency_key: str | None = None
 ) -> list[str]:
     """
     Сохраняет ровно 5 категорий в selections для пользователя.

@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    user_id UUID PRIMARY KEY
+    user_id BIGINT PRIMARY KEY
 );
 
 

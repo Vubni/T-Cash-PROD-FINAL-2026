@@ -3,7 +3,7 @@
 from database.database import Database
 
 
-async def user_exists(user_id: str) -> bool:
+async def user_exists(user_id: int) -> bool:
     """Проверка существования пользователя по user_id."""
     async with Database() as db:
         row = await db.execute(

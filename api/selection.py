@@ -15,14 +15,14 @@ REQUIRED_SELECTION_COUNT = 5
 class Selection_submit_body(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: str
+    user_id: int
     category_ids: list[str]
 
     @field_validator("user_id")
     @classmethod
-    def user_id_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("user_id не может быть пустым")
+    def user_id_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("user_id должен быть положительным целым числом")
         return v
 
     @model_validator(mode="after")

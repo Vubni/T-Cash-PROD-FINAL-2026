@@ -9,7 +9,7 @@ from config import logger
 import asyncio
 from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users, admin_auth)
 
-from database.functions import init_db
+from database.functions import init_db, ensure_users_from_csv
 from functions import admin_users as admin_users_fns
 
 
@@ -47,6 +47,9 @@ if __name__ == "__main__":
         await admin_users_fns.ensure_main_admin(main_login, main_password)
         logger.info("Главный админ создан.")
 
+        # Однократный импорт пользователей из CSV при первом запуске
+        await ensure_users_from_csv()
+
     asyncio.run(startup())
 
     app = web.Application()
@@ -60,23 +63,23 @@ if __name__ == "__main__":
         )
     })
 
-    prefix = "/"
+    prefix = "/api/v1"
     api_routes = [
-        web.get(prefix + 'api/v1/admin/categories', categories.list_categories),
-        web.post(prefix + 'api/v1/admin/categories', categories.create_category),
-        web.get(prefix + 'api/v1/admin/categories/{category_id}', categories.get_category),
-        web.patch(prefix + 'api/v1/admin/categories/{category_id}', categories.update_category),
-        web.post(prefix + 'api/v1/admin/icons/{icon_key}', icons.upload_icon),
-        web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
+        web.get(prefix + '/admin/categories', categories.list_categories),
+        web.post(prefix + '/admin/categories', categories.create_category),
+        web.get(prefix + '/admin/categories/{category_id}', categories.get_category),
+        web.patch(prefix + '/admin/categories/{category_id}', categories.update_category),
+        web.post(prefix + '/admin/icons/{icon_key}', icons.upload_icon),
+        web.get(prefix + '/admin/audit', audit.list_audit),
 
-        web.get(prefix + 'api/v1/users/{user_id}/exists', users.user_exists),
+        web.get(prefix + '/users/{user_id}/exists', users.user_exists),
 
-        web.post(prefix + 'api/v1/admin/auth/register', admin_auth.register_admin),
-        web.post(prefix + 'api/v1/admin/auth/login', admin_auth.login_admin),
-        web.post(prefix + 'api/v1/admin/auth/approve', admin_auth.approve_admin),
+        web.post(prefix + '/admin/auth/register', admin_auth.register_admin),
+        web.post(prefix + '/admin/auth/login', admin_auth.login_admin),
+        web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
 
-        web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
-        web.post(prefix + 'api/v1/client/selection', selection.confirm_selection),
+        web.post(prefix + '/client/calculate', calculate.calculate),
+        web.post(prefix + '/client/selection', selection.confirm_selection),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))
