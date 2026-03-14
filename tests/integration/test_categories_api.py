@@ -2,6 +2,10 @@ import pytest
 from unittest.mock import patch
 import json
 
+# Валидные UUID для путей (API валидирует category_id как UUID)
+CAT_ID = "11111111-1111-1111-1111-111111111111"
+NOT_FOUND_CAT_ID = "00000000-0000-0000-0000-000000000000"
+
 
 async def test_get_categories_success(aiohttp_client, app):
     """Тест: успешное получение списка категорий"""
@@ -149,7 +153,7 @@ async def test_create_category_negative_budget(aiohttp_client, app):
 async def test_get_category_success(aiohttp_client, app):
     """Тест: успешное получение категории по id"""
     test_category = {
-        "category_id": "cat1",
+        "category_id": CAT_ID,
         "name": "Category 1",
         "subtitle": "Subtitle 1",
         "budget_amount": 100000,
@@ -162,13 +166,13 @@ async def test_get_category_success(aiohttp_client, app):
         client = await aiohttp_client(app)
         resp = await client.request(
             "GET",
-            "/api/v1/admin/categories/cat1",
+            f"/api/v1/admin/categories/{CAT_ID}",
             headers={"Authorization": "Bearer admin_token"}
         )
 
         assert resp.status == 200
         data = await resp.json()
-        assert data["category_id"] == "cat1"
+        assert data["category_id"] == CAT_ID
         assert data["name"] == "Category 1"
 
 
@@ -180,7 +184,7 @@ async def test_get_category_not_found(aiohttp_client, app):
         client = await aiohttp_client(app)
         resp = await client.request(
             "GET",
-            "/api/v1/admin/categories/nonexistent",
+            f"/api/v1/admin/categories/{NOT_FOUND_CAT_ID}",
             headers={"Authorization": "Bearer admin_token"}
         )
 
@@ -206,18 +210,18 @@ async def test_get_category_invalid_uuid(aiohttp_client, app):
 async def test_update_category_success(aiohttp_client, app):
     """Тест: успешное обновление категории"""
     update_data = {
-        "category_id": "cat1",
+        "category_id": CAT_ID,
         "name": "Updated Category",
         "budget_amount": 150000
     }
 
     with patch('functions.categories.update_category') as mock_update:
-        mock_update.return_value = True
+        mock_update.return_value = {"category_id": CAT_ID, "name": "Updated Category"}
 
         client = await aiohttp_client(app)
         resp = await client.request(
             "PATCH",
-            "/api/v1/admin/categories/cat1",
+            f"/api/v1/admin/categories/{CAT_ID}",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
             data=json.dumps(update_data)
         )
@@ -227,15 +231,15 @@ async def test_update_category_success(aiohttp_client, app):
 
 async def test_update_category_not_found(aiohttp_client, app):
     """Тест: категория для обновления не найдена"""
-    update_data = {"category_id": "nonexistent", "name": "Updated Category"}
+    update_data = {"category_id": NOT_FOUND_CAT_ID, "name": "Updated Category"}
 
     with patch('functions.categories.update_category') as mock_update:
-        mock_update.return_value = False
+        mock_update.return_value = None  # хендлер возвращает 404 при None
 
         client = await aiohttp_client(app)
         resp = await client.request(
             "PATCH",
-            "/api/v1/admin/categories/nonexistent",
+            f"/api/v1/admin/categories/{NOT_FOUND_CAT_ID}",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
             data=json.dumps(update_data)
         )
@@ -246,7 +250,7 @@ async def test_update_category_not_found(aiohttp_client, app):
 async def test_create_category_rule_success(aiohttp_client, app):
     """Тест: успешное создание правила для категории"""
     rule_data = {
-        "category_id": "cat1",
+        "category_id": CAT_ID,
         "min_age": 18,
         "max_age": 65,
         "gender": "other",
@@ -256,14 +260,14 @@ async def test_create_category_rule_success(aiohttp_client, app):
     with patch('functions.categories.get_category') as mock_get_cat, \
          patch('functions.rules.create_rule') as mock_create, \
          patch('functions.categories.update_category') as mock_update:
-        mock_get_cat.return_value = {"category_id": "cat1"}
+        mock_get_cat.return_value = {"category_id": CAT_ID}
         mock_create.return_value = {"rule_id": "rule123"}
-        mock_update.return_value = {"category_id": "cat1", "rule_id": "rule123"}
+        mock_update.return_value = {"category_id": CAT_ID, "rule_id": "rule123"}
 
         client = await aiohttp_client(app)
         resp = await client.request(
             "POST",
-            "/api/v1/admin/categories/cat1/rule",
+            f"/api/v1/admin/categories/{CAT_ID}/rule",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
             data=json.dumps(rule_data)
         )

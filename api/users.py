@@ -18,7 +18,10 @@ class UserExistsPath(BaseModel):
     @field_validator("user_id", mode="before")
     @classmethod
     def user_id_bigint(cls, v: str | int) -> int:
-        return validate.validate_user_id(v, "user_id")
+        n = validate.validate_user_id(v, "user_id")
+        if n < 1:
+            raise ValueError("user_id must be a positive integer")
+        return n
 
 
 @docs(

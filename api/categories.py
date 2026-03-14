@@ -280,10 +280,8 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
     try:
         response = await cat_fns.get_category(parsed.category_id)
         if response is None:
-            raise web.HTTPNotFound()
+            return validate.format_404_error(request, message="Категория не найдена")
         return web.json_response(response, status=200)
-    except web.HTTPNotFound:
-        raise
     except Exception:
         logger.exception("get_category handler failed")
         return validate.format_500_error(request)
@@ -314,7 +312,7 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
     try:
         category = await cat_fns.get_category(parsed.category_id)
         if category is None:
-            raise web.HTTPNotFound()
+            return validate.format_404_error(request, message="Категория не найдена")
         rule = await rules_fns.create_rule(
             rule_id=parsed.rule_id,
             min_age=parsed.min_age,
@@ -328,8 +326,6 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         if updated is None:
             return validate.format_500_error(request)
         return web.json_response(rule, status=201)
-    except web.HTTPNotFound:
-        raise
     except Exception:
         logger.exception("create_category_rule handler failed")
         return validate.format_500_error(request)
@@ -368,10 +364,8 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             rule_id=parsed.rule_id,
         )
         if response is None:
-            raise web.HTTPNotFound()
+            return validate.format_404_error(request, message="Категория не найдена")
         return web.json_response(response, status=200)
-    except web.HTTPNotFound:
-        raise
     except Exception:
         logger.exception("update_category handler failed")
         return validate.format_500_error(request)

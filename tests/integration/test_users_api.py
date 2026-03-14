@@ -38,15 +38,21 @@ async def test_user_exists_invalid_id(aiohttp_client, app):
 
 
 async def test_user_exists_negative_id(aiohttp_client, app):
+    """user_id=-1 должен возвращать 422 (невалидный user_id)."""
     client = await aiohttp_client(app)
     resp = await client.request("GET", "/api/v1/users/-1/exists")
     assert resp.status == 422
+    data = await resp.json()
+    assert data.get("code") == "VALIDATION_FAILED"
 
 
 async def test_user_exists_zero_id(aiohttp_client, app):
+    """user_id=0 должен возвращать 422 (невалидный user_id)."""
     client = await aiohttp_client(app)
     resp = await client.request("GET", "/api/v1/users/0/exists")
     assert resp.status == 422
+    data = await resp.json()
+    assert data.get("code") == "VALIDATION_FAILED"
 
 
 async def test_user_exists_database_error(aiohttp_client, app):
