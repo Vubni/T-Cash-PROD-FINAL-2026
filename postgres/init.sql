@@ -1,4 +1,3 @@
--- rule_id — единственный первичный ключ, отдельное поле id не нужно
 CREATE TABLE IF NOT EXISTS rules (
     rule_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     min_age         INT         NULL,
@@ -9,7 +8,6 @@ CREATE TABLE IF NOT EXISTS rules (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- category_id — первичный ключ
 CREATE TABLE IF NOT EXISTS categories (
     category_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT        NOT NULL,
@@ -20,6 +18,10 @@ CREATE TABLE IF NOT EXISTS categories (
     rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id UUID PRIMARY KEY
 );
 
 CREATE TABLE IF NOT EXISTS selections (
@@ -44,11 +46,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-
-INSERT INTO rules (rule_id, min_age, max_age, gender, income)
-VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
-ON CONFLICT (rule_id) DO NOTHING;
-
 CREATE TABLE IF NOT EXISTS admin_users (
     admin_id   BIGSERIAL PRIMARY KEY,
     main_admin BOOLEAN   NOT NULL DEFAULT FALSE,
@@ -56,3 +53,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password   TEXT      NOT NULL,
     approved   BOOLEAN   NOT NULL DEFAULT FALSE
 );
+
+-- дефолтное правило, на которое ссылаются категории при импорте из CSV
+INSERT INTO rules (rule_id, min_age, max_age, gender, income)
+VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
+ON CONFLICT (rule_id) DO NOTHING;
