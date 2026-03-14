@@ -17,11 +17,7 @@ def _rule_from_row(item: dict) -> dict:
 
 
 def row_to_category(item: dict) -> dict:
-    rate = calc_rate(
-        budget_amount=item.get("budget_amount") or 0,
-        target_users=item.get("target_users") or 0,
-        avg_spend_per_user=item.get("avg_spend_per_user") or 0,
-    )
+    rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
     icon_key = item["icon_key"]
     return {
         "id": str(item["category_id"]),
@@ -40,11 +36,7 @@ def row_to_category(item: dict) -> dict:
 
 
 def row_to_category_list_item(item: dict) -> dict:
-    rate = calc_rate(
-        budget_amount=item.get("budget_amount") or 0,
-        target_users=item.get("target_users") or 0,
-        avg_spend_per_user=item.get("avg_spend_per_user") or 0,
-    )
+    rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
     icon_key = item["icon_key"]
     return {
         "id": str(item["category_id"]),
@@ -63,8 +55,6 @@ _CATEGORY_SELECT_FIELDS = """
     c.subtitle,
     c.icon_key,
     c.budget_amount,
-    c.target_users,
-    c.avg_spend_per_user,
     c.audience_segments,
     c.rule_id,
     r.min_age,
@@ -99,8 +89,6 @@ async def create_category(
     subtitle: str,
     icon_key: str,
     budget_amount: int,
-    target_users: int,
-    avg_spend_per_user: int,
     audience_segments: list,
     rule_id: str,
 ) -> dict | None:
@@ -110,10 +98,9 @@ async def create_category(
         sql = """
             INSERT INTO categories (
                 category_id, name, subtitle, icon_key,
-                budget_amount, target_users, avg_spend_per_user,
-                audience_segments, rule_id
+                budget_amount, audience_segments, rule_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
         """
         await db.execute(
             sql,
@@ -123,8 +110,6 @@ async def create_category(
                 subtitle,
                 icon_key,
                 budget_amount,
-                target_users,
-                avg_spend_per_user,
                 audience_segments,
                 rule_id,
             ),
@@ -156,8 +141,6 @@ async def update_category(
     subtitle: str | None = None,
     icon_key: str | None = None,
     budget_amount: int | None = None,
-    target_users: int | None = None,
-    avg_spend_per_user: int | None = None,
     audience_segments: list | None = None,
     rule_id: str | None = None,
 ) -> dict | None:
@@ -173,8 +156,6 @@ async def update_category(
     add("subtitle", subtitle)
     add("icon_key", icon_key)
     add("budget_amount", budget_amount)
-    add("target_users", target_users)
-    add("avg_spend_per_user", avg_spend_per_user)
     add("audience_segments", audience_segments)
     add("rule_id", rule_id)
 
