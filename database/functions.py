@@ -127,7 +127,8 @@ async def ensure_categories_from_csv(csv_path: str = "data/categories.csv") -> N
                 name,
                 name,
                 0,
-                ["mass"],
+                5,
+                15,
                 DEFAULT_RULE_ID,
             )
         )
@@ -140,11 +141,12 @@ async def ensure_categories_from_csv(csv_path: str = "data/categories.csv") -> N
                 name,
                 subtitle,
                 budget_amount,
-                audience_segments,
+                rate_min,
+                rate_max,
                 rule_id
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6
+                $1, $2, $3, $4, $5, $6, $7
             )
             ON CONFLICT (category_id) DO NOTHING
             """,

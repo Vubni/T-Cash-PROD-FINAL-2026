@@ -1,7 +1,6 @@
 """Расчёт списка категорий/выборов для клиента по user_id."""
 
 from database.database import Database
-from functions.rate import calc_rate
 
 
 async def get_calculate_items(user_id: str) -> list[dict]:
@@ -15,7 +14,8 @@ async def get_calculate_items(user_id: str) -> list[dict]:
                 s.availability_reason,
                 c.name,
                 c.subtitle,
-                c.budget_amount
+                c.rate_min,
+                c.rate_max
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
             WHERE s.user_id = $1::uuid
@@ -32,21 +32,21 @@ async def get_calculate_items(user_id: str) -> list[dict]:
                 category_id,
                 name,
                 subtitle,
-                budget_amount
+                rate_min,
+                rate_max
             FROM categories
         """
         rows = await db.execute_all(sql) or []
 
     items = []
     for row in rows:
-        rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
         items.append(
             {
                 "selection_id": None,
-                "category_id": row["category_id"],
+                "category_id": str(row["category_id"]),
                 "name": row["name"],
                 "subtitle": row["subtitle"],
-                "rate": rate,
+                "rate": {"min": row["rate_min"], "max": row["rate_max"]},
                 "expected_benefit_amount": None,
                 "availability_status": "available",
                 "availability_reason": None,
@@ -58,14 +58,13 @@ async def get_calculate_items(user_id: str) -> list[dict]:
 def _rows_to_items(rows: list) -> list[dict]:
     items = []
     for row in rows:
-        rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
         items.append(
             {
                 "selection_id": str(row["selection_id"]),
                 "category_id": str(row["category_id"]),
                 "name": row["name"],
                 "subtitle": row["subtitle"],
-                "rate": rate,
+                "rate": {"min": row["rate_min"], "max": row["rate_max"]},
                 "expected_benefit_amount": row.get("expected_benefit_amount"),
                 "availability_status": row.get("availability_status"),
                 "availability_reason": row.get("availability_reason"),

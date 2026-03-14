@@ -11,8 +11,8 @@ from docs import schems as sh
 from functions import admin_users
 
 
-LOGIN_MAX_LENGTH = 256
-PASSWORD_MAX_LENGTH = 512
+LOGIN_MAX_LENGTH = 40
+PASSWORD_MAX_LENGTH = 255
 
 
 class AdminRegisterBody(BaseModel):

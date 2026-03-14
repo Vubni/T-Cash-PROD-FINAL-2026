@@ -1,18 +1,16 @@
 import uuid
 from database.database import Database
-from functions.rate import calc_rate
 
 REQUIRED_SELECTION_COUNT = 5
 
 
 def row_to_selection_detail(row: dict) -> dict:
-    rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
     return {
         "selection_id": str(row["selection_id"]),
         "category_id": str(row["category_id"]),
         "name": row["name"],
         "subtitle": row["subtitle"],
-        "rate": rate,
+        "rate": {"min": row["rate_min"], "max": row["rate_max"]},
         "expected_benefit_amount": row["expected_benefit_amount"],
         "budget_message": row["availability_reason"],
     }
@@ -26,7 +24,8 @@ _SELECTION_JOIN_SQL = """
         s.availability_reason,
         c.name,
         c.subtitle,
-        c.budget_amount
+        c.rate_min,
+        c.rate_max
     FROM selections s
     JOIN categories c ON c.category_id = s.category_id
     WHERE s.idempotency_key = $1
@@ -53,6 +52,17 @@ async def check_categories_exist(category_ids: list[str]) -> bool:
     return len(rows) == len(category_ids)
 
 
+IDEMPOTENCY_KEY_MAX_LENGTH = 128
+
+
+def validate_idempotency_key(key: str | None) -> None:
+    """Проверяет длину idempotency_key (VARCHAR(128) в БД)."""
+    if key is None:
+        return
+    if len(key) > IDEMPOTENCY_KEY_MAX_LENGTH:
+        raise ValueError(f"idempotency_key cannot exceed {IDEMPOTENCY_KEY_MAX_LENGTH} characters")
+
+
 def _generate_selection_uuid() -> str:
     return str(uuid.uuid4())
 
@@ -65,6 +75,7 @@ async def save_selection_batch(
     Старые записи по user_id удаляются, вставляются 5 новых.
     Возвращает список созданных selection_id (UUID строк).
     """
+    validate_idempotency_key(idempotency_key)
     created_ids = []
     async with Database() as db:
         await db.execute("DELETE FROM selections WHERE user_id = $1::uuid", (user_id,))

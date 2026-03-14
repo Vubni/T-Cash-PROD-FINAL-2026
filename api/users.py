@@ -13,12 +13,14 @@ from functions import users as users_fns
 class UserExistsPath(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: str
+    user_id: int
 
     @field_validator("user_id")
     @classmethod
-    def user_id_uuid(cls, v: str) -> str:
-        return validate.validate_uuid(v, "user_id")
+    def user_id_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("user_id must be positive")
+        return v
 
 
 @docs(
@@ -33,10 +35,9 @@ class UserExistsPath(BaseModel):
         {
             "in": "path",
             "name": "user_id",
-            "type": "string",
-            "format": "uuid",
+            "type": "integer",
             "required": True,
-            "description": "ID пользователя (UUID). Обязательный параметр пути.",
+            "description": "ID пользователя (BIGINT). Обязательный параметр пути.",
         },
     ],
 )

@@ -1,20 +1,21 @@
 CREATE TABLE IF NOT EXISTS rules (
     rule_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    min_age         INT         NULL,
-    max_age         INT         NULL,
-    gender          TEXT        NULL,
-    income          BIGINT      NULL,
+    min_age         INT         NULL CHECK (min_age IS NULL OR min_age >= 0),
+    max_age         INT         NULL CHECK (max_age IS NULL OR max_age >= 0),
+    gender          VARCHAR(20) NULL CHECK (gender IS NULL OR gender IN ('male', 'female', 'other')),
+    income          BIGINT      NULL CHECK (income IS NULL OR income >= 0),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS categories (
     category_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    name            TEXT        NOT NULL,
-    subtitle        TEXT        NOT NULL,
-    budget_amount   BIGINT      NOT NULL,
-    audience_segments TEXT[]    NOT NULL,
-    rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
+    name            VARCHAR(500) NOT NULL CHECK (char_length(name) >= 1 AND char_length(name) <= 500),
+    subtitle        VARCHAR(500) NOT NULL CHECK (char_length(subtitle) >= 1 AND char_length(subtitle) <= 500),
+    budget_amount   BIGINT      NOT NULL CHECK (budget_amount >= 0),
+    rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100),
+    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min),
+    rule_id         UUID        NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -27,20 +28,20 @@ CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID        NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
-    expected_benefit_amount BIGINT  NULL,
-    availability_status TEXT        NULL,
-    availability_reason TEXT        NULL,
-    idempotency_key TEXT        NULL,
+    expected_benefit_amount BIGINT  NULL CHECK (expected_benefit_amount IS NULL OR expected_benefit_amount >= 0),
+    availability_status VARCHAR(50)  NULL CHECK (availability_status IS NULL OR availability_status IN ('available', 'budget_limited', 'unavailable')),
+    availability_reason VARCHAR(500) NULL,
+    idempotency_key VARCHAR(128) NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
     id           BIGSERIAL   PRIMARY KEY,
-    entity_type  TEXT        NOT NULL,
-    entity_id    TEXT        NOT NULL,
-    action       TEXT        NOT NULL,
-    actor        TEXT        NOT NULL,
+    entity_type  VARCHAR(50) NOT NULL CHECK (char_length(entity_type) >= 1 AND char_length(entity_type) <= 50),
+    entity_id    VARCHAR(64) NOT NULL CHECK (char_length(entity_id) >= 1 AND char_length(entity_id) <= 64),
+    action       VARCHAR(50) NOT NULL CHECK (char_length(action) >= 1 AND char_length(action) <= 50),
+    actor        VARCHAR(255) NOT NULL CHECK (char_length(actor) >= 1 AND char_length(actor) <= 255),
     details      JSONB       NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -48,8 +49,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE TABLE IF NOT EXISTS admin_users (
     admin_id   BIGSERIAL PRIMARY KEY,
     main_admin BOOLEAN   NOT NULL DEFAULT FALSE,
-    login      TEXT      NOT NULL UNIQUE,
-    password   TEXT      NOT NULL,
+    login      VARCHAR(255) NOT NULL UNIQUE CHECK (char_length(login) >= 1 AND char_length(login) <= 255),
+    password   VARCHAR(255) NOT NULL CHECK (char_length(password) >= 1),
     approved   BOOLEAN   NOT NULL DEFAULT FALSE
 );
 

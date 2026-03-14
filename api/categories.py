@@ -8,10 +8,10 @@ from api import validate
 from config import logger
 from docs import schems as sh
 from functions import categories as cat_fns
+from functions import rules as rules_fns
 
 
 LIMIT_MAX = 500
-AUDIENCE_SEGMENTS_MAX = 50
 STRING_FIELD_MAX_LENGTH = 500
 
 
@@ -36,15 +36,18 @@ class Admin_categories_list(BaseModel):
         return v
 
 
+RATE_MIN_LIMIT = 0
+RATE_MAX_LIMIT = 100
+
+
 class Admin_category_create(BaseModel):
     model_config = {"extra": "forbid"}
 
-    category_id: Optional[str] = None
     name: str
     subtitle: str
     budget_amount: float
-    audience_segments: list[str]
-    rule_id: str
+    rate_min: int
+    rate_max: int
 
     @field_validator("name", "subtitle")
     @classmethod
@@ -55,31 +58,19 @@ class Admin_category_create(BaseModel):
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
 
-    @field_validator("category_id")
+    @field_validator("rate_min", "rate_max")
     @classmethod
-    def category_id_uuid(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        return validate.validate_uuid(v, "category_id")
-
-    @field_validator("rule_id")
-    @classmethod
-    def rule_id_uuid(cls, v: str) -> str:
-        return validate.validate_uuid(v, "rule_id")
-
-    @field_validator("audience_segments")
-    @classmethod
-    def check_segments(cls, v: list[str]) -> list[str]:
-        if not v:
-            raise ValueError("At least one audience segment is required")
-        if len(v) > AUDIENCE_SEGMENTS_MAX:
-            raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
+    def check_rate_range(cls, v: int) -> int:
+        if v < RATE_MIN_LIMIT or v > RATE_MAX_LIMIT:
+            raise ValueError(f"rate must be between {RATE_MIN_LIMIT} and {RATE_MAX_LIMIT}")
         return v
 
     @model_validator(mode="after")
-    def check_budget(self) -> "Admin_category_create":
+    def check_budget_and_rate(self) -> "Admin_category_create":
         if self.budget_amount < 0:
             raise ValueError("budget_amount cannot be negative")
+        if self.rate_min > self.rate_max:
+            raise ValueError("rate_min cannot be greater than rate_max")
         return self
 
 
@@ -90,8 +81,21 @@ class Admin_category_update(BaseModel):
     name: Optional[str] = None
     subtitle: Optional[str] = None
     budget_amount: Optional[float] = None
-    audience_segments: Optional[list[str]] = None
+    rate_min: Optional[int] = None
+    rate_max: Optional[int] = None
     rule_id: Optional[str] = None
+
+    @field_validator("name", "subtitle")
+    @classmethod
+    def check_string_length(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Field cannot be empty")
+        if len(v) > STRING_FIELD_MAX_LENGTH:
+            raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
+        return v
 
     @field_validator("rule_id")
     @classmethod
@@ -100,11 +104,11 @@ class Admin_category_update(BaseModel):
             return v
         return validate.validate_uuid(v, "rule_id")
 
-    @field_validator("audience_segments")
+    @field_validator("rate_min", "rate_max")
     @classmethod
-    def check_segments_max(cls, v: Optional[list[str]]) -> Optional[list[str]]:
-        if v is not None and len(v) > AUDIENCE_SEGMENTS_MAX:
-            raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
+    def check_rate_range(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and (v < RATE_MIN_LIMIT or v > RATE_MAX_LIMIT):
+            raise ValueError(f"rate must be between {RATE_MIN_LIMIT} and {RATE_MAX_LIMIT}")
         return v
 
     @model_validator(mode="after")
@@ -118,6 +122,8 @@ class Admin_category_update(BaseModel):
             raise ValueError("At least one field must be provided")
         if self.budget_amount is not None and self.budget_amount < 0:
             raise ValueError("budget_amount cannot be negative")
+        if (self.rate_min is not None and self.rate_max is not None) and self.rate_min > self.rate_max:
+            raise ValueError("rate_min cannot be greater than rate_max")
         return self
 
 
@@ -130,6 +136,57 @@ class Category_id_path(BaseModel):
     @classmethod
     def category_id_uuid(cls, v: str) -> str:
         return validate.validate_uuid(v, "category_id")
+
+
+GENDER_ALLOWED = ("male", "female", "other")
+
+
+class Category_rule_create(BaseModel):
+    """Тело запроса создания правила и привязки к категории. category_id приходит из пути."""
+
+    model_config = {"extra": "forbid"}
+
+    category_id: str
+    rule_id: Optional[str] = None
+    min_age: Optional[int] = None
+    max_age: Optional[int] = None
+    gender: Optional[str] = None
+    income: Optional[int] = None
+
+    @field_validator("category_id")
+    @classmethod
+    def category_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "category_id")
+
+    @field_validator("rule_id")
+    @classmethod
+    def rule_id_uuid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate.validate_uuid(v, "rule_id")
+
+    @field_validator("min_age", "max_age")
+    @classmethod
+    def age_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("age must be non-negative")
+        return v
+
+    @field_validator("income")
+    @classmethod
+    def income_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("income must be non-negative")
+        return v
+
+    @field_validator("gender")
+    @classmethod
+    def gender_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        if v.strip().lower() not in GENDER_ALLOWED:
+            raise ValueError(f"gender must be one of: {', '.join(GENDER_ALLOWED)}")
+        return v.strip().lower()
 
 
 @docs(
@@ -173,7 +230,7 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @docs(
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
-    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации. Требуется JWT админа. **Обязательные** поля тела: name, subtitle, budget_amount, audience_segments, rule_id. **Опционально**: category_id (если не передан — сгенерируется UUID).",
+    description="Создаёт новую категорию с бюджетом и диапазоном кэшбэка (rate_min, rate_max в %). Правило (rule_id) привязывается отдельно. Требуется JWT админа. **Обязательные** поля: name, subtitle, budget_amount, rate_min, rate_max. **Опционально**: category_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Категория создана", "schema": sh.CategoryDetailSchema},
@@ -185,12 +242,11 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 async def create_category(request: web.Request, parsed: Admin_category_create) -> web.Response:
     try:
         response = await cat_fns.create_category(
-            category_id=parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
             budget_amount=int(parsed.budget_amount),
-            audience_segments=parsed.audience_segments,
-            rule_id=parsed.rule_id,
+            rate_min=parsed.rate_min,
+            rate_max=parsed.rate_max,
         )
         if response is None:
             return validate.format_500_error(request)
@@ -235,8 +291,54 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 
 @docs(
     tags=["Admin"],
+    summary="Создать правило и привязать к категории",
+    description="Создаёт правило отбора (возраст мин/макс, пол, заработок) и привязывает его к указанной категории. Требуется JWT админа. Категория должна существовать. Все поля тела **опциональны** (rule_id при отсутствии сгенерируется; min_age, max_age, gender, income можно не передавать).",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        201: {"description": "Правило создано и привязано к категории", "schema": sh.RuleDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID). К этой категории будет привязано созданное правило.",
+        }
+    ],
+)
+@request_schema(sh.RuleCreateSchema)
+@validate.validate(Category_rule_create, require_admin=True)
+async def create_category_rule(request: web.Request, parsed: Category_rule_create) -> web.Response:
+    try:
+        category = await cat_fns.get_category(parsed.category_id)
+        if category is None:
+            raise web.HTTPNotFound()
+        rule = await rules_fns.create_rule(
+            rule_id=parsed.rule_id,
+            min_age=parsed.min_age,
+            max_age=parsed.max_age,
+            gender=parsed.gender,
+            income=parsed.income,
+        )
+        if rule is None:
+            return validate.format_500_error(request)
+        updated = await cat_fns.update_category(parsed.category_id, rule_id=rule["rule_id"])
+        if updated is None:
+            return validate.format_500_error(request)
+        return web.json_response(rule, status=201)
+    except web.HTTPNotFound:
+        raise
+    except Exception:
+        logger.exception("create_category_rule handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию и правило категории. Требуется JWT админа. Все поля тела **опциональны** (передайте только те, что нужно изменить: name, subtitle, budget_amount, audience_segments, rule_id).",
+    description="Частично обновляет категорию. Можно менять бюджет, диапазон кэшбэка (rate_min, rate_max) и правило. Требуется JWT админа. Все поля **опциональны**: name, subtitle, budget_amount, rate_min, rate_max, rule_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -261,7 +363,8 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             name=parsed.name,
             subtitle=parsed.subtitle,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
-            audience_segments=parsed.audience_segments,
+            rate_min=parsed.rate_min,
+            rate_max=parsed.rate_max,
             rule_id=parsed.rule_id,
         )
         if response is None:

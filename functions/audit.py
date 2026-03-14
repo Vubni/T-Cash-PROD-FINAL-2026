@@ -3,6 +3,18 @@ import json
 from config import logger
 from database.database import Database
 
+AUDIT_ENTITY_TYPE_MAX = 50
+AUDIT_ENTITY_ID_MAX = 64
+AUDIT_ACTION_MAX = 50
+AUDIT_ACTOR_MAX = 255
+
+
+def _check_audit_field(value: str, name: str, max_len: int) -> None:
+    if not value or not value.strip():
+        raise ValueError(f"audit {name} cannot be empty")
+    if len(value) > max_len:
+        raise ValueError(f"audit {name} cannot exceed {max_len} characters")
+
 
 async def write_audit(
     entity_type: str,
@@ -13,6 +25,10 @@ async def write_audit(
 ) -> None:
     """Пишет одну запись в audit_log (действия клиента или админа). Не бросает исключений."""
     try:
+        _check_audit_field(entity_type, "entity_type", AUDIT_ENTITY_TYPE_MAX)
+        _check_audit_field(entity_id, "entity_id", AUDIT_ENTITY_ID_MAX)
+        _check_audit_field(action, "action", AUDIT_ACTION_MAX)
+        _check_audit_field(actor, "actor", AUDIT_ACTOR_MAX)
         details_json = json.dumps(details) if details is not None else None
         async with Database() as db:
             await db.execute(
@@ -22,6 +38,8 @@ async def write_audit(
                 """,
                 (entity_type, entity_id, action, actor, details_json),
             )
+    except ValueError:
+        raise
     except Exception as e:
         logger.warning("Ошибка записи в audit_log: %s", e)
 

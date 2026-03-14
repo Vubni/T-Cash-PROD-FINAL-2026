@@ -2,7 +2,6 @@
 from uuid import uuid4
 
 from database.database import Database
-from functions.rate import calc_rate
 
 
 def _rule_from_row(item: dict) -> dict:
@@ -17,29 +16,24 @@ def _rule_from_row(item: dict) -> dict:
 
 
 def row_to_category(item: dict) -> dict:
-    rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
         "budget": {"amount": item["budget_amount"]},
-        "rate": rate,
-        "audience": {
-            "segments": item["audience_segments"],
-        },
+        "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "rule": _rule_from_row(item),
         "history": [],
     }
 
 
 def row_to_category_list_item(item: dict) -> dict:
-    rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
         "budget": {"amount": item["budget_amount"]},
-        "rate": rate,
+        "rate": {"min": item["rate_min"], "max": item["rate_max"]},
     }
 
 
@@ -48,7 +42,8 @@ _CATEGORY_SELECT_FIELDS = """
     c.name,
     c.subtitle,
     c.budget_amount,
-    c.audience_segments,
+    c.rate_min,
+    c.rate_max,
     c.rule_id,
     r.min_age,
     r.max_age,
@@ -76,34 +71,23 @@ async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
 
 
 async def create_category(
-    *,
-    category_id: str | None,
     name: str,
     subtitle: str,
     budget_amount: int,
-    audience_segments: list,
-    rule_id: str,
+    rate_min: int,
+    rate_max: int,
 ) -> dict | None:
-    if not category_id:
-        category_id = str(uuid4())
     async with Database() as db:
         sql = """
             INSERT INTO categories (
-                category_id, name, subtitle,
-                budget_amount, audience_segments, rule_id
+                name, subtitle,
+                budget_amount, rate_min, rate_max
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING category_id
         """
-        await db.execute(
-            sql,
-            (
-                category_id,
-                name,
-                subtitle,
-                budget_amount,
-                audience_segments,
-                rule_id,
-            ),
+        category_id = await db.fetchval(
+            sql, (name, subtitle, budget_amount, rate_min, rate_max),
         )
         return await _get_category(db, category_id)
 
@@ -131,7 +115,8 @@ async def update_category(
     name: str | None = None,
     subtitle: str | None = None,
     budget_amount: int | None = None,
-    audience_segments: list | None = None,
+    rate_min: int | None = None,
+    rate_max: int | None = None,
     rule_id: str | None = None,
 ) -> dict | None:
     fields = []
@@ -145,7 +130,8 @@ async def update_category(
     add("name", name)
     add("subtitle", subtitle)
     add("budget_amount", budget_amount)
-    add("audience_segments", audience_segments)
+    add("rate_min", rate_min)
+    add("rate_max", rate_max)
     add("rule_id", rule_id)
 
     if not fields:

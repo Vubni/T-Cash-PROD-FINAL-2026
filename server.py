@@ -101,8 +101,10 @@ if __name__ == "__main__":
         web.get(prefix + '/admin/categories', categories.list_categories),
         web.post(prefix + '/admin/categories', categories.create_category),
         web.get(prefix + '/admin/categories/{category_id}', categories.get_category),
+        web.post(prefix + '/admin/categories/{category_id}/rule', categories.create_category_rule),
         web.patch(prefix + '/admin/categories/{category_id}', categories.update_category),
         web.get(prefix + '/admin/audit', audit.list_audit),
+        web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
 
         web.get(prefix + '/users/{user_id}/exists', users.user_exists),
 
@@ -114,7 +116,6 @@ if __name__ == "__main__":
 
         web.post(prefix + '/client/calculate', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),
-        web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))

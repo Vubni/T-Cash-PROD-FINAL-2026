@@ -7,6 +7,7 @@ from aiohttp_apispec import docs, request_schema
 from pydantic import BaseModel, field_validator
 
 from api import validate
+from api.categories import GENDER_ALLOWED
 from api.validate import validate_uuid
 from config import logger
 from docs import schems as sh
@@ -47,6 +48,15 @@ class Rule_create(BaseModel):
     gender: Optional[str] = None
     income: Optional[int] = None
 
+    @field_validator("gender")
+    @classmethod
+    def gender_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        if v.strip().lower() not in GENDER_ALLOWED:
+            raise ValueError(f"gender must be one of: {', '.join(GENDER_ALLOWED)}")
+        return v.strip().lower()
+
     @field_validator("min_age", "max_age")
     @classmethod
     def age_non_negative(cls, v: Optional[int]) -> Optional[int]:
@@ -76,6 +86,15 @@ class Rule_update(BaseModel):
     max_age: Optional[int] = None
     gender: Optional[str] = None
     income: Optional[int] = None
+
+    @field_validator("gender")
+    @classmethod
+    def gender_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        if v.strip().lower() not in GENDER_ALLOWED:
+            raise ValueError(f"gender must be one of: {', '.join(GENDER_ALLOWED)}")
+        return v.strip().lower()
 
     @field_validator("min_age", "max_age")
     @classmethod
