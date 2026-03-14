@@ -110,6 +110,7 @@ if __name__ == "__main__":
         web.post(prefix + '/admin/auth/login', admin_auth.login_admin),
         web.get(prefix + '/admin/auth/pending', admin_auth.list_pending),
         web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
+        web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
         web.post(prefix + '/client/calculate', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),

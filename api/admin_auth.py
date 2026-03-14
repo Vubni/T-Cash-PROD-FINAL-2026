@@ -192,3 +192,31 @@ async def approve_admin(request: web.Request, parsed: AdminApproveBody) -> web.R
         logger.exception("approve_admin handler failed")
         return validate.format_500_error(request)
 
+
+@docs(
+    tags=["Admin"],
+    summary="Отклонить заявку обычного админа",
+    description="Супер-админ по Bearer-токену отклоняет заявку admin_id (удаляет не одобренного обычного админа). Доступно только с токеном главного админа. В теле: **обязательное** — admin_id.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        204: {"description": "Заявка отклонена, админ удалён"},
+        401: {"description": "Токен отсутствует или невалиден"},
+        403: {"description": "Только супер-админ может отклонять заявки админов"},
+        404: {"description": "Заявка для отклонения не найдена"},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@request_schema(sh.AdminApproveSchema)
+@validate.validate(AdminApproveBody, require_super_admin=True)
+async def decline_admin(request: web.Request, parsed: AdminApproveBody) -> web.Response:
+    try:
+        deleted = await admin_users.delete_pending_admin(parsed.admin_id)
+        if not deleted:
+            raise web.HTTPNotFound(text="pending admin to decline not found")
+        return web.Response(status=204)
+    except web.HTTPError:
+        raise
+    except Exception:
+        logger.exception("decline_admin handler failed")
+        return validate.format_500_error(request)
+
