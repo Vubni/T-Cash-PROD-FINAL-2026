@@ -13,18 +13,18 @@ from functions import users as users_fns
 class UserExistsPath(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: str
+    user_id: int
 
-    @field_validator("user_id")
+    @field_validator("user_id", mode="before")
     @classmethod
-    def user_id_uuid(cls, v: str) -> str:
-        return validate.validate_uuid(v, "user_id")
+    def user_id_bigint(cls, v: str | int) -> int:
+        return validate.validate_user_id(v, "user_id")
 
 
 @docs(
     tags=["Users"],
     summary="Проверить, существует ли пользователь",
-    description="Возвращает флаг exists по user_id (UUID).",
+    description="Возвращает флаг exists по user_id (BIGINT).",
     responses={
         200: {"description": "Результат проверки", "schema": sh.UserExistsResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -33,10 +33,10 @@ class UserExistsPath(BaseModel):
         {
             "in": "path",
             "name": "user_id",
-            "type": "string",
-            "format": "uuid",
+            "type": "integer",
+            "format": "int64",
             "required": True,
-            "description": "ID пользователя (UUID). Обязательный параметр пути.",
+            "description": "ID пользователя (BIGINT). Обязательный параметр пути.",
         },
     ],
 )
@@ -44,7 +44,7 @@ class UserExistsPath(BaseModel):
 async def user_exists(request: web.Request, parsed: UserExistsPath) -> web.Response:
     try:
         exists = await users_fns.user_exists(parsed.user_id)
-        return web.json_response({"user_id": str(parsed.user_id), "exists": exists}, status=200)
+        return web.json_response({"user_id": parsed.user_id, "exists": exists}, status=200)
     except Exception:
         logger.exception("user_exists handler failed")
         return validate.format_500_error(request)

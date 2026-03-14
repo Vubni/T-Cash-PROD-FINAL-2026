@@ -11,8 +11,8 @@ def row_to_selection_detail(row: dict) -> dict:
         "name": row["name"],
         "subtitle": row["subtitle"],
         "rate": {"min": row["rate_min"], "max": row["rate_max"]},
-        "expected_benefit_amount": row["expected_benefit_amount"],
-        "budget_message": row["availability_reason"],
+        "expected_benefit_amount": None,
+        "budget_message": None,
     }
 
 
@@ -20,8 +20,6 @@ _SELECTION_JOIN_SQL = """
     SELECT
         s.selection_id,
         s.category_id,
-        s.expected_benefit_amount,
-        s.availability_reason,
         c.name,
         c.subtitle,
         c.rate_min,
@@ -68,7 +66,7 @@ def _generate_selection_uuid() -> str:
 
 
 async def save_selection_batch(
-    user_id: str, category_ids: list[str], idempotency_key: str | None = None
+    user_id: int, category_ids: list[str], idempotency_key: str | None = None
 ) -> list[str]:
     """
     Сохраняет ровно 5 категорий в selections для пользователя.
@@ -78,13 +76,13 @@ async def save_selection_batch(
     validate_idempotency_key(idempotency_key)
     created_ids = []
     async with Database() as db:
-        await db.execute("DELETE FROM selections WHERE user_id = $1::uuid", (user_id,))
+        await db.execute("DELETE FROM selections WHERE user_id = $1::bigint", (user_id,))
         for cat_id in category_ids:
             sel_id = _generate_selection_uuid()
             await db.execute(
                 """
                 INSERT INTO selections (selection_id, user_id, category_id, idempotency_key)
-                VALUES ($1, $2::uuid, $3, $4)
+                VALUES ($1, $2::bigint, $3, $4)
                 """,
                 (sel_id, user_id, cat_id, idempotency_key),
             )

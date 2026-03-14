@@ -1,18 +1,20 @@
 import csv
 import os
-import uuid as uuid_module
 
 from config import logger
 from database.database import Database
 
+BIGINT_MIN = -(2**63)
+BIGINT_MAX = 2**63 - 1
 
-def _is_valid_uuid(value: str) -> bool:
-    """Проверяет, что строка является валидным UUID (user_id везде ожидается как UUID)."""
+
+def _is_valid_user_id(value: str) -> bool:
+    """Проверяет, что строка является валидным целым в диапазоне BIGINT (user_id)."""
     if not value or not value.strip():
         return False
     try:
-        uuid_module.UUID(str(value).strip())
-        return True
+        n = int(value.strip())
+        return BIGINT_MIN <= n <= BIGINT_MAX
     except (ValueError, TypeError, AttributeError):
         return False
 
@@ -32,7 +34,7 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
         logger.warning(f"Файл с пользователями не найден: {csv_path}")
         return
 
-    to_insert: list[tuple[str]] = []
+    to_insert: list[tuple[int]] = []
 
     try:
         with open(csv_path, newline="", encoding="utf-8") as f:
@@ -45,18 +47,18 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                     header_skipped = True
                     if row[0].strip().lower() != "user_id":
                         raw = row[0].strip()
-                        if raw and _is_valid_uuid(raw):
-                            to_insert.append((raw,))
+                        if raw and _is_valid_user_id(raw):
+                            to_insert.append((int(raw),))
                         elif raw:
-                            logger.warning("Пропуск невалидного user_id в CSV (ожидается UUID): %r", raw)
+                            logger.warning("Пропуск невалидного user_id в CSV (ожидается целое BIGINT): %r", raw)
                     continue
                 raw = row[0].strip()
                 if not raw:
                     continue
-                if not _is_valid_uuid(raw):
-                    logger.warning("Пропуск невалидного user_id в CSV (ожидается UUID): %r", raw)
+                if not _is_valid_user_id(raw):
+                    logger.warning("Пропуск невалидного user_id в CSV (ожидается целое BIGINT): %r", raw)
                     continue
-                to_insert.append((raw,))
+                to_insert.append((int(raw),))
     except OSError as e:
         logger.error(f"Не удалось прочитать файл пользователей {csv_path}: {e}")
         return
@@ -73,7 +75,7 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 return
 
             await db.executemany(
-                "INSERT INTO users (user_id) VALUES ($1::uuid) ON CONFLICT (user_id) DO NOTHING",
+                "INSERT INTO users (user_id) VALUES ($1::bigint) ON CONFLICT (user_id) DO NOTHING",
                 to_insert,
             )
             logger.info(f"Импортировано пользователей из CSV: {len(to_insert)}")

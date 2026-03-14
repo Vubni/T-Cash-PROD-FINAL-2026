@@ -7,6 +7,14 @@ DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"),
 
 SECRET = os.getenv("RANDOM_SECRET", "AJd27GqoS#gvxp@V")
 
+# Настройки выбора категорий (файл config/categories_config.json)
+CATEGORIES_CONFIG_PATH = os.getenv(
+    "CATEGORIES_CONFIG_PATH",
+    os.path.join(os.path.dirname(__file__), "config", "categories_config.json"),
+)
+ALL_CATEGORIES_DEFAULT = 0  # 0 — ограниченный набор по max_selection_count, 1 — все категории
+DEFAULT_MAX_SELECTION_COUNT = 5  # сколько категорий должен выбрать пользователь
+
 
 LOG_DIR = "logs"
 LOG_MAX_BYTES = 10 * 1024 * 1024

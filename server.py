@@ -113,6 +113,7 @@ if __name__ == "__main__":
         web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
         web.post(prefix + '/client/calculate', calculate.calculate),
+        
         web.post(prefix + '/client/selection', selection.confirm_selection),
     ]
     for route in api_routes:

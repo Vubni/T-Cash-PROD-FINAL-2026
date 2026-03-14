@@ -1,24 +1,25 @@
 """Расчёт списка категорий/выборов для клиента по user_id."""
 
 from database.database import Database
+from core import serialize_json
+import requests
+from core import (
+    get_all_categories,
+)
 
-
-async def get_calculate_items(user_id: str) -> list[dict]:
+async def get_calculate_items(user_id: int) -> list[dict]:
     async with Database() as db:
         sql = """
             SELECT
                 s.selection_id,
                 s.category_id,
-                s.expected_benefit_amount,
-                s.availability_status,
-                s.availability_reason,
                 c.name,
                 c.subtitle,
                 c.rate_min,
                 c.rate_max
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
-            WHERE s.user_id = $1::uuid
+            WHERE s.user_id = $1::bigint
         """
         rows = await db.execute_all(sql, (user_id,)) or []
 
@@ -34,9 +35,9 @@ async def get_calculate_items(user_id: str) -> list[dict]:
                 subtitle,
                 rate_min,
                 rate_max
-            FROM categories
+            FROM categories LIMIT $1
         """
-        rows = await db.execute_all(sql) or []
+        rows = await db.execute_all(sql, (get_all_categories(),)) or []
 
     items = []
     for row in rows:
@@ -52,7 +53,7 @@ async def get_calculate_items(user_id: str) -> list[dict]:
                 "availability_reason": None,
             }
         )
-    return items
+    return serialize_json(items)
 
 
 def _rows_to_items(rows: list) -> list[dict]:
@@ -65,9 +66,9 @@ def _rows_to_items(rows: list) -> list[dict]:
                 "name": row["name"],
                 "subtitle": row["subtitle"],
                 "rate": {"min": row["rate_min"], "max": row["rate_max"]},
-                "expected_benefit_amount": row.get("expected_benefit_amount"),
-                "availability_status": row.get("availability_status"),
-                "availability_reason": row.get("availability_reason"),
+                "expected_benefit_amount": None,
+                "availability_status": "available",
+                "availability_reason": None,
             }
         )
     return items

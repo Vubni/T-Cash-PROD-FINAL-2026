@@ -1,14 +1,53 @@
-import secrets, time
+import json
+import os
+import secrets
 import string, asyncio
 import re, threading
+import time
 from aiohttp import web
 from database import functions as func_db
 from functools import wraps
 import jwt
 import uuid
-from config import SECRET, logger
+from decimal import Decimal
+from config import (
+    SECRET,
+    logger,
+    CATEGORIES_CONFIG_PATH,
+    ALL_CATEGORIES_DEFAULT,
+    DEFAULT_MAX_SELECTION_COUNT,
+)
+from datetime import UTC, date, datetime
+from datetime import time as time_type
 
 ADMIN_SCOPE = "admin"
+
+def serialize_json(obj):
+    if hasattr(obj, "model_dump"):
+        obj = obj.model_dump()
+    elif hasattr(obj, "dict"):
+        obj = obj.dict()
+
+    if isinstance(obj, datetime):
+        if obj.tzinfo is None:
+            return obj.strftime("%Y-%m-%dT%H:%M:%SZ")
+        else:
+            return obj.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif isinstance(obj, date) and not isinstance(obj, datetime):
+        return obj.strftime("%Y-%m-%dT00:00:00Z")
+    elif isinstance(obj, time_type):
+        return datetime.combine(date(1970, 1, 1), obj).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif isinstance(obj, dict):
+        return {key: serialize_json(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        result = [serialize_json(item) for item in obj]
+        return tuple(result) if isinstance(obj, tuple) else result
+    elif isinstance(obj, uuid.UUID):
+        return str(obj)
+    elif isinstance(obj, Decimal):
+        return float(obj)
+    else:
+        return obj
 
 
 async def check_authorization(request: web.Request):
@@ -185,3 +224,46 @@ def cache_with_expiration(expiration_seconds: int):
         return async_wrapped if asyncio.iscoroutinefunction(func) else sync_wrapped
 
     return decorator
+
+
+# --- Настройки выбора категорий (чтение/обновление файла) ---
+
+
+def load_categories_config() -> dict:
+    """Читает конфиг выбора категорий из файла (all_categories, max_selection_count)."""
+    try:
+        with open(CATEGORIES_CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f) or {}
+        if not isinstance(data, dict):
+            return {}
+        return data
+    except Exception:
+        return {}
+
+
+def save_categories_config(cfg: dict) -> None:
+    """Сохраняет конфиг выбора категорий в файл."""
+    os.makedirs(os.path.dirname(CATEGORIES_CONFIG_PATH), exist_ok=True)
+    with open(CATEGORIES_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+
+def get_all_categories() -> int:
+    """Текущее значение all_categories (0 или 1)."""
+    data = load_categories_config()
+    try:
+        return int(data.get("all_categories", ALL_CATEGORIES_DEFAULT) or 0)
+    except (TypeError, ValueError):
+        return ALL_CATEGORIES_DEFAULT
+
+
+def get_max_selection_count() -> int:
+    """Текущее значение max_selection_count (сколько категорий выбирает пользователь)."""
+    data = load_categories_config()
+    try:
+        value = int(data.get("max_selection_count", DEFAULT_MAX_SELECTION_COUNT))
+        if value < 1:
+            return DEFAULT_MAX_SELECTION_COUNT
+        return value
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_SELECTION_COUNT

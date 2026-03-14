@@ -1,65 +1,33 @@
+from typing import Optional
+
 from aiohttp import web
 from aiohttp_apispec import docs, request_schema
 from pydantic import BaseModel, field_validator, model_validator
-import json
-import os
-from typing import Optional
 
 from api import validate
 from config import logger
+from core import (
+    get_all_categories,
+    get_max_selection_count,
+    load_categories_config,
+    save_categories_config,
+)
 from docs import schems as sh
 from functions import audit as audit_fns
 from functions import selection as sel_fns
 from functions import users as users_fns
 
 
-_DEFAULT_SELECTION_COUNT = 5
-_CATEGORIES_CONFIG_PATH = os.getenv(
-    "CATEGORIES_CONFIG_PATH", os.path.join("config", "categories_config.json")
-)
-
-
-def _load_categories_config() -> dict:
-    try:
-        with open(_CATEGORIES_CONFIG_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f) or {}
-        if not isinstance(data, dict):
-            return {}
-        return data
-    except Exception:
-        return {}
-
-
-def _save_categories_config(cfg: dict) -> None:
-    os.makedirs(os.path.dirname(_CATEGORIES_CONFIG_PATH), exist_ok=True)
-    with open(_CATEGORIES_CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, ensure_ascii=False, indent=2)
-
-
-def _load_required_selection_count() -> int:
-    data = _load_categories_config()
-    try:
-        value = int(data.get("max_selection_count", _DEFAULT_SELECTION_COUNT))
-        if value < 1:
-            return _DEFAULT_SELECTION_COUNT
-        return value
-    except Exception:
-        return _DEFAULT_SELECTION_COUNT
-
-
-REQUIRED_SELECTION_COUNT = _load_required_selection_count()
-
-
 class Selection_submit_body(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: str
+    user_id: int
     category_ids: list[str]
 
-    @field_validator("user_id")
+    @field_validator("user_id", mode="before")
     @classmethod
-    def user_id_uuid(cls, v: str) -> str:
-        return validate.validate_uuid(v, "user_id")
+    def user_id_bigint(cls, v: str | int) -> int:
+        return validate.validate_user_id(v, "user_id")
 
     @field_validator("category_ids")
     @classmethod
@@ -70,11 +38,12 @@ class Selection_submit_body(BaseModel):
 
     @model_validator(mode="after")
     def exactly_five_categories(self) -> "Selection_submit_body":
-        if len(self.category_ids) != REQUIRED_SELECTION_COUNT:
+        required = get_max_selection_count()
+        if len(self.category_ids) != required:
             raise ValueError(
-                f"Нужно выбрать ровно {REQUIRED_SELECTION_COUNT} категорий, передано {len(self.category_ids)}"
+                f"Нужно выбрать ровно {required} категорий, передано {len(self.category_ids)}"
             )
-        if len(set(self.category_ids)) != REQUIRED_SELECTION_COUNT:
+        if len(set(self.category_ids)) != required:
             raise ValueError("Категории не должны повторяться")
         return self
 
@@ -96,7 +65,7 @@ class Admin_selection_settings(BaseModel):
 @docs(
     tags=["Client"],
     summary="Сохранить выбор ровно из N категорий",
-    description="В теле передаётся user_id (UUID) и ровно N category_ids (UUID), где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля: user_id, category_ids (массив ровно из N UUID).",
+    description="В теле передаётся user_id (BIGINT) и ровно N category_ids (UUID), где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля: user_id, category_ids (массив ровно из N UUID).",
     responses={
         200: {"description": "Выбор сохранён", "schema": sh.SelectionSubmitResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -135,7 +104,7 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
         )
         return web.json_response(
             {
-                "user_id": str(parsed.user_id),
+                "user_id": parsed.user_id,
                 "category_ids": parsed.category_ids,
                 "selection_ids": created_selection_ids,
                 "message": "Выбор из 5 категорий сохранён",
@@ -166,22 +135,19 @@ async def update_selection_settings(
     request: web.Request, parsed: Admin_selection_settings
 ) -> web.Response:
     try:
-        cfg = _load_categories_config()
+        cfg = load_categories_config()
 
         if parsed.all_categories is not None:
             cfg["all_categories"] = int(parsed.all_categories)
         if parsed.max_selection_count is not None:
             cfg["max_selection_count"] = parsed.max_selection_count
 
-        _save_categories_config(cfg)
-
-        global REQUIRED_SELECTION_COUNT
-        REQUIRED_SELECTION_COUNT = _load_required_selection_count()
+        save_categories_config(cfg)
 
         return web.json_response(
             {
-                "all_categories": int(cfg.get("all_categories", 0) or 0),
-                "max_selection_count": REQUIRED_SELECTION_COUNT,
+                "all_categories": get_all_categories(),
+                "max_selection_count": get_max_selection_count(),
             },
             status=200,
         )

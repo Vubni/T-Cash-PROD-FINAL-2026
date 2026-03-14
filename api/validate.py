@@ -152,6 +152,27 @@ def validate_uuid(value: str, field_name: str = "id") -> str:
         raise ValueError(f"{field_name} must be a valid UUID")
     return s
 
+
+# Границы PostgreSQL BIGINT
+BIGINT_MIN = -(2**63)
+BIGINT_MAX = 2**63 - 1
+
+
+def validate_user_id(value: int | str, field_name: str = "user_id") -> int:
+    """Проверяет, что значение — целое число в диапазоне BIGINT. Возвращает int."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise ValueError(f"{field_name} cannot be empty")
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer")
+    try:
+        n = int(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"{field_name} must be a valid integer")
+    if n < BIGINT_MIN or n > BIGINT_MAX:
+        raise ValueError(f"{field_name} must be within BIGINT range ({BIGINT_MIN}..{BIGINT_MAX})")
+    return n
+
+
 class EmailError(Exception):
     def __init__(self, message="Ошибка проверки email", errors=None):
         self.message = message
@@ -280,10 +301,14 @@ def validate(
                     "Слишком много полей в запросе",
                     details={"max_fields": MAX_REQUEST_FIELDS},
                 )
-            # user_id везде ожидается как UUID (строка); не приводим к int/float
-            string_only_keys = {"user_id"}
+            # user_id приводим к int (BIGINT в БД)
             for key, value in all_data.items():
-                if key in string_only_keys:
+                if key == "user_id":
+                    if isinstance(value, str) and value.strip() and value.lstrip("-").isdigit():
+                        try:
+                            all_data[key] = int(value)
+                        except (ValueError, TypeError):
+                            pass
                     continue
                 if isinstance(value, str):
                     if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):

@@ -4,9 +4,9 @@ from config import logger
 from database.database import Database
 
 
-async def user_exists(user_id: str) -> bool:
+async def user_exists(user_id: int) -> bool:
     """
-    Проверка существования пользователя по user_id (UUID).
+    Проверка существования пользователя по user_id (BIGINT).
 
     Если таблицы users нет (например, локальная БД без полной схемы),
     возвращаем True, чтобы не блокировать работу клиентских ручек.
@@ -14,7 +14,7 @@ async def user_exists(user_id: str) -> bool:
     try:
         async with Database() as db:
             row = await db.execute(
-                "SELECT 1 FROM users WHERE user_id = $1::uuid",
+                "SELECT 1 FROM users WHERE user_id = $1::bigint",
                 (user_id,),
             )
         return row is not None
