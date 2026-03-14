@@ -44,8 +44,6 @@ class Admin_category_create(BaseModel):
     subtitle: str
     icon_key: str
     budget_amount: float
-    target_users: int
-    avg_spend_per_user: int
     audience_segments: list[str]
     rule_id: str
 
@@ -79,13 +77,6 @@ class Admin_category_create(BaseModel):
             raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
         return v
 
-    @field_validator("target_users", "avg_spend_per_user")
-    @classmethod
-    def check_non_negative_int(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError("Value cannot be negative")
-        return v
-
     @model_validator(mode="after")
     def check_budget(self) -> "Admin_category_create":
         if self.budget_amount < 0:
@@ -101,8 +92,6 @@ class Admin_category_update(BaseModel):
     subtitle: Optional[str] = None
     icon_key: Optional[str] = None
     budget_amount: Optional[float] = None
-    target_users: Optional[int] = None
-    avg_spend_per_user: Optional[int] = None
     audience_segments: Optional[list[str]] = None
     rule_id: Optional[str] = None
 
@@ -118,13 +107,6 @@ class Admin_category_update(BaseModel):
     def check_segments_max(cls, v: Optional[list[str]]) -> Optional[list[str]]:
         if v is not None and len(v) > AUDIENCE_SEGMENTS_MAX:
             raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
-        return v
-
-    @field_validator("target_users", "avg_spend_per_user")
-    @classmethod
-    def check_non_negative_int(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and v < 0:
-            raise ValueError("Value cannot be negative")
         return v
 
     @model_validator(mode="after")
@@ -208,8 +190,6 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             subtitle=parsed.subtitle,
             icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount),
-            target_users=parsed.target_users,
-            avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,
         )
@@ -283,8 +263,6 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             subtitle=parsed.subtitle,
             icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
-            target_users=parsed.target_users,
-            avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,
         )
