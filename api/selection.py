@@ -64,7 +64,7 @@ class Selection_submit_body(BaseModel):
     summary="Получить выбор по идентификатору",
     description="Возвращает данные по конкретному выбору до подтверждения: категорию, диапазон ставки, ожидаемую выгоду и текущие ограничения.",
     responses={
-        200: {"description": "Выбор получен", "schema": sh.SelectionDetailSchema},
+        200: {"description": "Выбор получен", "schema": sh.SelectionDetailListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
@@ -80,10 +80,13 @@ class Selection_submit_body(BaseModel):
 @validate.validate(Selection_id_path)
 async def get_selection(request: web.Request, parsed: Selection_id_path) -> web.Response:
     try:
-        detail = await sel_fns.get_selection(parsed.selection_id)
-        if detail is None:
+        items = await sel_fns.get_selection(parsed.selection_id)
+        if items is None:
             raise web.HTTPNotFound()
-        return web.json_response(detail, status=200)
+        return web.json_response(
+            {"selection_id": parsed.selection_id, "items": items},
+            status=200,
+        )
     except web.HTTPNotFound:
         raise
     except Exception:
@@ -133,7 +136,7 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
             )
 
         created_selection_ids = await sel_fns.save_selection_batch(
-            parsed.user_id, parsed.category_ids
+            parsed.user_id, parsed.category_ids, idempotency_key=selection_id
         )
         return web.json_response(
             {

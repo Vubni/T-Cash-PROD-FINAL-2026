@@ -32,7 +32,7 @@ def _build_icons_dir() -> str:
     responses={
         201: {
             "description": "Иконка успешно загружена",
-            "schema": sh.SelectionConfirmResponseSchema,  # будет переопределено ниже на корректную схему
+            "schema": sh.SelectionConfirmResponseSchema,
         },
         **sh.RESPONSES_HTTP_ERROR,
     },
@@ -53,7 +53,7 @@ def _build_icons_dir() -> str:
         },
     ],
 )
-async def Сupload_icon(request: web.Request) -> web.Response:
+async def upload_icon(request: web.Request) -> web.Response:
     try:
         icon_key = request.match_info.get("icon_key")
         if not icon_key:

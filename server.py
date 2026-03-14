@@ -60,8 +60,10 @@ if __name__ == "__main__":
         web.patch(prefix + 'api/v1/admin/categories/{category_id}', categories.update_category),
         web.post(prefix + 'api/v1/admin/icons/{icon_key}', icons.upload_icon),
         web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
+
         web.get(prefix + 'api/v1/users', users.list_users),
         web.get(prefix + 'api/v1/users/{user_id}', users.get_user),
+
         web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
         web.get(prefix + 'api/v1/client/selection/{selection_id}', selection.get_selection),
         web.post(prefix + 'api/v1/client/selection/{selection_id}', selection.confirm_selection),
@@ -84,39 +86,6 @@ if __name__ == "__main__":
                 "description": "Bearer token authorization"
             }
         }
-    )
-
-    apispec_instance.spec.path(
-        path="/api/v1/users",
-        operations={
-            "get": {
-                "tags": ["Users"],
-                "summary": "Список пользователей",
-                "description": "Возвращает всех пользователей (id, name) для выбора на фронте.",
-                "responses": {
-                    "200": {"description": "Список пользователей"},
-                    "500": {"description": "Внутренняя ошибка сервера"},
-                },
-            },
-        },
-    )
-    apispec_instance.spec.path(
-        path="/api/v1/users/{user_id}",
-        operations={
-            "get": {
-                "tags": ["Users"],
-                "summary": "Получить пользователя по id",
-                "description": "Возвращает одного пользователя (id, name). 404 если не найден.",
-                "parameters": [
-                    {"in": "path", "name": "user_id", "required": True, "type": "string", "format": "uuid"},
-                ],
-                "responses": {
-                    "200": {"description": "Пользователь найден"},
-                    "404": {"description": "Не найдено"},
-                    "500": {"description": "Внутренняя ошибка сервера"},
-                },
-            },
-        },
     )
 
     cors.add(app.router.add_route("GET", "/{path:.*}", handle_get_file))

@@ -39,16 +39,17 @@ _SELECTION_JOIN_SQL = """
         c.avg_spend_per_user
     FROM selections s
     JOIN categories c ON c.category_id = s.category_id
-    WHERE s.selection_id = $1
+    WHERE s.idempotency_key = $1
 """
 
 
-async def get_selection(selection_id: str) -> dict | None:
+async def get_selection(idempotency_key: str) -> list[dict] | None:
+    """Возвращает список записей выбора по ключу идемпотентности (selection_id из path)."""
     async with Database() as db:
-        row = await db.execute(_SELECTION_JOIN_SQL, (selection_id,))
-        if row is None:
-            return None
-        return row_to_selection_detail(row)
+        rows = await db.execute_all(_SELECTION_JOIN_SQL, (idempotency_key,)) or []
+    if not rows:
+        return None
+    return [row_to_selection_detail(r) for r in rows]
 
 
 async def check_categories_exist(category_ids: list[str]) -> bool:
@@ -62,27 +63,30 @@ async def check_categories_exist(category_ids: list[str]) -> bool:
     return len(rows) == len(category_ids)
 
 
-def _generate_selection_id() -> str:
-    return f"sel_{uuid.uuid4().hex[:12]}"
+def _generate_selection_uuid() -> str:
+    return str(uuid.uuid4())
 
 
-async def save_selection_batch(user_id: str, category_ids: list[str]) -> list[str]:
+async def save_selection_batch(
+    user_id: str, category_ids: list[str], idempotency_key: str
+) -> list[str]:
     """
     Сохраняет ровно 5 категорий в selections для пользователя.
     Старые записи по user_id удаляются, вставляются 5 новых.
-    Возвращает список созданных selection_id.
+    idempotency_key — идентификатор запроса из path (для идемпотентности).
+    Возвращает список созданных selection_id (UUID строк).
     """
     created_ids = []
     async with Database() as db:
         await db.execute("DELETE FROM selections WHERE user_id = $1", (user_id,))
         for cat_id in category_ids:
-            sel_id = _generate_selection_id()
+            sel_id = _generate_selection_uuid()
             await db.execute(
                 """
-                INSERT INTO selections (selection_id, user_id, category_id)
-                VALUES ($1, $2, $3)
+                INSERT INTO selections (selection_id, user_id, category_id, idempotency_key)
+                VALUES ($1, $2, $3, $4)
                 """,
-                (sel_id, user_id, cat_id),
+                (sel_id, user_id, cat_id, idempotency_key),
             )
             created_ids.append(sel_id)
     return created_ids

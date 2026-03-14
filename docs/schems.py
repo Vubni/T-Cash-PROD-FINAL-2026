@@ -429,6 +429,18 @@ class SelectionDetailSchema(Schema):
     )
 
 
+class SelectionDetailListResponseSchema(Schema):
+    selection_id = fields.Str(
+        required=True,
+        description="Идентификатор запроса (ключ идемпотентности из path)",
+    )
+    items = fields.List(
+        fields.Nested(SelectionDetailSchema),
+        required=True,
+        description="Список выбранных категорий по этому запросу",
+    )
+
+
 class SelectionConfirmSchema(Schema):
     confirm = fields.Bool(
         required=False,
@@ -447,6 +459,7 @@ class SelectionSubmitBodySchema(Schema):
 
 class SelectionSubmitResponseSchema(Schema):
     selection_id = fields.Str(required=True, description="Идентификатор запроса (из path)")
+    user_id = fields.Str(required=True, description="UUID пользователя")
     category_ids = fields.List(
         fields.Str(),
         required=True,
