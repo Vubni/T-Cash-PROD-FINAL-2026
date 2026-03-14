@@ -14,6 +14,10 @@ async def get_admin_by_login(login: str) -> dict | None:
     return dict(row) if row else None
 
 
+async def ensure_main_admin(login: str, password: str) -> None:
+    await create_main_admin(login, password)
+
+
 async def create_main_admin(login: str, password: str) -> dict | None:
     async with Database() as db:
         row = await db.execute(

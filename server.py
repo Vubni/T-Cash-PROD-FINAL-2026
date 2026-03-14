@@ -10,6 +10,7 @@ import asyncio
 from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users, admin_auth)
 
 from database.functions import init_db
+from functions import admin_users as admin_users_fns
 
 
 async def handle_get_file(request: web.Request) -> web.Response:
@@ -39,8 +40,15 @@ async def handle_get_file(request: web.Request) -> web.Response:
 
 
 if __name__ == "__main__":
-    asyncio.run(init_db())
-    
+    async def startup():
+        await init_db()
+        main_login = os.environ.get("MAIN_ADMIN_LOGIN", "admin")
+        main_password = os.environ.get("MAIN_ADMIN_PASSWORD", "admin")
+        await admin_users_fns.ensure_main_admin(main_login, main_password)
+        logger.info("Главный админ создан.")
+
+    asyncio.run(startup())
+
     app = web.Application()
 
     cors = aiohttp_cors.setup(app, defaults={
@@ -63,7 +71,6 @@ if __name__ == "__main__":
 
         web.get(prefix + 'api/v1/users/{user_id}/exists', users.user_exists),
 
-        web.post(prefix + 'api/v1/admin/auth/register-main', admin_auth.register_main_admin),
         web.post(prefix + 'api/v1/admin/auth/register', admin_auth.register_admin),
         web.post(prefix + 'api/v1/admin/auth/login', admin_auth.login_admin),
         web.post(prefix + 'api/v1/admin/auth/approve', admin_auth.approve_admin),

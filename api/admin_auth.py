@@ -41,39 +41,6 @@ class AdminApproveBody(BaseModel):
 
 @docs(
     tags=["Admin"],
-    summary="Создать главного админа",
-    description="Создаёт главного админа, если его ещё нет. Повторный вызов вернёт 409.",
-    responses={
-        201: {"description": "Главный админ создан"},
-        409: {"description": "Главный админ уже существует"},
-        **sh.RESPONSES_HTTP_ERROR,
-    },
-)
-@request_schema(sh.AdminRegisterSchema)
-@validate.validate(AdminRegisterBody)
-async def register_main_admin(request: web.Request, parsed: AdminRegisterBody) -> web.Response:
-    try:
-        created = await admin_users.create_main_admin(parsed.login, parsed.password)
-        if created is None:
-            raise web.HTTPConflict(text="main admin already exists")
-        return web.json_response(
-            {
-                "admin_id": created["admin_id"],
-                "login": created["login"],
-                "main_admin": created["main_admin"],
-                "approved": created["approved"],
-            },
-            status=201,
-        )
-    except web.HTTPError:
-        raise
-    except Exception:
-        logger.exception("register_main_admin handler failed")
-        return validate.format_500_error(request)
-
-
-@docs(
-    tags=["Admin"],
     summary="Регистрация обычного админа (заявка)",
     description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ.",
     responses={
