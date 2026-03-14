@@ -2,11 +2,81 @@
 # NOTE: You should not delete this file!
 
 stages:
-  - build
   - test
   - deploy
 
+variables:
+  APP_DIR: "/home/ubuntu/backend"
+
 test:
   stage: test
+  image: python:3.12-slim
+  variables:
+    PIP_NO_CACHE_DIR: "1"
+  before_script:
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
   script:
-    - echo 'ok'
+    - |
+        set +e
+        pytest --cov=. --cov-report=term-missing --cov-report=xml
+        status=$?
+        set -e
+        # 5 = "no tests collected" -> считаем успехом
+        if [ "$status" -eq 5 ]; then
+          echo "No tests collected, treating as success"
+          exit 0
+        fi
+        exit "$status"
+  artifacts:
+    paths:
+      - coverage.xml
+      - .pytest_cache/
+    expire_in: 1 week
+  only:
+    - master
+    - experiment
+
+deploy_prod:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - master
+  variables:
+    DEPLOY_HOST: "178.154.217.140"
+  before_script:
+    - apk add --no-cache openssh rsync
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H ${DEPLOY_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
+    - |
+      if [ -z "$PROD_SSH_PRIVATE_KEY" ]; then
+        echo "ERROR: PROD_SSH_PRIVATE_KEY is not set in CI/CD variables (Settings -> CI/CD -> Variables)"
+        exit 1
+      fi
+    - echo "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+  script:
+    - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose up -d --build"
+
+deploy_test:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - experiment
+  variables:
+    DEPLOY_HOST: "178.154.218.85"
+  before_script:
+    - apk add --no-cache openssh rsync
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H ${DEPLOY_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
+    - |
+      if [ -z "$TEST_SSH_PRIVATE_KEY" ]; then
+        echo "ERROR: TEST_SSH_PRIVATE_KEY is not set in CI/CD variables (Settings -> CI/CD -> Variables)"
+        exit 1
+      fi
+    - echo "$TEST_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+  script:
+    - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose up -d --build"
