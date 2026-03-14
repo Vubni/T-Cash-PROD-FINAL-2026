@@ -33,7 +33,6 @@ async def get_calculate_items(user_id: str) -> list[dict]:
         items = _rows_to_items(rows)
         return items
 
-    # Нет выборов — возвращаем все категории как варианты для выбора
     async with Database() as db:
         sql = """
             SELECT

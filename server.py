@@ -88,14 +88,6 @@ if __name__ == "__main__":
         url="/swagger.json",
         swagger_path="/",
         in_place=True,
-        security_definitions={
-            "Bearer": {
-                "type": "apiKey",
-                "name": "Authorization",
-                "in": "header",
-                "description": "Bearer token authorization"
-            }
-        }
     )
 
     cors.add(app.router.add_route("GET", "/{path:.*}", handle_get_file))
