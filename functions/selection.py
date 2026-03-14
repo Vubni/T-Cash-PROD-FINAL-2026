@@ -1,6 +1,8 @@
-
+import uuid
 from database.database import Database
 from functions.rate import calc_rate
+
+REQUIRED_SELECTION_COUNT = 5
 
 
 def row_to_selection_detail(row: dict) -> dict:
@@ -12,7 +14,7 @@ def row_to_selection_detail(row: dict) -> dict:
     icon_key = row["icon_key"]
     return {
         "selection_id": row["selection_id"],
-        "category_id": row["category_id"],
+        "category_id": str(row["category_id"]),
         "name": row["name"],
         "subtitle": row["subtitle"],
         "icon_key": icon_key,
@@ -49,21 +51,38 @@ async def get_selection(selection_id: str) -> dict | None:
         return row_to_selection_detail(row)
 
 
-async def confirm_selection(
-    selection_id: str,
-    new_status: str,
-    idempotency_key: str | None,
-) -> dict | None:
+async def check_categories_exist(category_ids: list[str]) -> bool:
+    """Проверяет, что все category_id существуют в categories."""
+    if not category_ids:
+        return False
     async with Database() as db:
-        sql_update = """
-            UPDATE selections
-            SET
-                idempotency_key = COALESCE($2, idempotency_key),
-                updated_at = NOW()
-            WHERE selection_id = $3
-        """
-        await db.execute(sql_update, (new_status, idempotency_key, selection_id))
-        row = await db.execute(_SELECTION_JOIN_SQL, (selection_id,))
-        if row is None:
-            return None
-        return row_to_selection_detail(row)
+        placeholders = ", ".join(f"${i+1}" for i in range(len(category_ids)))
+        sql = f"SELECT 1 FROM categories WHERE category_id IN ({placeholders})"
+        rows = await db.execute_all(sql, tuple(category_ids)) or []
+    return len(rows) == len(category_ids)
+
+
+def _generate_selection_id() -> str:
+    return f"sel_{uuid.uuid4().hex[:12]}"
+
+
+async def save_selection_batch(user_id: str, category_ids: list[str]) -> list[str]:
+    """
+    Сохраняет ровно 5 категорий в selections для пользователя.
+    Старые записи по user_id удаляются, вставляются 5 новых.
+    Возвращает список созданных selection_id.
+    """
+    created_ids = []
+    async with Database() as db:
+        await db.execute("DELETE FROM selections WHERE user_id = $1", (user_id,))
+        for cat_id in category_ids:
+            sel_id = _generate_selection_id()
+            await db.execute(
+                """
+                INSERT INTO selections (selection_id, user_id, category_id)
+                VALUES ($1, $2, $3)
+                """,
+                (sel_id, user_id, cat_id),
+            )
+            created_ids.append(sel_id)
+    return created_ids

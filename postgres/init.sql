@@ -1,6 +1,11 @@
+CREATE TABLE IF NOT EXISTS users (
+    user_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS categories (
     id              BIGSERIAL PRIMARY KEY,
-    category_id     TEXT UNIQUE NOT NULL,
+    category_id     UUID UNIQUE NOT NULL,
     name            TEXT        NOT NULL,
     subtitle        TEXT        NOT NULL,
     icon_key        TEXT        NOT NULL,
@@ -18,6 +23,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS selections (
     id                  BIGSERIAL   PRIMARY KEY,
     selection_id        TEXT        UNIQUE NOT NULL,
+    user_id             UUID        NOT NULL REFERENCES users(user_id),
     category_id         UUID        NOT NULL REFERENCES categories(category_id),
     expected_benefit_amount BIGINT  NULL,
     availability_status TEXT        NULL,

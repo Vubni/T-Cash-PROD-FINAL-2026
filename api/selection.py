@@ -1,14 +1,16 @@
 from aiohttp import web
 from aiohttp_apispec import docs, request_schema
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from api import validate
 from config import logger
 from docs import schems as sh
 from functions import selection as sel_fns
+from functions import users as users_fns
 
 
 SELECTION_ID_MAX_LENGTH = 128
+REQUIRED_SELECTION_COUNT = 5
 
 
 class Selection_id_path(BaseModel):
@@ -26,20 +28,38 @@ class Selection_id_path(BaseModel):
         return v
 
 
-class Selection_confirm(BaseModel):
+class Selection_submit_body(BaseModel):
     model_config = {"extra": "forbid"}
 
-    selection_id: str
-    confirm: bool = True
+    selection_id: str  # из path
+    user_id: str
+    category_ids: list[str]
 
     @field_validator("selection_id")
     @classmethod
     def selection_id_not_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("selection_id cannot be empty")
+            raise ValueError("selection_id не может быть пустым")
         if len(v) > SELECTION_ID_MAX_LENGTH:
-            raise ValueError(f"selection_id cannot exceed {SELECTION_ID_MAX_LENGTH} characters")
+            raise ValueError(f"selection_id не длиннее {SELECTION_ID_MAX_LENGTH} символов")
         return v
+
+    @field_validator("user_id")
+    @classmethod
+    def user_id_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("user_id не может быть пустым")
+        return v
+
+    @model_validator(mode="after")
+    def exactly_five_categories(self) -> "Selection_submit_body":
+        if len(self.category_ids) != REQUIRED_SELECTION_COUNT:
+            raise ValueError(
+                f"Нужно выбрать ровно {REQUIRED_SELECTION_COUNT} категорий, передано {len(self.category_ids)}"
+            )
+        if len(set(self.category_ids)) != REQUIRED_SELECTION_COUNT:
+            raise ValueError("Категории не должны повторяться")
+        return self
 
 
 @docs(
@@ -76,10 +96,10 @@ async def get_selection(request: web.Request, parsed: Selection_id_path) -> web.
 
 @docs(
     tags=["Client"],
-    summary="Подтвердить выбор по идентификатору",
-    description="Подтверждает конкретный выбор пользователя. Идентификатор выбора передаётся в path, а в теле можно дополнительно передать период подтверждения.",
+    summary="Сохранить выбор ровно из 5 категорий",
+    description="В теле передаётся ровно 5 category_ids. В selections создаётся 5 строк (selection_id, category_id). selection_id в path — идентификатор запроса (идемпотентность).",
     responses={
-        200: {"description": "Выбор подтверждён", "schema": sh.SelectionConfirmResponseSchema},
+        200: {"description": "Выбор сохранён", "schema": sh.SelectionSubmitResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
@@ -88,36 +108,46 @@ async def get_selection(request: web.Request, parsed: Selection_id_path) -> web.
             "name": "selection_id",
             "schema": {"type": "string"},
             "required": True,
-            "description": "Идентификатор выбора, который пользователь подтверждает",
-        },
-        {
-            "in": "header",
-            "name": "Idempotency-Key",
-            "schema": {"type": "string"},
-            "required": False,
-            "description": "Ключ идемпотентности для защиты от повторного подтверждения",
+            "description": "Идентификатор запроса (например для идемпотентности)",
         },
     ],
 )
-@request_schema(sh.SelectionConfirmSchema)
-@validate.validate(Selection_confirm)
-async def confirm_selection(request: web.Request, parsed: Selection_confirm) -> web.Response:
+@request_schema(sh.SelectionSubmitBodySchema)
+@validate.validate(Selection_submit_body)
+async def confirm_selection(request: web.Request, parsed: Selection_submit_body) -> web.Response:
     try:
         selection_id = parsed.selection_id
-        idempotency_key = request.headers.get("Idempotency-Key")
-        new_status = "confirmed" if parsed.confirm else "pending"
-        detail = await sel_fns.confirm_selection(selection_id, new_status, idempotency_key)
-        if detail is None:
-            raise web.HTTPNotFound()
-        response = {
-            "selection_id": detail["selection_id"],
-            "category_id": detail["category_id"],
-            "expected_benefit_amount": detail["expected_benefit_amount"],
-            "message": "Выбор принят и сохранён на стороне сервера",
-        }
-        return web.json_response(response, status=200)
-    except web.HTTPNotFound:
-        raise
+
+        if not await users_fns.user_exists(parsed.user_id):
+            return validate.format_404_error(request, message="Пользователь не найден")
+
+        exists = await sel_fns.check_categories_exist(parsed.category_ids)
+        if not exists:
+            return validate.format_422_error(
+                request,
+                message="Одна или несколько категорий не найдены",
+                field_errors=[
+                    {
+                        "field": "category_ids",
+                        "issue": "Все category_id должны существовать в системе",
+                        "rejectedValue": parsed.category_ids,
+                    }
+                ],
+            )
+
+        created_selection_ids = await sel_fns.save_selection_batch(
+            parsed.user_id, parsed.category_ids
+        )
+        return web.json_response(
+            {
+                "selection_id": selection_id,
+                "user_id": parsed.user_id,
+                "category_ids": parsed.category_ids,
+                "selection_ids": created_selection_ids,
+                "message": "Выбор из 5 категорий сохранён",
+            },
+            status=200,
+        )
     except Exception:
         logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)
