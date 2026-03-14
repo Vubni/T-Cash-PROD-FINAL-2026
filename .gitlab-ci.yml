@@ -51,28 +51,7 @@ deploy_prod:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete ./ ubuntu@178.154.217.140:${APP_DIR}
-    - |
-      ssh ubuntu@178.154.217.140 "sudo tee /etc/systemd/system/backend-compose.service >/dev/null << 'EOF'
-      [Unit]
-      Description=Backend docker-compose stack
-      Requires=docker.service
-      After=docker.service
-
-      [Service]
-      Type=oneshot
-      WorkingDirectory=${APP_DIR}
-      ExecStart=/usr/bin/docker compose up -d --build
-      ExecStop=/usr/bin/docker compose down
-      RemainAfterExit=yes
-      TimeoutStartSec=0
-
-      [Install]
-      WantedBy=multi-user.target
-      EOF
-      sudo systemctl daemon-reload &&
-      sudo systemctl enable backend-compose.service &&
-      sudo systemctl restart backend-compose.service
-      "
+    - ssh ubuntu@178.154.217.140 "cd ${APP_DIR} && docker compose up -d --build"
 
 deploy_test:
   stage: deploy
@@ -87,25 +66,4 @@ deploy_test:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
-    - |
-      ssh ubuntu@158.160.20.196 "sudo tee /etc/systemd/system/backend-compose.service >/dev/null << 'EOF'
-      [Unit]
-      Description=Backend docker-compose stack
-      Requires=docker.service
-      After=docker.service
-
-      [Service]
-      Type=oneshot
-      WorkingDirectory=${APP_DIR}
-      ExecStart=/usr/bin/docker compose up -d --build
-      ExecStop=/usr/bin/docker compose down
-      RemainAfterExit=yes
-      TimeoutStartSec=0
-
-      [Install]
-      WantedBy=multi-user.target
-      EOF
-      sudo systemctl daemon-reload &&
-      sudo systemctl enable backend-compose.service &&
-      sudo systemctl restart backend-compose.service
-      "
+    - ssh ubuntu@158.160.20.196 "cd ${APP_DIR} && docker compose up -d --build"
