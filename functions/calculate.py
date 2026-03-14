@@ -49,6 +49,12 @@ async def get_calculate_items(user_id: int) -> list[dict]:
             ) as response:
                 if response.status != 200:
                     text = await response.text()
+                    logger.error(
+                        "ML predict failed: status=%s url=%s body=%s",
+                        response.status,
+                        response.url,
+                        text[:2000] if text else "",
+                    )
                     raise Exception(f"Failed to calculate: {response.status} {text}")
                 data = await response.json()
         predictions = data["predictions"]
