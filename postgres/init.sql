@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS categories (
     name            TEXT        NOT NULL,
     subtitle        TEXT        NOT NULL,
     icon_key        TEXT        NOT NULL,
-    status          TEXT        NOT NULL,
     budget_amount   BIGINT      NOT NULL,
     target_users    INT         NOT NULL,
     avg_spend_per_user BIGINT   NOT NULL,
@@ -19,9 +18,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS selections (
     id                  BIGSERIAL   PRIMARY KEY,
     selection_id        TEXT        UNIQUE NOT NULL,
-    period_id           TEXT        NOT NULL,
     category_id         UUID        NOT NULL REFERENCES categories(category_id),
-    status              TEXT        NOT NULL,
     expected_benefit_amount BIGINT  NULL,
     availability_status TEXT        NULL,
     availability_reason TEXT        NULL,

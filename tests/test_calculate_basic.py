@@ -13,8 +13,7 @@ from api import calculate
 #             return self._app
 
 #     class DummyParsed:
-#         def __init__(self, period_id=None):
-#             self.period_id = period_id
+#         pass
 
 #     import asyncio
 
@@ -26,8 +25,6 @@ from api import calculate
 #     assert response.status == 200
 
 #     body = json.loads(response.text)
-#     assert "period_id" in body
 #     assert "items" in body
 #     assert isinstance(body["items"], list)
-#     assert body["period_id"] == "2026-03"
 

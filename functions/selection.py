@@ -28,7 +28,6 @@ _SELECTION_JOIN_SQL = """
         s.selection_id,
         s.category_id,
         s.expected_benefit_amount,
-        s.status,
         s.availability_reason,
         c.name,
         c.subtitle,
@@ -58,7 +57,7 @@ async def confirm_selection(
     async with Database() as db:
         sql_update = """
             UPDATE selections
-            SET status = $1,
+            SET
                 idempotency_key = COALESCE($2, idempotency_key),
                 updated_at = NOW()
             WHERE selection_id = $3

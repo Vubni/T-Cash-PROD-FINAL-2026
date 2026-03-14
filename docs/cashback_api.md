@@ -166,7 +166,6 @@ Dry-run по сегменту: сколько пользователей eligibl
 
 ```json
 {
-  "period_id": "2026-03",
   "limit_amount": 5000000,
   "reserve_policy": {
     "mode": "hard_cap",
@@ -193,7 +192,6 @@ Dry-run по сегменту: сколько пользователей eligibl
 
 ```json
 {
-  "period_id": "2026-03",
   "segment_id": "mass",
   "dry_run": false,
   "control_policy": {
@@ -252,7 +250,6 @@ Dry-run по сегменту: сколько пользователей eligibl
 
 ```json
 {
-  "period_id": "2026-03",
   "customer_id": "u_123",
   "mode": "interactive"
 }

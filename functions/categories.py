@@ -18,7 +18,6 @@ def row_to_category(item: dict) -> dict:
         "subtitle": item["subtitle"],
         "icon_key": icon_key,
         "icon_url": f"/icons/{icon_key}.svg",
-        "status": item["status"],
         "budget": item["budget_amount"],
         "rate": rate,
         "audience": {
@@ -34,7 +33,6 @@ def row_to_category(item: dict) -> dict:
 
 
 def row_to_category_list_item(item: dict) -> dict:
-    """Элемент списка без status (для list_categories)."""
     rate = calc_rate(
         budget_amount=item.get("budget_amount") or 0,
         target_users=item.get("target_users") or 0,
@@ -57,7 +55,6 @@ _CATEGORY_SELECT_FIELDS = """
     name,
     subtitle,
     icon_key,
-    status,
     budget_amount,
     target_users,
     avg_spend_per_user,
@@ -93,7 +90,6 @@ async def create_category(
     name: str,
     subtitle: str,
     icon_key: str,
-    status: str,
     budget_amount: int,
     target_users: int,
     avg_spend_per_user: int,
@@ -111,7 +107,6 @@ async def create_category(
                 name,
                 subtitle,
                 icon_key,
-                status,
                 budget_amount,
                 target_users,
                 avg_spend_per_user,
@@ -121,11 +116,10 @@ async def create_category(
                 rule_fallback_message
             )
             VALUES (
-                $1, $2, $3, $4, $5,
+                $1, $2, $3, $4,
                 $6, $7,
                 $8, $9,
-                $10,
-                $11, $12, $13
+                $10, $11
             )
         """
         await db.execute(
@@ -135,7 +129,6 @@ async def create_category(
                 name,
                 subtitle,
                 icon_key,
-                status,
                 budget_amount,
                 target_users,
                 avg_spend_per_user,
@@ -172,7 +165,6 @@ async def update_category(
     name: str | None = None,
     subtitle: str | None = None,
     icon_key: str | None = None,
-    status: str | None = None,
     budget_amount: int | None = None,
     target_users: int | None = None,
     avg_spend_per_user: int | None = None,
@@ -192,7 +184,6 @@ async def update_category(
     add("name", name)
     add("subtitle", subtitle)
     add("icon_key", icon_key)
-    add("status", status)
     add("budget_amount", budget_amount)
     add("target_users", target_users)
     add("avg_spend_per_user", avg_spend_per_user)

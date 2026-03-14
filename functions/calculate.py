@@ -1,12 +1,12 @@
-"""Расчёт списка категорий/выборов для клиента (period)."""
+"""Расчёт списка категорий/выборов для клиента."""
 
 from database.database import Database
 from functions.rate import calc_rate
 
 
-async def get_calculate_items(period_id: str) -> list[dict]:
+async def get_calculate_items() -> list[dict]:
     """
-    Возвращает список элементов для ответа calculate: выборы по period_id
+    Возвращает список элементов для ответа calculate: все выборы
     с данными категории и рассчитанной ставкой.
     """
     async with Database() as db:
@@ -25,9 +25,8 @@ async def get_calculate_items(period_id: str) -> list[dict]:
                 c.avg_spend_per_user
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
-            WHERE s.period_id = $1
         """
-        rows = await db.execute_all(sql, (period_id,)) or []
+        rows = await db.execute_all(sql) or []
     items = []
     for row in rows:
         rate = calc_rate(

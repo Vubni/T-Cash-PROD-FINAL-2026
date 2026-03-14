@@ -257,7 +257,6 @@ class CategoryDetailSchema(Schema):
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
     icon_url = fields.Str(required=False, description="Путь до иконки категории")
-    status = fields.Str(required=True, description="Текущий статус категории")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
     audience = fields.Nested(CategoryAudienceSchema, required=True)
@@ -282,7 +281,6 @@ class CategoryCreateSchema(Schema):
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
-    status = fields.Str(required=True, description="Статус категории, например active или disabled")
     budget_amount = fields.Float(required=True, description="Бюджет категории на период")
     rate_min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
     rate_max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
@@ -309,7 +307,6 @@ class CategoryUpdateSchema(Schema):
     name = fields.Str(required=False, description="Новое название категории")
     subtitle = fields.Str(required=False, description="Новый подзаголовок категории")
     icon_key = fields.Str(required=False, description="Новый ключ иконки категории")
-    status = fields.Str(required=False, description="Новый статус категории")
     budget_amount = fields.Float(required=False, description="Новый бюджет категории")
     rate_min = fields.Float(required=False, description="Новая минимальная ставка кэшбэка")
     rate_max = fields.Float(required=False, description="Новая максимальная ставка кэшбэка")
@@ -345,10 +342,7 @@ class AuditListResponseSchema(Schema):
 
 
 class CalculateRequestSchema(Schema):
-    period_id = fields.Str(
-        required=False,
-        description="Идентификатор периода расчёта. Если не передан, backend использует текущий период",
-    )
+    pass
 
 
 class CalculateCategoryItemSchema(Schema):
@@ -375,7 +369,6 @@ class CalculateCategoryItemSchema(Schema):
 
 
 class CalculateResponseSchema(Schema):
-    period_id = fields.Str(required=True, description="Период, по которому выполнен расчёт")
     items = fields.List(
         fields.Nested(CalculateCategoryItemSchema),
         required=True,
@@ -395,7 +388,6 @@ class SelectionDetailSchema(Schema):
         required=True,
         description="Ожидаемая выгода пользователя по выбранной категории",
     )
-    status = fields.Str(required=True, description="Статус выбора")
     budget_message = fields.Str(
         required=False,
         allow_none=True,
@@ -413,7 +405,6 @@ class SelectionConfirmSchema(Schema):
 class SelectionConfirmResponseSchema(Schema):
     selection_id = fields.Str(required=True, description="Идентификатор подтверждённого выбора")
     category_id = fields.Str(required=True, description="Идентификатор выбранной категории")
-    status = fields.Str(required=True, description="Статус подтверждения выбора")
     expected_benefit_amount = fields.Float(
         required=True,
         description="Ожидаемая выгода после подтверждения выбора",

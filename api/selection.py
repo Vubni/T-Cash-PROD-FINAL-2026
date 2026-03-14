@@ -112,7 +112,6 @@ async def confirm_selection(request: web.Request, parsed: Selection_confirm) -> 
         response = {
             "selection_id": detail["selection_id"],
             "category_id": detail["category_id"],
-            "status": detail["status"],
             "expected_benefit_amount": detail["expected_benefit_amount"],
             "message": "Выбор принят и сохранён на стороне сервера",
         }

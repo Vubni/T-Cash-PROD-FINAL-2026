@@ -43,7 +43,6 @@ class Admin_category_create(BaseModel):
     name: str
     subtitle: str
     icon_key: str
-    status: str
     budget_amount: float
     target_users: int
     avg_spend_per_user: int
@@ -53,7 +52,7 @@ class Admin_category_create(BaseModel):
     rule_fallback_message: str
 
     @field_validator(
-        "name", "subtitle", "icon_key", "status", "rule_budget_mode", "rule_fallback_message"
+        "name", "subtitle", "icon_key", "rule_budget_mode", "rule_fallback_message"
     )
     @classmethod
     def check_non_empty_strings(cls, v: str) -> str:
@@ -93,7 +92,6 @@ class Admin_category_update(BaseModel):
     name: Optional[str] = None
     subtitle: Optional[str] = None
     icon_key: Optional[str] = None
-    status: Optional[str] = None
     budget_amount: Optional[float] = None
     target_users: Optional[int] = None
     avg_spend_per_user: Optional[int] = None
@@ -198,7 +196,6 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             name=parsed.name,
             subtitle=parsed.subtitle,
             icon_key=parsed.icon_key,
-            status=parsed.status,
             budget_amount=int(parsed.budget_amount),
             target_users=parsed.target_users,
             avg_spend_per_user=parsed.avg_spend_per_user,
@@ -274,7 +271,6 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             name=parsed.name,
             subtitle=parsed.subtitle,
             icon_key=parsed.icon_key,
-            status=parsed.status,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
             target_users=parsed.target_users,
             avg_spend_per_user=parsed.avg_spend_per_user,

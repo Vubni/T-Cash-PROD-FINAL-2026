@@ -112,7 +112,7 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
 - Таблица `categories`
   - `id` — внутренний автоинкрементный ID.
   - `category_id` — бизнес‑ID категории (используется в API и связях).
-  - `name`, `subtitle`, `icon_key`, `status` — метаданные категории.
+  - `name`, `subtitle`, `icon_key` — метаданные категории.
   - `budget_amount` — общий бюджет.
   - `target_users` — целевое число уникальных пользователей в период.
   - `avg_spend_per_user` — средний чек/траты одного пользователя по категории (заглушка для будущего ML).
@@ -125,9 +125,7 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
 - Таблица `selections`
   - `id` — внутренний ID выбора.
   - `selection_id` — внешний ID выбора (отдаётся клиенту).
-  - `period_id` — период расчёта (например, `2026-03`).
   - `category_id` — ссылка на `categories.category_id`.
-  - `status` — статус выбора.
   - `expected_benefit_amount` — ожидаемая выгода.
   - `availability_status`, `availability_reason` — технический и человекочитаемый статусы доступности.
   - `idempotency_key` — ключ идемпотентности для подтверждения.
