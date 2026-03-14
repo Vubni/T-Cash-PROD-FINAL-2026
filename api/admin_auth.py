@@ -210,13 +210,8 @@ async def approve_admin(request: web.Request, parsed: AdminApproveBody) -> web.R
 @validate.validate(AdminApproveBody, require_super_admin=True)
 async def decline_admin(request: web.Request, parsed: AdminApproveBody) -> web.Response:
     try:
-        deleted = await admin_users.delete_pending_admin(parsed.admin_id)
-        if not deleted:
-            raise web.HTTPNotFound(text="pending admin to decline not found")
+        await admin_users.delete_pending_admin(parsed.admin_id)
         return web.Response(status=204)
-    except web.HTTPError:
-        raise
     except Exception:
         logger.exception("decline_admin handler failed")
         return validate.format_500_error(request)
-

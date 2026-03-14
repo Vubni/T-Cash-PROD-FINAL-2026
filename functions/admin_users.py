@@ -120,15 +120,10 @@ async def list_pending_admins() -> list[dict]:
 
 
 async def delete_pending_admin(admin_id: int) -> bool:
-    """Удаляет заявку на админа (обычный админ, ещё не одобренный). Возвращает True, если заявка существовала."""
     async with Database() as db:
-        row = await db.execute(
+        await db.execute(
             """
             DELETE FROM admin_users
             WHERE admin_id = $1 AND main_admin = FALSE AND approved = FALSE
-            RETURNING admin_id
-            """,
-            (admin_id,),
-        )
-    return bool(row)
-
+            """,(admin_id,))
+    
