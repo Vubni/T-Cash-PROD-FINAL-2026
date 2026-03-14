@@ -18,13 +18,10 @@ def _rule_from_row(item: dict) -> dict:
 
 def row_to_category(item: dict) -> dict:
     rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
-    icon_key = item["icon_key"]
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "icon_key": icon_key,
-        "icon_url": f"/icons/{icon_key}.svg",
         "budget": item["budget_amount"],
         "rate": rate,
         "audience": {
@@ -37,13 +34,10 @@ def row_to_category(item: dict) -> dict:
 
 def row_to_category_list_item(item: dict) -> dict:
     rate = calc_rate(budget_amount=item.get("budget_amount") or 0)
-    icon_key = item["icon_key"]
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "icon_key": icon_key,
-        "icon_url": f"/icons/{icon_key}.svg",
         "budget": item["budget_amount"],
         "rate": rate,
     }
@@ -53,7 +47,6 @@ _CATEGORY_SELECT_FIELDS = """
     c.category_id,
     c.name,
     c.subtitle,
-    c.icon_key,
     c.budget_amount,
     c.audience_segments,
     c.rule_id,
@@ -87,7 +80,6 @@ async def create_category(
     category_id: str | None,
     name: str,
     subtitle: str,
-    icon_key: str,
     budget_amount: int,
     audience_segments: list,
     rule_id: str,
@@ -100,7 +92,7 @@ async def create_category(
                 category_id, name, subtitle, icon_key,
                 budget_amount, audience_segments, rule_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, '', $4, $5, $6)
         """
         await db.execute(
             sql,
@@ -108,7 +100,6 @@ async def create_category(
                 category_id,
                 name,
                 subtitle,
-                icon_key,
                 budget_amount,
                 audience_segments,
                 rule_id,
@@ -139,7 +130,6 @@ async def update_category(
     *,
     name: str | None = None,
     subtitle: str | None = None,
-    icon_key: str | None = None,
     budget_amount: int | None = None,
     audience_segments: list | None = None,
     rule_id: str | None = None,
@@ -154,7 +144,6 @@ async def update_category(
 
     add("name", name)
     add("subtitle", subtitle)
-    add("icon_key", icon_key)
     add("budget_amount", budget_amount)
     add("audience_segments", audience_segments)
     add("rule_id", rule_id)

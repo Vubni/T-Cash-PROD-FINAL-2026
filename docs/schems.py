@@ -37,9 +37,9 @@ class ScheduleGetSchema(Schema):
     date = fields.Date(required=True, description="Дата на которую получают расписание.")
     
 class ClubsListSchema(Schema):
-    type = fields.Str(default="my")
-    offset = fields.Int(default=0)
-    limit = fields.Int(default=100)
+    type = fields.Str(required=False, missing="my", description="Тип списка (по умолчанию my)")
+    offset = fields.Int(required=False, missing=0, description="Смещение для пагинации (по умолчанию 0)")
+    limit = fields.Int(required=False, missing=100, description="Лимит элементов (по умолчанию 100)")
     
 class ClubGetSchema(Schema):
     club_id = fields.Int(required=True, description="id клуба")
@@ -48,10 +48,10 @@ class ClubNewSchema(Schema):
     title = fields.Str(required=True, description="Название клуба. До 20 символов")
     description = fields.Str(required=True, description="Описание клуба. До 200 символов")
     administration = fields.Int(required=True, description="Направление клуба (ответственное министерство)")
-    max_members_counts = fields.Int(required=True, description="Максимальное количество участников клуба", default=0)
-    class_limit_min = fields.Int(required=True, description="Минимальный класс для участия в клубе", default=1)
-    class_limit_max = fields.Int(required=True, description="Максимальный класс для участия в клубе", default=11)
-    telegram_url = fields.Str(required=True, description="URL телеграм-канала клуба")
+    max_members_counts = fields.Int(required=False, missing=0, description="Максимальное количество участников клуба (по умолчанию 0)")
+    class_limit_min = fields.Int(required=False, missing=1, description="Минимальный класс для участия в клубе (по умолчанию 1)")
+    class_limit_max = fields.Int(required=False, missing=11, description="Максимальный класс для участия в клубе (по умолчанию 11)")
+    telegram_url = fields.Str(required=False, allow_none=True, missing=None, description="URL телеграм-канала клуба (опционально)")
     
 class CheckTitleSchema(Schema):
     title = fields.Str(required=True, description="Название клуба")
@@ -205,54 +205,50 @@ class CategoryAudienceSchema(Schema):
     segments = fields.List(
         fields.Str(),
         required=True,
-        description="Список сегментов аудитории, для которых категория доступна",
+        description="Список сегментов аудитории, для которых категория доступна. Обязательное поле.",
     )
 
 
 class CategoryBudgetSchema(Schema):
     amount = fields.Float(
         required=True,
-        description="Бюджет на одного пользователя по категории за период",
+        description="Бюджет на одного пользователя по категории за период. Обязательное поле.",
     )
 
 
 class CategoryRateSchema(Schema):
-    min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
-    max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
+    min = fields.Float(required=True, description="Минимальная ставка кэшбэка. Обязательное поле.")
+    max = fields.Float(required=True, description="Максимальная ставка кэшбэка. Обязательное поле.")
 
 
 class CategoryRuleSchema(Schema):
-    rule_id = fields.Str(required=True, description="Идентификатор правила отбора")
-    min_age = fields.Int(allow_none=True, description="Минимальный возраст")
-    max_age = fields.Int(allow_none=True, description="Максимальный возраст")
-    gender = fields.Str(allow_none=True, description="Пол")
-    income = fields.Int(allow_none=True, description="Заработок")
+    rule_id = fields.Str(required=True, description="Идентификатор правила отбора. Обязательное поле.")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст. Опционально.")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст. Опционально.")
+    gender = fields.Str(allow_none=True, description="Пол. Опционально.")
+    income = fields.Int(allow_none=True, description="Заработок. Опционально.")
 
 
 class CategoryHistoryItemSchema(Schema):
-    changed_at = fields.Str(required=True, description="Дата и время изменения в ISO 8601")
-    changed_by = fields.Str(required=True, description="Кто изменил категорию")
-    field = fields.Str(required=True, description="Какое поле изменили")
-    old_value = fields.Raw(required=False, allow_none=True, description="Старое значение")
-    new_value = fields.Raw(required=False, allow_none=True, description="Новое значение")
+    changed_at = fields.Str(required=True, description="Дата и время изменения в ISO 8601. Обязательное поле.")
+    changed_by = fields.Str(required=True, description="Кто изменил категорию. Обязательное поле.")
+    field = fields.Str(required=True, description="Какое поле изменили. Обязательное поле.")
+    old_value = fields.Raw(required=False, allow_none=True, description="Старое значение. Опционально.")
+    new_value = fields.Raw(required=False, allow_none=True, description="Новое значение. Опционально.")
 
 
 class CategoryListItemSchema(Schema):
-    id = fields.Str(required=True, description="Идентификатор категории")
-    name = fields.Str(required=True, description="Название категории")
-    subtitle = fields.Str(required=True, description="Подзаголовок категории")
-    icon_key = fields.Str(required=True, description="Ключ иконки категории")
-    icon_url = fields.Str(required=False, description="Путь до иконки категории")
+    id = fields.Str(required=True, description="Идентификатор категории. Обязательное поле.")
+    name = fields.Str(required=True, description="Название категории. Обязательное поле.")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
 
 
 class CategoryDetailSchema(Schema):
-    id = fields.Str(required=True, description="Идентификатор категории")
-    name = fields.Str(required=True, description="Название категории")
-    subtitle = fields.Str(required=True, description="Подзаголовок категории")
-    icon_key = fields.Str(required=True, description="Ключ иконки категории")
-    icon_url = fields.Str(required=False, description="Путь до иконки категории")
+    id = fields.Str(required=True, description="Идентификатор категории. Обязательное поле.")
+    name = fields.Str(required=True, description="Название категории. Обязательное поле.")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
     budget = fields.Nested(CategoryBudgetSchema, required=True)
     rate = fields.Nested(CategoryRateSchema, required=True)
     audience = fields.Nested(CategoryAudienceSchema, required=True)
@@ -260,7 +256,7 @@ class CategoryDetailSchema(Schema):
     history = fields.List(
         fields.Nested(CategoryHistoryItemSchema),
         required=True,
-        description="История изменений категории",
+        description="История изменений категории. Обязательное поле.",
     )
 
 
@@ -268,265 +264,312 @@ class CategoryListResponseSchema(Schema):
     items = fields.List(
         fields.Nested(CategoryListItemSchema),
         required=True,
-        description="Список категорий",
+        description="Список категорий. Обязательное поле.",
     )
-    total = fields.Int(required=True, description="Общее количество категорий (для пагинации)")
+    total = fields.Int(required=True, description="Общее количество категорий (для пагинации). Обязательное поле.")
 
 
 class CategoryCreateSchema(Schema):
-    name = fields.Str(required=True, description="Название категории")
-    subtitle = fields.Str(required=True, description="Подзаголовок категории")
-    icon_key = fields.Str(required=True, description="Ключ иконки категории")
+    category_id = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Идентификатор категории (UUID). Опционально — при отсутствии сгенерируется автоматически.",
+    )
+    name = fields.Str(required=True, description="Название категории. Обязательное поле.")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
     budget_amount = fields.Float(
         required=True,
-        description="Бюджет на одного пользователя по категории за период",
+        description="Бюджет на одного пользователя по категории за период (ставка вычисляется автоматически). Обязательное поле.",
     )
-    rate_min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
-    rate_max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
     audience_segments = fields.List(
         fields.Str(),
         required=True,
-        description="Сегменты аудитории категории",
+        description="Сегменты аудитории категории. Обязательное поле.",
     )
-    rule_id = fields.Str(required=True, description="Идентификатор правила отбора (возраст, пол, заработок)")
+    rule_id = fields.Str(required=True, description="Идентификатор правила отбора (возраст, пол, заработок). Обязательное поле.")
 
 
 class CategoryUpdateSchema(Schema):
-    name = fields.Str(required=False, description="Новое название категории")
-    subtitle = fields.Str(required=False, description="Новый подзаголовок категории")
-    icon_key = fields.Str(required=False, description="Новый ключ иконки категории")
+    name = fields.Str(required=False, description="Новое название категории. Опционально.")
+    subtitle = fields.Str(required=False, description="Новый подзаголовок категории. Опционально.")
     budget_amount = fields.Float(
         required=False,
-        description="Новый бюджет на одного пользователя по категории за период",
+        description="Новый бюджет на одного пользователя по категории за период. Опционально.",
     )
-    rate_min = fields.Float(required=False, description="Новая минимальная ставка кэшбэка")
-    rate_max = fields.Float(required=False, description="Новая максимальная ставка кэшбэка")
     audience_segments = fields.List(
         fields.Str(),
         required=False,
-        description="Новый список сегментов аудитории",
+        description="Новый список сегментов аудитории. Опционально.",
     )
-    rule_id = fields.Str(required=False, description="Идентификатор правила отбора")
+    rule_id = fields.Str(required=False, description="Идентификатор правила отбора. Опционально.")
 
 
 class RuleDetailSchema(Schema):
-    rule_id = fields.Str(required=True, description="Идентификатор правила")
-    min_age = fields.Int(allow_none=True, description="Минимальный возраст")
-    max_age = fields.Int(allow_none=True, description="Максимальный возраст")
-    gender = fields.Str(allow_none=True, description="Пол")
-    income = fields.Int(allow_none=True, description="Заработок")
+    rule_id = fields.Str(required=True, description="Идентификатор правила. Обязательное поле.")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст. Опционально.")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст. Опционально.")
+    gender = fields.Str(allow_none=True, description="Пол. Опционально.")
+    income = fields.Int(allow_none=True, description="Заработок. Опционально.")
 
 
 class RuleListItemSchema(Schema):
-    rule_id = fields.Str(required=True)
-    min_age = fields.Int(allow_none=True)
-    max_age = fields.Int(allow_none=True)
-    gender = fields.Str(allow_none=True)
-    income = fields.Int(allow_none=True)
+    rule_id = fields.Str(required=True, description="Идентификатор правила. Обязательное поле.")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст. Опционально.")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст. Опционально.")
+    gender = fields.Str(allow_none=True, description="Пол. Опционально.")
+    income = fields.Int(allow_none=True, description="Заработок. Опционально.")
 
 
 class RuleListResponseSchema(Schema):
-    items = fields.List(fields.Nested(RuleListItemSchema), required=True)
-    total = fields.Int(required=True)
+    items = fields.List(
+        fields.Nested(RuleListItemSchema),
+        required=True,
+        description="Список правил. Обязательное поле.",
+    )
+    total = fields.Int(required=True, description="Общее количество. Обязательное поле.")
 
 
 class UserExistsResponseSchema(Schema):
-    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
-    exists = fields.Bool(required=True, description="True, если пользователь есть в таблице users")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT). Обязательное поле.")
+    exists = fields.Bool(required=True, description="True, если пользователь есть в таблице users. Обязательное поле.")
 
 
 class AdminRegisterSchema(Schema):
-    login = fields.Str(required=True, description="Логин администратора")
-    password = fields.Str(required=True, description="Пароль администратора")
+    login = fields.Str(required=True, description="Логин администратора. Обязательное поле.")
+    password = fields.Str(required=True, description="Пароль администратора. Обязательное поле.")
 
 
 class AdminLoginSchema(Schema):
-    login = fields.Str(required=True, description="Логин администратора")
-    password = fields.Str(required=True, description="Пароль администратора")
+    login = fields.Str(required=True, description="Логин администратора. Обязательное поле.")
+    password = fields.Str(required=True, description="Пароль администратора. Обязательное поле.")
 
 
 class AdminApproveSchema(Schema):
-    admin_id = fields.Int(required=True, description="ID обычного администратора, которого нужно одобрить (Authorization: Bearer <токен супер-админа>)")
+    admin_id = fields.Int(
+        required=True,
+        description="ID обычного администратора, которого нужно одобрить. Обязательное поле. В заголовке: Authorization: Bearer <токен супер-админа>.",
+    )
 
 
 class AdminAuthResponseSchema(Schema):
-    admin_id = fields.Int(required=True, description="ID администратора")
-    login = fields.Str(required=True, description="Логин администратора")
-    main_admin = fields.Bool(required=True, description="Является ли администратор главным")
-    approved = fields.Bool(required=True, description="Одобрен ли администратор главным админом")
+    admin_id = fields.Int(required=True, description="ID администратора. Обязательное поле.")
+    login = fields.Str(required=True, description="Логин администратора. Обязательное поле.")
+    main_admin = fields.Bool(required=True, description="Является ли администратор главным. Обязательное поле.")
+    approved = fields.Bool(required=True, description="Одобрен ли администратор главным админом. Обязательное поле.")
 
 
 class RuleCreateSchema(Schema):
-    rule_id = fields.Str(required=False, description="Идентификатор правила (опционально, сгенерируется автоматически)")
-    min_age = fields.Int(required=False, allow_none=True)
-    max_age = fields.Int(required=False, allow_none=True)
-    gender = fields.Str(required=False, allow_none=True)
-    income = fields.Int(required=False, allow_none=True)
+    rule_id = fields.Str(
+        required=False,
+        description="Идентификатор правила. Опционально — сгенерируется автоматически.",
+    )
+    min_age = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Минимальный возраст. Опционально.",
+    )
+    max_age = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Максимальный возраст. Опционально.",
+    )
+    gender = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Пол. Опционально.",
+    )
+    income = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Заработок. Опционально.",
+    )
 
 
 class RuleUpdateSchema(Schema):
-    min_age = fields.Int(required=False, allow_none=True)
-    max_age = fields.Int(required=False, allow_none=True)
-    gender = fields.Str(required=False, allow_none=True)
-    income = fields.Int(required=False, allow_none=True)
+    min_age = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Минимальный возраст. Опционально.",
+    )
+    max_age = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Максимальный возраст. Опционально.",
+    )
+    gender = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Пол. Опционально.",
+    )
+    income = fields.Int(
+        required=False,
+        allow_none=True,
+        description="Заработок. Опционально.",
+    )
 
 
 class AuditEventSchema(Schema):
-    id = fields.Str(required=True, description="Идентификатор события аудита")
-    entity_type = fields.Str(required=True, description="Тип сущности")
-    entity_id = fields.Str(required=True, description="Идентификатор сущности")
-    action = fields.Str(required=True, description="Действие, например create или update")
-    actor = fields.Str(required=True, description="Кто выполнил действие")
-    created_at = fields.Str(required=True, description="Дата и время события в ISO 8601")
+    id = fields.Str(required=True, description="Идентификатор события аудита. Обязательное поле.")
+    entity_type = fields.Str(required=True, description="Тип сущности. Обязательное поле.")
+    entity_id = fields.Str(required=True, description="Идентификатор сущности. Обязательное поле.")
+    action = fields.Str(required=True, description="Действие (create, update и т.д.). Обязательное поле.")
+    actor = fields.Str(required=True, description="Кто выполнил действие. Обязательное поле.")
+    created_at = fields.Str(required=True, description="Дата и время события в ISO 8601. Обязательное поле.")
 
 
 class AuditListResponseSchema(Schema):
     items = fields.List(
         fields.Nested(AuditEventSchema),
         required=True,
-        description="Список событий аудита",
+        description="Список событий аудита. Обязательное поле.",
     )
-    total = fields.Int(required=True, description="Количество событий в ответе")
+    total = fields.Int(required=True, description="Количество событий в ответе. Обязательное поле.")
 
 
 class UserSchema(Schema):
-    id = fields.Int(required=True, description="ID пользователя (BIGINT)")
-    name = fields.Str(required=True, description="Имя пользователя")
+    id = fields.Int(required=True, description="ID пользователя (BIGINT). Обязательное поле.")
+    name = fields.Str(required=True, description="Имя пользователя. Обязательное поле.")
 
 
 class UserListResponseSchema(Schema):
     items = fields.List(
         fields.Nested(UserSchema),
         required=True,
-        description="Список пользователей",
+        description="Список пользователей. Обязательное поле.",
     )
-    total = fields.Int(required=True, description="Количество")
+    total = fields.Int(required=True, description="Количество. Обязательное поле.")
 
 
 class CalculateRequestSchema(Schema):
-    user_id = fields.Int(required=True, description="ID пользователя (BIGINT, выбор на фронте)")
+    user_id = fields.Int(
+        required=True,
+        description="ID пользователя (BIGINT, выбор на фронте). Обязательное поле.",
+    )
 
 
 class CalculateCategoryItemSchema(Schema):
     selection_id = fields.Str(
         required=False,
         allow_none=True,
-        description="Идентификатор выбора (если уже сохранён) или null для варианта категории",
+        description="Идентификатор выбора (если уже сохранён) или null. Опционально.",
     )
-    category_id = fields.Str(required=True, description="Идентификатор категории")
-    name = fields.Str(required=True, description="Название категории")
-    subtitle = fields.Str(required=True, description="Подзаголовок категории")
-    icon_key = fields.Str(required=True, description="Ключ иконки категории")
-    icon_url = fields.Str(required=False, description="Путь до иконки категории")
+    category_id = fields.Str(required=True, description="Идентификатор категории. Обязательное поле.")
+    name = fields.Str(required=True, description="Название категории. Обязательное поле.")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
     rate = fields.Nested(CategoryRateSchema, required=True)
     expected_benefit_amount = fields.Float(
         required=False,
         allow_none=True,
-        description="Ожидаемая выгода по категории (null если ещё не выбран)",
+        description="Ожидаемая выгода по категории (null если ещё не выбран). Опционально.",
     )
     availability_status = fields.Str(
         required=False,
         allow_none=True,
-        description="Статус доступности: available, budget_limited и т.д.",
+        description="Статус доступности: available, budget_limited и т.д. Опционально.",
     )
     availability_reason = fields.Str(
         required=False,
         allow_none=True,
-        description="Пояснение, если категория ограничена или недоступна",
+        description="Пояснение, если категория ограничена или недоступна. Опционально.",
     )
 
 
 class CalculateResponseSchema(Schema):
-    user_id = fields.Int(required=True, description="ID пользователя (BIGINT), для которого рассчитано")
+    user_id = fields.Int(
+        required=True,
+        description="ID пользователя (BIGINT), для которого рассчитано. Обязательное поле.",
+    )
     items = fields.List(
         fields.Nested(CalculateCategoryItemSchema),
         required=True,
-        description="Категории/выборы для пользователя за период",
+        description="Категории/выборы для пользователя за период. Обязательное поле.",
     )
 
 
 class SelectionDetailSchema(Schema):
-    selection_id = fields.Str(required=True, description="Идентификатор выбора")
-    category_id = fields.Str(required=True, description="Идентификатор категории")
-    name = fields.Str(required=True, description="Название категории")
-    subtitle = fields.Str(required=True, description="Подзаголовок категории")
-    icon_key = fields.Str(required=False, description="Ключ иконки категории")
-    icon_url = fields.Str(required=False, description="Путь до иконки категории")
+    selection_id = fields.Str(required=True, description="Идентификатор выбора. Обязательное поле.")
+    category_id = fields.Str(required=True, description="Идентификатор категории. Обязательное поле.")
+    name = fields.Str(required=True, description="Название категории. Обязательное поле.")
+    subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
     rate = fields.Nested(CategoryRateSchema, required=True)
     expected_benefit_amount = fields.Float(
         required=True,
-        description="Ожидаемая выгода пользователя по выбранной категории",
+        description="Ожидаемая выгода пользователя по выбранной категории. Обязательное поле.",
     )
     budget_message = fields.Str(
         required=False,
         allow_none=True,
-        description="Сообщение о бюджетных ограничениях, если они есть",
+        description="Сообщение о бюджетных ограничениях, если они есть. Опционально.",
     )
 
 
 class SelectionDetailListResponseSchema(Schema):
     selection_id = fields.Str(
         required=True,
-        description="Идентификатор запроса (ключ идемпотентности из path)",
+        description="Идентификатор запроса (ключ идемпотентности из path). Обязательное поле.",
     )
     items = fields.List(
         fields.Nested(SelectionDetailSchema),
         required=True,
-        description="Список выбранных категорий по этому запросу",
+        description="Список выбранных категорий по этому запросу. Обязательное поле.",
     )
 
 
 class SelectionConfirmSchema(Schema):
     confirm = fields.Bool(
         required=False,
-        description="Флаг подтверждения выбора. По умолчанию true",
+        missing=True,
+        description="Флаг подтверждения выбора. Опционально, по умолчанию true.",
     )
 
 
 class SelectionSubmitBodySchema(Schema):
-    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
+    user_id = fields.Int(
+        required=True,
+        description="ID пользователя (BIGINT). Обязательное поле.",
+    )
     category_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Ровно 5 идентификаторов категорий (UUID)",
+        description="Ровно 5 идентификаторов категорий (UUID). Обязательное поле.",
     )
 
 
 class SelectionSubmitResponseSchema(Schema):
-    user_id = fields.Int(required=True, description="ID пользователя (BIGINT)")
+    user_id = fields.Int(required=True, description="ID пользователя (BIGINT). Обязательное поле.")
     category_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Сохранённые 5 категорий",
+        description="Сохранённые 5 категорий. Обязательное поле.",
     )
     selection_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Созданные selection_id для каждой из 5 строк",
+        description="Созданные selection_id для каждой из 5 строк. Обязательное поле.",
     )
-    message = fields.Str(required=True, description="Подтверждение сохранения")
+    message = fields.Str(required=True, description="Подтверждение сохранения. Обязательное поле.")
 
 
 class SelectionConfirmResponseSchema(Schema):
-    selection_id = fields.Str(required=True, description="Идентификатор подтверждённого выбора")
-    category_id = fields.Str(required=True, description="Идентификатор выбранной категории")
+    selection_id = fields.Str(required=True, description="Идентификатор подтверждённого выбора. Обязательное поле.")
+    category_id = fields.Str(required=True, description="Идентификатор выбранной категории. Обязательное поле.")
     expected_benefit_amount = fields.Float(
         required=True,
-        description="Ожидаемая выгода после подтверждения выбора",
+        description="Ожидаемая выгода после подтверждения выбора. Обязательное поле.",
     )
-    message = fields.Str(required=True, description="Комментарий backend по результату подтверждения")
+    message = fields.Str(required=True, description="Комментарий backend по результату подтверждения. Обязательное поле.")
 
 
 class ProgressItemSchema(Schema):
-    selection_id = fields.Str(description="Идентификатор выбора")
-    category_id = fields.Str(description="Идентификатор категории")
-    status = fields.Str(description="Статус прогресса")
+    selection_id = fields.Str(description="Идентификатор выбора. Опционально.")
+    category_id = fields.Str(description="Идентификатор категории. Опционально.")
+    status = fields.Str(description="Статус прогресса. Опционально.")
 
 
 class ProgressListResponseSchema(Schema):
     items = fields.List(
         fields.Nested(ProgressItemSchema),
         required=True,
-        description="Список записей прогресса",
+        description="Список записей прогресса. Обязательное поле.",
     )
-    total = fields.Int(required=True, description="Общее количество")
+    total = fields.Int(required=True, description="Общее количество. Обязательное поле.")

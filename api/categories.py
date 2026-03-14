@@ -42,12 +42,11 @@ class Admin_category_create(BaseModel):
     category_id: Optional[str] = None
     name: str
     subtitle: str
-    icon_key: str
     budget_amount: float
     audience_segments: list[str]
     rule_id: str
 
-    @field_validator("name", "subtitle", "icon_key")
+    @field_validator("name", "subtitle")
     @classmethod
     def check_non_empty_strings(cls, v: str) -> str:
         if not v or not v.strip():
@@ -90,7 +89,6 @@ class Admin_category_update(BaseModel):
     category_id: str
     name: Optional[str] = None
     subtitle: Optional[str] = None
-    icon_key: Optional[str] = None
     budget_amount: Optional[float] = None
     audience_segments: Optional[list[str]] = None
     rule_id: Optional[str] = None
@@ -149,14 +147,16 @@ class Category_id_path(BaseModel):
             "name": "offset",
             "type": "integer",
             "required": False,
-            "description": "Смещение для пагинации",
+            "description": "Смещение для пагинации. Опционально, по умолчанию 0.",
+            "default": 0,
         },
         {
             "in": "query",
             "name": "limit",
             "type": "integer",
             "required": False,
-            "description": "Максимальное количество элементов в ответе",
+            "description": "Максимальное количество элементов в ответе. Опционально, по умолчанию 50.",
+            "default": 50,
         },
     ],
 )
@@ -173,7 +173,7 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @docs(
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
-    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации. Требуется JWT админа.",
+    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации. Требуется JWT админа. **Обязательные** поля тела: name, subtitle, budget_amount, audience_segments, rule_id. **Опционально**: category_id (если не передан — сгенерируется UUID).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Категория создана", "schema": sh.CategoryDetailSchema},
@@ -188,7 +188,6 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             category_id=parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount),
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,
@@ -216,7 +215,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             "name": "category_id",
             "type": "string",
             "required": True,
-            "description": "Идентификатор категории",
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
         }
     ],
 )
@@ -237,7 +236,7 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию, статус и правило категории. Требуется JWT админа.",
+    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию и правило категории. Требуется JWT админа. Все поля тела **опциональны** (передайте только те, что нужно изменить: name, subtitle, budget_amount, audience_segments, rule_id).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -249,7 +248,7 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
             "name": "category_id",
             "type": "string",
             "required": True,
-            "description": "Идентификатор категории",
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
         }
     ],
 )
@@ -261,7 +260,6 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,

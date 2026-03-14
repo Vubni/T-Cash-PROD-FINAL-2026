@@ -340,56 +340,95 @@ def validate(
 
     
 class Auth(BaseModel):
+    model_config = {"extra": "forbid"}
+
     identifier: str
-    password : str
-    
-    @field_validator('identifier')
+    password: str
+
+    @field_validator("identifier")
+    @classmethod
     def check_identifier(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("identifier cannot be empty")
         if len(v) > 256:
-            raise ValueError('Identifier cannot exceed 256 characters')
+            raise ValueError("identifier cannot exceed 256 characters")
+        return v.strip()
+
+    @field_validator("password")
+    @classmethod
+    def check_password(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("password cannot be empty")
         return v
-    
+
 
 class Auth_telegram(BaseModel):
+    model_config = {"extra": "forbid"}
     token: str
 
-    
+
 class Login_patch(BaseModel):
+    model_config = {"extra": "forbid"}
     login: str
-    
-    @field_validator('login')
-    def check_email(cls, v):
+
+    @field_validator("login")
+    @classmethod
+    def check_login(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("login cannot be empty")
         if len(v) > 20:
-            raise ValueError('Login cannot exceed 20 characters')
-        return v
-    
+            raise ValueError("login cannot exceed 20 characters")
+        return v.strip()
+
+
 class Email_patch(BaseModel):
+    model_config = {"extra": "forbid"}
     email: str
-    
-    @field_validator('email')
+
+    @field_validator("email")
+    @classmethod
     def check_email(cls, v):
+        if not v or not str(v).strip():
+            raise ValueError("email cannot be empty")
         if len(v) > 256:
-            raise ValueError('Email cannot exceed 256 characters')
+            raise ValueError("email cannot exceed 256 characters")
         if not core.is_valid_email(v):
-            raise EmailError('Email does not comply with email standards or dns mail servers are not found')
+            raise EmailError("Email does not comply with email standards or dns mail servers are not found")
         return v
-    
+
+
 class Password_patch(BaseModel):
+    model_config = {"extra": "forbid"}
     current_password: str
     new_password: str
-    
+
+    @field_validator("current_password", "new_password")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            raise ValueError("password cannot be empty")
+        return v
+
+
 class Schedule_get(BaseModel):
+    model_config = {"extra": "forbid"}
     date: str
-    
+
+
 class Clubs_list(BaseModel):
+    model_config = {"extra": "forbid"}
     type: str = "my"
     offset: int = 0
     limit: int = 100
-    
+
+
 class Club_info(BaseModel):
+    model_config = {"extra": "forbid"}
     club_id: int
-    
+
+
 class Club_new(BaseModel):
+    model_config = {"extra": "forbid"}
     title: str
     description: str
     administration: int
@@ -398,38 +437,38 @@ class Club_new(BaseModel):
     class_limit_max: Optional[int] = 11
     telegram_url: Optional[str] = None
     
-    @field_validator('class_limit_max')
+    @field_validator("class_limit_max")
+    @classmethod
     def validate_class_limit_max(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
             return v
         raise ValueError("class_limit_max in 1-11")
-    
-    @field_validator('class_limit_min')
+
+    @field_validator("class_limit_min")
+    @classmethod
     def validate_class_limit_min(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
             return v
         raise ValueError("class_limit_min in 1-11")
-    
-    @field_validator('max_members_counts')
+
+    @field_validator("max_members_counts")
+    @classmethod
     def validate_max_members_counts(cls, v):
         if v is None:
             return v
         if 0 < v < 4:
             return v
         raise ValueError("max_members_counts is 4+ or 0")
-        
 
-    @field_validator('telegram_url')
+    @field_validator("telegram_url")
+    @classmethod
     def validate_telegram_url(cls, v):
-        # Если значение не указано - пропускаем проверку
         if v is None:
             return v
-        
-        # Проверяем, что ссылка начинается с допустимых префиксов
         valid_prefixes = (
             "https://t.me/", 
             "http://t.me/",
@@ -444,25 +483,40 @@ class Club_new(BaseModel):
                 "https://telegram.me/ or http://telegram.me/"
             )
         
-        # Дополнительная проверка на минимальную длину
         if len(v) < 15:
             raise ValueError("Telegram URL is too short")
-            
         return v
-    
+
+
 class Check_title(BaseModel):
+    model_config = {"extra": "forbid"}
     title: str
-    
+
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("title cannot be empty")
+        return v.strip()
+
+
 class Club_join(BaseModel):
+    model_config = {"extra": "forbid"}
     club_id: int
+
 
 class Club_delete(BaseModel):
+    model_config = {"extra": "forbid"}
     club_id: int
+
 
 class Achievements_local(BaseModel):
+    model_config = {"extra": "forbid"}
     club_id: int
 
+
 class Club_edit(BaseModel):
+    model_config = {"extra": "forbid"}
     club_id: int
     title: Optional[str] = None
     description: Optional[str] = None
@@ -471,65 +525,82 @@ class Club_edit(BaseModel):
     class_limit_max: Optional[int] = None
     telegram_url: Optional[str] = None
 
-    @field_validator('class_limit_max')
+    @field_validator("class_limit_max")
+    @classmethod
     def validate_class_limit_max(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
             return v
         raise ValueError("class_limit_max in 1-11")
-    
-    @field_validator('class_limit_min')
+
+    @field_validator("class_limit_min")
+    @classmethod
     def validate_class_limit_min(cls, v):
         if v is None:
             return v
         if 1 <= v <= 11:
             return v
         raise ValueError("class_limit_min in 1-11")
-    
-    @field_validator('max_members_counts')
+
+    @field_validator("max_members_counts")
+    @classmethod
     def validate_max_members_counts(cls, v):
         if v is None:
             return v
         if 0 < v < 4:
             return v
         raise ValueError("max_members_counts is 4+ or 0")
-        
 
-    @field_validator('telegram_url')
+    @field_validator("telegram_url")
+    @classmethod
     def validate_telegram_url(cls, v):
         if v is None:
             return v
-        
-        # Проверяем, что ссылка начинается с допустимых префиксов
         valid_prefixes = (
-            "https://t.me/", 
+            "https://t.me/",
             "http://t.me/",
             "https://telegram.me/",
-            "http://telegram.me/"
+            "http://telegram.me/",
         )
-        
         if not any(v.startswith(prefix) for prefix in valid_prefixes):
             raise ValueError(
                 "Telegram URL must start with: "
                 "https://t.me/, http://t.me/, "
                 "https://telegram.me/ or http://telegram.me/"
             )
-        
-        # Дополнительная проверка на минимальную длину
         if len(v) < 15:
             raise ValueError("Telegram URL is too short")
-            
         return v
-    
+
+
 class Forgot_password(BaseModel):
+    model_config = {"extra": "forbid"}
     identifier: str
     new_password: str
-    
+
+    @field_validator("new_password")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            raise ValueError("new_password cannot be empty")
+        return v
+
+
 class Forgot_password_confirm(BaseModel):
+    model_config = {"extra": "forbid"}
     confirm: int
-    
+
+
 class Email_verify_confirm(BaseModel):
+    model_config = {"extra": "forbid"}
     token: str
+
+    @field_validator("token")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v or not str(v).strip():
+            raise ValueError("token cannot be empty")
+        return v
 
 

@@ -25,6 +25,13 @@ class Selection_submit_body(BaseModel):
             raise ValueError("user_id должен быть положительным целым числом")
         return v
 
+    @field_validator("category_ids")
+    @classmethod
+    def category_ids_uuids(cls, v: list[str]) -> list[str]:
+        if not v:
+            raise ValueError("category_ids не может быть пустым")
+        return [validate.validate_uuid(cid, "category_id") for cid in v]
+
     @model_validator(mode="after")
     def exactly_five_categories(self) -> "Selection_submit_body":
         if len(self.category_ids) != REQUIRED_SELECTION_COUNT:
@@ -39,7 +46,7 @@ class Selection_submit_body(BaseModel):
 @docs(
     tags=["Client"],
     summary="Сохранить выбор ровно из 5 категорий",
-    description="В теле передаётся user_id и ровно 5 category_ids. В selections создаётся 5 строк.",
+    description="В теле передаётся user_id и ровно 5 category_ids; в selections создаётся 5 строк. **Обязательные** поля: user_id, category_ids (массив ровно из 5 UUID).",
     responses={
         200: {"description": "Выбор сохранён", "schema": sh.SelectionSubmitResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,

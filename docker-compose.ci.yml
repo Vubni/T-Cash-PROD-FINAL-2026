@@ -1,0 +1,7 @@
+services:
+  db:
+    # В CI/CD хотим каждый деплой с чистой БД.
+    # Поэтому НЕ используем именованный volume db-data, а только init.sql.
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
