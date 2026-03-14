@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS categories (
     subtitle        TEXT        NOT NULL,
     icon_key        TEXT        NOT NULL,
     budget_amount   BIGINT      NOT NULL,
-    target_users    INT         NOT NULL,
-    avg_spend_per_user BIGINT   NOT NULL,
     audience_segments TEXT[]    NOT NULL,
     rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

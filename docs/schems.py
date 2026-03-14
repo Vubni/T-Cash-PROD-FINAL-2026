@@ -210,7 +210,10 @@ class CategoryAudienceSchema(Schema):
 
 
 class CategoryBudgetSchema(Schema):
-    amount = fields.Float(required=True, description="Бюджет категории на период")
+    amount = fields.Float(
+        required=True,
+        description="Бюджет на одного пользователя по категории за период",
+    )
 
 
 class CategoryRateSchema(Schema):
@@ -274,7 +277,10 @@ class CategoryCreateSchema(Schema):
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
     icon_key = fields.Str(required=True, description="Ключ иконки категории")
-    budget_amount = fields.Float(required=True, description="Бюджет категории на период")
+    budget_amount = fields.Float(
+        required=True,
+        description="Бюджет на одного пользователя по категории за период",
+    )
     rate_min = fields.Float(required=True, description="Минимальная ставка кэшбэка")
     rate_max = fields.Float(required=True, description="Максимальная ставка кэшбэка")
     audience_segments = fields.List(
@@ -289,7 +295,10 @@ class CategoryUpdateSchema(Schema):
     name = fields.Str(required=False, description="Новое название категории")
     subtitle = fields.Str(required=False, description="Новый подзаголовок категории")
     icon_key = fields.Str(required=False, description="Новый ключ иконки категории")
-    budget_amount = fields.Float(required=False, description="Новый бюджет категории")
+    budget_amount = fields.Float(
+        required=False,
+        description="Новый бюджет на одного пользователя по категории за период",
+    )
     rate_min = fields.Float(required=False, description="Новая минимальная ставка кэшбэка")
     rate_max = fields.Float(required=False, description="Новая максимальная ставка кэшбэка")
     audience_segments = fields.List(
