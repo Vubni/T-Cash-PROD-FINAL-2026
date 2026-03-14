@@ -1,9 +1,7 @@
 """drop users role column and check constraint.
-
 Revision ID: 0003_drop_users_role
 Revises: 0002_users_and_selection_user_period
 Create Date: 2026-03-14
-
 """
 from alembic import op
 import sqlalchemy as sa
