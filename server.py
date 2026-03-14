@@ -114,6 +114,7 @@ if __name__ == "__main__":
 
         web.post(prefix + '/client/calculate', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),
+        web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))

@@ -545,7 +545,7 @@ class SelectionSubmitBodySchema(Schema):
     category_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Ровно 5 идентификаторов категорий (UUID). Обязательное поле.",
+        description="Ровно N идентификаторов категорий (UUID), где N задаётся в настройках. Обязательное поле.",
     )
 
 
@@ -572,6 +572,28 @@ class SelectionConfirmResponseSchema(Schema):
         description="Ожидаемая выгода после подтверждения выбора. Обязательное поле.",
     )
     message = fields.Str(required=True, description="Комментарий backend по результату подтверждения. Обязательное поле.")
+
+
+class CategorySelectionSettingsSchema(Schema):
+    all_categories = fields.Int(
+        required=False,
+        description="Флаг показа всех категорий без ограничения по выбору (0/1). Опционально.",
+    )
+    max_selection_count = fields.Int(
+        required=False,
+        description="Максимальное количество категорий, которые пользователь может выбрать. Опционально.",
+    )
+
+
+class CategorySelectionSettingsResponseSchema(Schema):
+    all_categories = fields.Int(
+        required=True,
+        description="Текущий флаг показа всех категорий без ограничения по выбору (0/1). Обязательное поле.",
+    )
+    max_selection_count = fields.Int(
+        required=True,
+        description="Текущее максимальное количество категорий, которые пользователь может выбрать. Обязательное поле.",
+    )
 
 
 class ProgressItemSchema(Schema):

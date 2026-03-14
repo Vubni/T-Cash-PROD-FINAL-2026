@@ -62,17 +62,17 @@ async def create_admin(login: str, password: str) -> dict | None:
     password = (password or "").strip()
     if not login or not password:
         return None
-    existing = await get_admin_by_login(login)
-    if existing is not None:
-        return None
     async with Database() as db:
-        await db.execute(
-            """
-            INSERT INTO admin_users (main_admin, login, password, approved)
-            VALUES (FALSE, $1, $2, FALSE)
-            """,
-            (login, password),
-        )
+        try:
+            await db.execute(
+                """
+                INSERT INTO admin_users (main_admin, login, password, approved)
+                VALUES (FALSE, $1, $2, FALSE)
+                """,
+                (login, password),
+            )
+        except UniqueViolationError:
+            return None
     return await get_admin_by_login(login)
 
 

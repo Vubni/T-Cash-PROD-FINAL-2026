@@ -5,10 +5,6 @@ from functions.rate import calc_rate
 
 
 async def get_calculate_items(user_id: str) -> list[dict]:
-    """
-    Возвращает для пользователя его выборы (selections) с данными категории.
-    Если выборов нет — возвращает все категории как доступные варианты.
-    """
     async with Database() as db:
         sql = """
             SELECT
