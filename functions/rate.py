@@ -8,7 +8,6 @@ def calc_rate(budget_amount: int) -> dict:
         if not budget_amount or budget_amount <= 0:
             return {"min": 5, "max": 15}
 
-        # Чем выше бюджет на пользователя, тем выше ставка
         base_rate = max(1, min(30, round(budget_amount / 100)))
 
         return {

@@ -19,7 +19,7 @@ class Admin_categories_list(BaseModel):
     model_config = {"extra": "forbid"}
 
     offset: int = 0
-    limit: int = 50
+    limit: int = 10
 
     @field_validator("offset")
     @classmethod
@@ -155,8 +155,8 @@ class Category_id_path(BaseModel):
             "name": "limit",
             "type": "integer",
             "required": False,
-            "description": "Максимальное количество элементов в ответе. Опционально, по умолчанию 50.",
-            "default": 50,
+            "description": "Максимальное количество элементов в ответе. Опционально, по умолчанию 10.",
+            "default": 10,
         },
     ],
 )

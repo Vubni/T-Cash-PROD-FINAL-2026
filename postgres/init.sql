@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS categories (
     category_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT        NOT NULL,
     subtitle        TEXT        NOT NULL,
-    icon_key        TEXT        NOT NULL,
     budget_amount   BIGINT      NOT NULL,
     audience_segments TEXT[]    NOT NULL,
     rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
@@ -54,7 +53,6 @@ CREATE TABLE IF NOT EXISTS admin_users (
     approved   BOOLEAN   NOT NULL DEFAULT FALSE
 );
 
--- дефолтное правило, на которое ссылаются категории при импорте из CSV
 INSERT INTO rules (rule_id, min_age, max_age, gender, income)
 VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
 ON CONFLICT (rule_id) DO NOTHING;

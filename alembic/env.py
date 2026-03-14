@@ -10,8 +10,6 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP
 
 config = context.config
 
-# В Docker берём URL из DB_IP, DB_USER, DB_PASSWORD, DB_DB (как в docker-compose).
-# Иначе — DATABASE_URL/ALEMBIC_DATABASE_URL или значение из alembic.ini.
 _resolved_url = None
 if os.environ.get("DB_IP"):
     _user = os.environ.get("DB_USER", "user")
@@ -37,7 +35,6 @@ categories = Table(
     Column("category_id", Text, nullable=False, unique=True),
     Column("name", Text, nullable=False),
     Column("subtitle", Text, nullable=False),
-    Column("icon_key", Text, nullable=False),
     Column("budget_amount", BigInteger, nullable=False),
     Column("audience_segments", ARRAY(Text), nullable=False),
     Column("rule_personalized", Boolean, nullable=False),

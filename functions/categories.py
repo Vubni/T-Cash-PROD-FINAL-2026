@@ -89,10 +89,10 @@ async def create_category(
     async with Database() as db:
         sql = """
             INSERT INTO categories (
-                category_id, name, subtitle, icon_key,
+                category_id, name, subtitle,
                 budget_amount, audience_segments, rule_id
             )
-            VALUES ($1, $2, $3, '', $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6)
         """
         await db.execute(
             sql,

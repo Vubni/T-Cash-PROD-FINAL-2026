@@ -43,7 +43,6 @@ async def ensure_main_admin(login: str, password: str) -> None:
     try:
         await create_main_admin(login, password)
     except Exception as e:
-        # Если нет таблицы admin_users, не блокируем запуск приложения.
         msg = str(e)
         if "UndefinedTableError" in msg or 'relation "admin_users" does not exist' in msg:
             from config import logger

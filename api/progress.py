@@ -19,8 +19,6 @@ from docs import schems as sh
 )
 async def get_progress(request: web.Request) -> web.Response:
     try:
-        # Заглушка: прогресс пока возвращаем пустым списком.
-        # В дальнейшем — выборки по подтверждённым selections и лимитам бюджета.
         return web.json_response({"items": [], "total": 0}, status=200)
     except Exception:
         logger.exception("get_progress handler failed")

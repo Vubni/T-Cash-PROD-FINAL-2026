@@ -42,10 +42,7 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 if not row:
                     continue
                 if not header_skipped:
-                    # пропускаем заголовок 'user_id'
                     header_skipped = True
-                    # если в файле нет заголовка, а сразу UUID — row[0] будет не 'user_id',
-                    # тогда считаем, что это уже данные
                     if row[0].strip().lower() != "user_id":
                         raw = row[0].strip()
                         if raw:
@@ -54,7 +51,6 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 raw = row[0].strip()
                 if not raw:
                     continue
-                # В users.csv теперь уже UUID-строки; просто кладём как есть
                 to_insert.append((raw,))
     except OSError as e:
         logger.error(f"Не удалось прочитать файл пользователей {csv_path}: {e}")
@@ -78,7 +74,6 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
             logger.info(f"Импортировано пользователей из CSV: {len(to_insert)}")
     except Exception as e:
         msg = str(e)
-        # Если нет таблицы или типы не совпадают (DataError), не валим приложение
         if (
             "UndefinedTableError" in msg
             or 'relation \"users\" does not exist' in msg
@@ -130,10 +125,9 @@ async def ensure_categories_from_csv(csv_path: str = "data/categories.csv") -> N
             (
                 category_id,
                 name,
-                name,          # subtitle
-                "default",     # icon_key
-                0,             # budget_amount
-                ["mass"],      # audience_segments
+                name,
+                0,
+                ["mass"],
                 DEFAULT_RULE_ID,
             )
         )
@@ -145,13 +139,12 @@ async def ensure_categories_from_csv(csv_path: str = "data/categories.csv") -> N
                 category_id,
                 name,
                 subtitle,
-                icon_key,
                 budget_amount,
                 audience_segments,
                 rule_id
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7
+                $1, $2, $3, $4, $5, $6
             )
             ON CONFLICT (category_id) DO NOTHING
             """,

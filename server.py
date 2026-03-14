@@ -29,7 +29,6 @@ async def request_logging_middleware(request: web.Request, handler):
     try:
         response = await handler(request)
     except web.HTTPException as ex:
-        # Логируем статус, если хендлер выбросил HTTP-исключение
         logger.info(
             "HTTP %s %s -> %s",
             request.method,
@@ -38,7 +37,6 @@ async def request_logging_middleware(request: web.Request, handler):
         )
         raise
 
-    # Логируем статус успешного ответа
     logger.info(
         "HTTP %s %s -> %s",
         request.method,

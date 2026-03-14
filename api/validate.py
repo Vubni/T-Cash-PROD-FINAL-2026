@@ -10,7 +10,6 @@ import uuid
 
 T = TypeVar("T", bound=BaseModel)
 
-# Для Swagger: эндпоинты с этой меткой требуют заголовок Authorization: Bearer <JWT админа>
 SECURITY_ADMIN_BEARER = [{"adminBearer": []}]
 
 def generate_trace_id() -> str:
@@ -340,7 +339,6 @@ def validate(
     return decorator
 
 
-    
 class Auth(BaseModel):
     model_config = {"extra": "forbid"}
 
