@@ -1,13 +1,11 @@
-"""Расчёт списка категорий/выборов для клиента по user_id."""
-
+import aiohttp
 from database.database import Database
 from core import serialize_json
-import requests
-from core import (
-    get_all_categories,
-)
+from core import get_all_categories, logger
+
 
 async def get_calculate_items(user_id: int) -> list[dict]:
+    items = []
     async with Database() as db:
         sql = """
             SELECT
@@ -24,8 +22,7 @@ async def get_calculate_items(user_id: int) -> list[dict]:
         rows = await db.execute_all(sql, (user_id,)) or []
 
     if rows:
-        items = _rows_to_items(rows)
-        return items
+        return serialize_json(rows)
 
     async with Database() as db:
         sql = """
@@ -37,38 +34,35 @@ async def get_calculate_items(user_id: int) -> list[dict]:
                 rate_max
             FROM categories LIMIT $1
         """
-        rows = await db.execute_all(sql, (get_all_categories(),)) or []
+        categories = await db.execute_all(sql, (get_all_categories(),)) or []
 
-    items = []
-    for row in rows:
-        items.append(
-            {
-                "selection_id": None,
-                "category_id": str(row["category_id"]),
-                "name": row["name"],
-                "subtitle": row["subtitle"],
-                "rate": {"min": row["rate_min"], "max": row["rate_max"]},
-                "expected_benefit_amount": None,
-                "availability_status": "available",
-                "availability_reason": None,
-            }
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "http://0.0.0.0:8008/predict",
+                json={"categories": categories, "client_id": user_id, "top_n": get_all_categories()},
+            ) as response:
+                if response.status != 200:
+                    text = await response.text()
+                    raise Exception(f"Failed to calculate: {response.status} {text}")
+                data = await response.json()
+        predictions = data["predictions"]
+
+        for predict in predictions:
+            category = await db.execute("SELECT * FROM categories WHERE name = $1", (predict["category"],))
+            if not category:
+                logger.error("Category not found: %s", predict.get("category"))
+                continue
+            estimated = predict.get("estimated_spend") or 0
+            if estimated <= 0:
+                continue
+            percent = int(category["budget_amount"] * 100 / estimated)
+            items.append(
+                {
+                    "category_id": category["category_id"],
+                    "name": category["name"],
+                    "subtitle": category["subtitle"],
+                    "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
+                }
+            )
+
     return serialize_json(items)
-
-
-def _rows_to_items(rows: list) -> list[dict]:
-    items = []
-    for row in rows:
-        items.append(
-            {
-                "selection_id": str(row["selection_id"]),
-                "category_id": str(row["category_id"]),
-                "name": row["name"],
-                "subtitle": row["subtitle"],
-                "rate": {"min": row["rate_min"], "max": row["rate_max"]},
-                "expected_benefit_amount": None,
-                "availability_status": "available",
-                "availability_reason": None,
-            }
-        )
-    return items

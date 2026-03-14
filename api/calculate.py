@@ -1,4 +1,5 @@
 from aiohttp import web
+from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp_apispec import docs, request_schema
 from pydantic import BaseModel, field_validator
 
@@ -41,6 +42,9 @@ async def calculate(request: web.Request, parsed: Client_calculate) -> web.Respo
 
         items = await calc_fns.get_calculate_items(user_id)
         return web.json_response({"items": items}, status=200)
+    except (ClientConnectorError, ConnectionRefusedError, OSError) as e:
+        logger.warning("calculate: external service unreachable: %s", e)
+        return validate.format_500_error(request)
     except Exception:
         logger.exception("calculate handler failed")
         return validate.format_500_error(request)
