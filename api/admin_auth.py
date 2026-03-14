@@ -11,7 +11,13 @@ from docs import schems as sh
 from functions import admin_users
 
 
+LOGIN_MAX_LENGTH = 256
+PASSWORD_MAX_LENGTH = 512
+
+
 class AdminRegisterBody(BaseModel):
+    model_config = {"extra": "forbid"}
+
     login: str
     password: str
 
@@ -20,17 +26,41 @@ class AdminRegisterBody(BaseModel):
     def not_empty(cls, v: str) -> str:
         if not v or not v.strip():
             raise ValueError("Поле не может быть пустым")
-        return v.strip()
+        v = v.strip()
+        return v
+
+    @field_validator("login")
+    @classmethod
+    def login_length(cls, v: str) -> str:
+        if len(v) > LOGIN_MAX_LENGTH:
+            raise ValueError(f"login не может быть длиннее {LOGIN_MAX_LENGTH} символов")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if len(v) > PASSWORD_MAX_LENGTH:
+            raise ValueError(f"password не может быть длиннее {PASSWORD_MAX_LENGTH} символов")
+        return v
 
 
 class AdminApproveBody(BaseModel):
+    model_config = {"extra": "forbid"}
+
     admin_id: int
+
+    @field_validator("admin_id")
+    @classmethod
+    def admin_id_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("admin_id должен быть положительным целым числом")
+        return v
 
 
 @docs(
     tags=["Admin"],
     summary="Регистрация обычного админа (заявка)",
-    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ.",
+    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ. В теле запроса: **обязательные** — login, password.",
     responses={
         201: {"description": "Заявка создана"},
         409: {"description": "Такой login уже занят (в т.ч. логин главного админа по умолчанию — укажите другой)"},
@@ -60,7 +90,7 @@ async def register_admin(request: web.Request, parsed: AdminRegisterBody) -> web
 @docs(
     tags=["Admin"],
     summary="Логин админа",
-    description="Проверяет логин/пароль. Если admin не approved — 403.",
+    description="Проверяет логин/пароль. Если admin не approved — 403. В теле запроса: **обязательные** — login, password.",
     responses={
         200: {"description": "Успешный вход", "schema": sh.AdminAuthResponseSchema},
         401: {"description": "Неверный логин или пароль"},
@@ -106,7 +136,7 @@ async def login_admin(request: web.Request, parsed: AdminRegisterBody) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Одобрить обычного админа",
-    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа.",
+    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа. В теле: **обязательное** — admin_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Админ одобрен", "schema": sh.AdminAuthResponseSchema},

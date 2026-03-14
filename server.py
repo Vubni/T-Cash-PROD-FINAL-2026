@@ -7,10 +7,21 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users, admin_auth)
+from api import (categories, audit, calculate, selection, rules, offers, progress, users, admin_auth)
 
 from database.functions import init_db, ensure_users_from_csv
 from functions import admin_users as admin_users_fns
+
+
+@web.middleware
+async def request_logging_middleware(request: web.Request, handler):
+    logger.info(
+        "HTTP %s %s from %s",
+        request.method,
+        request.path_qs,
+        request.remote,
+    )
+    return await handler(request)
 
 
 async def handle_get_file(request: web.Request) -> web.Response:
@@ -68,7 +79,6 @@ if __name__ == "__main__":
         web.post(prefix + '/admin/categories', categories.create_category),
         web.get(prefix + '/admin/categories/{category_id}', categories.get_category),
         web.patch(prefix + '/admin/categories/{category_id}', categories.update_category),
-        web.post(prefix + '/admin/icons/{icon_key}', icons.upload_icon),
         web.get(prefix + '/admin/audit', audit.list_audit),
 
         web.get(prefix + '/users/{user_id}/exists', users.user_exists),
@@ -110,6 +120,7 @@ if __name__ == "__main__":
 
     cors.add(app.router.add_route("GET", "/{path:.*}", handle_get_file))
 
+    app.middlewares.append(request_logging_middleware)
     app.middlewares.append(validation_middleware)
     
     logger.info("Запуск сервера. . .")

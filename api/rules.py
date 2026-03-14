@@ -111,6 +111,24 @@ class Rule_id_path(BaseModel):
         200: {"description": "Список правил", "schema": sh.RuleListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
+    parameters=[
+        {
+            "in": "query",
+            "name": "offset",
+            "type": "integer",
+            "required": False,
+            "description": "Смещение для пагинации. Опционально, по умолчанию 0.",
+            "default": 0,
+        },
+        {
+            "in": "query",
+            "name": "limit",
+            "type": "integer",
+            "required": False,
+            "description": "Максимальное количество элементов. Опционально, по умолчанию 50.",
+            "default": 50,
+        },
+    ],
 )
 @validate.validate(Rules_list, require_admin=True)
 async def list_rules(request: web.Request, parsed: Rules_list) -> web.Response:
@@ -125,12 +143,21 @@ async def list_rules(request: web.Request, parsed: Rules_list) -> web.Response:
 @docs(
     tags=["Admin"],
     summary="Получить правило",
-    description="Возвращает одно правило по rule_id. Требуется JWT админа.",
+    description="Возвращает одно правило по rule_id. Требуется JWT админа. В пути: **обязательный** — rule_id (UUID).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Правило получено", "schema": sh.RuleDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
+    parameters=[
+        {
+            "in": "path",
+            "name": "rule_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор правила (UUID). Обязательный параметр пути.",
+        }
+    ],
 )
 @validate.validate(Rule_id_path, require_admin=True)
 async def get_rule(request: web.Request, parsed: Rule_id_path) -> web.Response:
@@ -149,7 +176,7 @@ async def get_rule(request: web.Request, parsed: Rule_id_path) -> web.Response:
 @docs(
     tags=["Admin"],
     summary="Создать правило",
-    description="Создаёт правило отбора: возраст мин/макс, пол, заработок. Требуется JWT админа.",
+    description="Создаёт правило отбора: возраст мин/макс, пол, заработок. Требуется JWT админа. Все поля тела **опциональны** (rule_id при отсутствии сгенерируется; min_age, max_age, gender, income можно не передавать).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Правило создано", "schema": sh.RuleDetailSchema},
@@ -178,12 +205,21 @@ async def create_rule(request: web.Request, parsed: Rule_create) -> web.Response
 @docs(
     tags=["Admin"],
     summary="Изменить правило",
-    description="Частично обновляет правило. Требуется JWT админа.",
+    description="Частично обновляет правило. Требуется JWT админа. В пути: **обязательный** — rule_id. Все поля тела **опциональны** (передайте только те, что нужно изменить: min_age, max_age, gender, income).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Правило обновлено", "schema": sh.RuleDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
+    parameters=[
+        {
+            "in": "path",
+            "name": "rule_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор правила (UUID). Обязательный параметр пути.",
+        }
+    ],
 )
 @request_schema(sh.RuleUpdateSchema)
 @validate.validate(Rule_update, require_admin=True)
