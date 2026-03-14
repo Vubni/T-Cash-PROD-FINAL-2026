@@ -6,7 +6,7 @@ stages:
   - deploy
 
 variables:
-  SSH_KNOWN_HOSTS: "178.154.217.140 158.160.20.196"
+  SSH_KNOWN_HOSTS: "178.154.217.140 158.160.90.4"
   APP_DIR: "/home/ubuntu/backend"
 
 test:
@@ -65,5 +65,5 @@ deploy_test:
     - echo "$TEST_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
   script:
-    - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
+    - rsync -az --delete ./ ubuntu@158.160.90.4:${APP_DIR}
     - ssh ubuntu@158.160.90.4 "cd ${APP_DIR} && docker compose up -d --build"
