@@ -40,7 +40,7 @@ def _build_icons_dir() -> str:
         {
             "in": "path",
             "name": "icon_key",
-            "schema": {"type": "string"},
+            "type": "string",
             "required": True,
             "description": "Ключ иконки, который используется в сущностях (например restaurants)",
         },

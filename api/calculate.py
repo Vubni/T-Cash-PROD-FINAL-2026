@@ -31,7 +31,7 @@ class Client_calculate(BaseModel):
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
-        {"in": "query", "name": "user_id", "schema": {"type": "string"}, "required": True, "description": "UUID пользователя"},
+        {"in": "query", "name": "user_id", "type": "string", "required": True, "description": "UUID пользователя"},
     ],
 )
 @validate.validate(Client_calculate)

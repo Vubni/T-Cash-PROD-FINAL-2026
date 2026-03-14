@@ -71,7 +71,7 @@ class Selection_submit_body(BaseModel):
         {
             "in": "path",
             "name": "selection_id",
-            "schema": {"type": "string"},
+            "type": "string",
             "required": True,
             "description": "Идентификатор выбора, полученный из calculate",
         }
@@ -106,7 +106,7 @@ async def get_selection(request: web.Request, parsed: Selection_id_path) -> web.
         {
             "in": "path",
             "name": "selection_id",
-            "schema": {"type": "string"},
+            "type": "string",
             "required": True,
             "description": "Идентификатор запроса (например для идемпотентности)",
         },

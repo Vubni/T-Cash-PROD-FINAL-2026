@@ -164,14 +164,14 @@ class Category_id_path(BaseModel):
         {
             "in": "query",
             "name": "offset",
-            "schema": {"type": "integer", "default": 0},
+            "type": "integer",
             "required": False,
             "description": "Смещение для пагинации",
         },
         {
             "in": "query",
             "name": "limit",
-            "schema": {"type": "integer", "default": 50},
+            "type": "integer",
             "required": False,
             "description": "Максимальное количество элементов в ответе",
         },
@@ -231,7 +231,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
         {
             "in": "path",
             "name": "category_id",
-            "schema": {"type": "string"},
+            "type": "string",
             "required": True,
             "description": "Идентификатор категории",
         }
@@ -263,7 +263,7 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
         {
             "in": "path",
             "name": "category_id",
-            "schema": {"type": "string"},
+            "type": "string",
             "required": True,
             "description": "Идентификатор категории",
         }

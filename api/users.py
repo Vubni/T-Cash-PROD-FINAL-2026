@@ -59,7 +59,8 @@ async def list_users(request: web.Request) -> web.Response:
         {
             "in": "path",
             "name": "user_id",
-            "schema": {"type": "string", "format": "uuid"},
+            "type": "string",
+            "format": "uuid",
             "required": True,
             "description": "UUID пользователя",
         },
