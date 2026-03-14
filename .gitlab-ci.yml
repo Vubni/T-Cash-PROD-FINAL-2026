@@ -65,7 +65,7 @@ deploy_test:
   only:
     - experiment
   variables:
-    DEPLOY_HOST: "158.160.90.4"
+    DEPLOY_HOST: "178.154.218.85"
   before_script:
     - apk add --no-cache openssh rsync
     - mkdir -p ~/.ssh
