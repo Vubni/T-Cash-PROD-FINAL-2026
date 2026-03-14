@@ -486,7 +486,6 @@ class SelectionSubmitBodySchema(Schema):
 
 
 class SelectionSubmitResponseSchema(Schema):
-    selection_id = fields.Str(required=True, description="Идентификатор запроса (из path)")
     user_id = fields.Str(required=True, description="UUID пользователя")
     category_ids = fields.List(
         fields.Str(),

@@ -76,8 +76,7 @@ if __name__ == "__main__":
         web.post(prefix + 'api/v1/admin/auth/approve', admin_auth.approve_admin),
 
         web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
-        web.get(prefix + 'api/v1/client/selection/{selection_id}', selection.get_selection),
-        web.post(prefix + 'api/v1/client/selection/{selection_id}', selection.confirm_selection),
+        web.post(prefix + 'api/v1/client/selection', selection.confirm_selection),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))

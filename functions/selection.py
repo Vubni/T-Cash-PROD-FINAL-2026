@@ -68,12 +68,11 @@ def _generate_selection_uuid() -> str:
 
 
 async def save_selection_batch(
-    user_id: str, category_ids: list[str], idempotency_key: str
+    user_id: str, category_ids: list[str], idempotency_key: str | None = None
 ) -> list[str]:
     """
     Сохраняет ровно 5 категорий в selections для пользователя.
     Старые записи по user_id удаляются, вставляются 5 новых.
-    idempotency_key — идентификатор запроса из path (для идемпотентности).
     Возвращает список созданных selection_id (UUID строк).
     """
     created_ids = []
