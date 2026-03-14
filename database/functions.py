@@ -15,18 +15,6 @@ async def init_db():
     return None
 
 
-async def ensure_selections_user_id_column() -> None:
-    """Добавляет колонку user_id в selections, если её нет (совместимость со старыми БД)."""
-    try:
-        async with Database() as db:
-            await db.execute(
-                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS user_id UUID NULL REFERENCES users(user_id)",
-                (),
-            )
-    except Exception as e:
-        logger.warning("Колонка selections.user_id: %s", e)
-
-
 async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
     if not os.path.exists(csv_path):
         logger.warning(f"Файл с пользователями не найден: {csv_path}")

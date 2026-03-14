@@ -1,7 +1,10 @@
+# Для тестового сервера: именованный том, чтобы при down -v он удалялся и при следующем up init.sql выполнился заново.
 services:
   db:
-    # В CI/CD хотим каждый деплой с чистой БД.
-    # Поэтому НЕ используем именованный volume db-data, а только init.sql.
     volumes:
+      - db-data-test:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  db-data-test:
 
