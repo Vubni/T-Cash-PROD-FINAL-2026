@@ -37,7 +37,7 @@ class UserExistsPath(BaseModel):
             "name": "user_id",
             "type": "integer",
             "required": True,
-            "description": "ID пользователя (BIGINT). Обязательный параметр пути.",
+            "description": "ID пользователя (UUID). Обязательный параметр пути.",
         },
     ],
 )

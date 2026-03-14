@@ -22,7 +22,7 @@ def row_to_category(item: dict) -> dict:
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "budget": item["budget_amount"],
+        "budget": {"amount": item["budget_amount"]},
         "rate": rate,
         "audience": {
             "segments": item["audience_segments"],
@@ -38,7 +38,7 @@ def row_to_category_list_item(item: dict) -> dict:
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "budget": item["budget_amount"],
+        "budget": {"amount": item["budget_amount"]},
         "rate": rate,
     }
 
