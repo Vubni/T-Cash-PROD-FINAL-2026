@@ -36,12 +36,13 @@ async def get_calculate_items(user_id: int) -> list[dict]:
             FROM categories LIMIT $1
         """
         categories = await db.execute_all(sql, (get_all_categories(),)) or []
+        category_names = [c["name"] for c in categories]
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{ML_SERVICE_URL.rstrip('/')}/predict",
                 json={
-                    "categories": categories,
+                    "categories": category_names,
                     "client_id": str(user_id),
                     "top_n": max(1, get_max_selection_count()),
                 },
