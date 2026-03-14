@@ -10,6 +10,9 @@ import uuid
 
 T = TypeVar("T", bound=BaseModel)
 
+# Для Swagger: эндпоинты с этой меткой требуют заголовок Authorization: Bearer <JWT админа>
+SECURITY_ADMIN_BEARER = [{"adminBearer": []}]
+
 def generate_trace_id() -> str:
     return str(uuid.uuid4())
 
@@ -157,10 +160,68 @@ class EmailError(Exception):
         super().__init__(self.message)
 
 
-def validate(model: type[T], require_auth: bool = False) -> Callable:
+async def _check_ordinary_admin(request: web.Request) -> web.Response | None:
+    """Проверка: авторизованный обычный (не супер) админ. Возвращает None при успехе, иначе response с ошибкой."""
+    payload = await core.check_admin_authorization(request)
+    if not payload:
+        return format_401_error(request, "Токен админа отсутствует или невалиден")
+    from functions import admin_users
+    admin = await admin_users.get_admin_by_id(payload.get("admin_id"))
+    if not admin or not admin.get("approved"):
+        return format_401_error(request, "Админ не найден или не одобрен")
+    if admin.get("main_admin"):
+        return format_403_error(
+            request,
+            "Супер-админ может только одобрять новых админов; управление категориями и правилами недоступно",
+        )
+    request["admin_payload"] = payload
+    return None
+
+
+async def _check_super_admin(request: web.Request) -> web.Response | None:
+    """Проверка: авторизованный супер-админ. Возвращает None при успехе, иначе response с ошибкой."""
+    payload = await core.check_admin_authorization(request)
+    if not payload:
+        return format_401_error(request, "Токен админа отсутствует или невалиден")
+    from functions import admin_users
+    admin = await admin_users.get_admin_by_id(payload.get("admin_id"))
+    if not admin or not admin.get("main_admin"):
+        return format_403_error(request, "Только супер-админ может одобрять новых админов")
+    request["admin_payload"] = payload
+    return None
+
+
+def require_ordinary_admin(
+    handler: Callable[[web.Request], Awaitable[web.Response]],
+) -> Callable[[web.Request], Awaitable[web.Response]]:
+    """Декоратор для эндпоинтов, доступных только обычному (одобренному, не супер) админу."""
+    @wraps(handler)
+    async def wrapper(request: web.Request) -> web.Response:
+        err = await _check_ordinary_admin(request)
+        if err is not None:
+            return err
+        return await handler(request)
+    return wrapper
+
+
+def validate(
+    model: type[T],
+    require_auth: bool = False,
+    require_admin: bool = False,
+    require_super_admin: bool = False,
+) -> Callable:
     def decorator(handler: Callable[[web.Request, Any], Awaitable[web.Response]]):
         @wraps(handler)
         async def wrapper(request: web.Request) -> web.Response:
+            if require_super_admin:
+                err = await _check_super_admin(request)
+                if err is not None:
+                    return err
+            elif require_admin:
+                err = await _check_ordinary_admin(request)
+                if err is not None:
+                    return err
+
             if require_auth:
                 payload = await core.check_authorization(request)
                 if not isinstance(payload, dict):

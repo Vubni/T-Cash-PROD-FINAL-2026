@@ -155,7 +155,8 @@ class Category_id_path(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Список категорий кэшбэка",
-    description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок.",
+    description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Список категорий получен", "schema": sh.CategoryListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -177,7 +178,7 @@ class Category_id_path(BaseModel):
         },
     ],
 )
-@validate.validate(Admin_categories_list)
+@validate.validate(Admin_categories_list, require_admin=True)
 async def list_categories(request: web.Request, parsed: Admin_categories_list) -> web.Response:
     try:
         items, total = await cat_fns.list_categories(parsed.offset, parsed.limit)
@@ -190,14 +191,15 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @docs(
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
-    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации.",
+    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Категория создана", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
 @request_schema(sh.CategoryCreateSchema)
-@validate.validate(Admin_category_create)
+@validate.validate(Admin_category_create, require_admin=True)
 async def create_category(request: web.Request, parsed: Admin_category_create) -> web.Response:
     try:
         response = await cat_fns.create_category(
@@ -222,7 +224,8 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
 @docs(
     tags=["Admin"],
     summary="Получить категорию кэшбэка",
-    description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений.",
+    description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория получена", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -237,7 +240,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
         }
     ],
 )
-@validate.validate(Category_id_path)
+@validate.validate(Category_id_path, require_admin=True)
 async def get_category(request: web.Request, parsed: Category_id_path) -> web.Response:
     try:
         response = await cat_fns.get_category(parsed.category_id)
@@ -254,7 +257,8 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию, статус и правило категории.",
+    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию, статус и правило категории. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -270,7 +274,7 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
     ],
 )
 @request_schema(sh.CategoryUpdateSchema)
-@validate.validate(Admin_category_update)
+@validate.validate(Admin_category_update, require_admin=True)
 async def update_category(request: web.Request, parsed: Admin_category_update) -> web.Response:
     try:
         response = await cat_fns.update_category(

@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS admin_users (
     admin_id   BIGSERIAL PRIMARY KEY,
-    main_admin BOOLEAN   NOT NULL,
+    main_admin BOOLEAN   NOT NULL DEFAULT FALSE,
     login      TEXT      NOT NULL UNIQUE,
     password   TEXT      NOT NULL,
     approved   BOOLEAN   NOT NULL DEFAULT FALSE

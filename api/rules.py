@@ -105,13 +105,14 @@ class Rule_id_path(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Список правил",
-    description="Возвращает список правил отбора (возраст, пол, заработок).",
+    description="Возвращает список правил отбора (возраст, пол, заработок). Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Список правил", "schema": sh.RuleListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
-@validate.validate(Rules_list)
+@validate.validate(Rules_list, require_admin=True)
 async def list_rules(request: web.Request, parsed: Rules_list) -> web.Response:
     try:
         items, total = await rules_fns.list_rules(parsed.offset, parsed.limit)
@@ -124,13 +125,14 @@ async def list_rules(request: web.Request, parsed: Rules_list) -> web.Response:
 @docs(
     tags=["Admin"],
     summary="Получить правило",
-    description="Возвращает одно правило по rule_id.",
+    description="Возвращает одно правило по rule_id. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Правило получено", "schema": sh.RuleDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
-@validate.validate(Rule_id_path)
+@validate.validate(Rule_id_path, require_admin=True)
 async def get_rule(request: web.Request, parsed: Rule_id_path) -> web.Response:
     try:
         response = await rules_fns.get_rule(parsed.rule_id)
@@ -147,14 +149,15 @@ async def get_rule(request: web.Request, parsed: Rule_id_path) -> web.Response:
 @docs(
     tags=["Admin"],
     summary="Создать правило",
-    description="Создаёт правило отбора: возраст мин/макс, пол, заработок.",
+    description="Создаёт правило отбора: возраст мин/макс, пол, заработок. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Правило создано", "schema": sh.RuleDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
 @request_schema(sh.RuleCreateSchema)
-@validate.validate(Rule_create)
+@validate.validate(Rule_create, require_admin=True)
 async def create_rule(request: web.Request, parsed: Rule_create) -> web.Response:
     try:
         response = await rules_fns.create_rule(
@@ -175,14 +178,15 @@ async def create_rule(request: web.Request, parsed: Rule_create) -> web.Response
 @docs(
     tags=["Admin"],
     summary="Изменить правило",
-    description="Частично обновляет правило.",
+    description="Частично обновляет правило. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Правило обновлено", "schema": sh.RuleDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
 @request_schema(sh.RuleUpdateSchema)
-@validate.validate(Rule_update)
+@validate.validate(Rule_update, require_admin=True)
 async def update_rule(request: web.Request, parsed: Rule_update) -> web.Response:
     try:
         path = Rule_id_path(rule_id=request.match_info["rule_id"])
