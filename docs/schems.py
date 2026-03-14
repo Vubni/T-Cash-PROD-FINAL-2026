@@ -537,6 +537,14 @@ class SelectionConfirmSchema(Schema):
     )
 
 
+class SelectionCurrentResponseSchema(Schema):
+    category_ids = fields.List(
+        fields.Str(),
+        required=True,
+        description="Массив UUID выбранных категорий (только id, без лишних полей).",
+    )
+
+
 class SelectionSubmitBodySchema(Schema):
     user_id = fields.Int(
         required=True,
@@ -550,18 +558,11 @@ class SelectionSubmitBodySchema(Schema):
 
 
 class SelectionSubmitResponseSchema(Schema):
-    user_id = fields.Int(required=True, description="BIGINT пользователя, для которого сохранён выбор. Обязательное поле.")
     category_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Сохранённый список UUID выбранных категорий (в том же порядке, что и в запросе). Обязательное поле.",
+        description="Сохранённый список UUID выбранных категорий (только id, в том же порядке что в запросе).",
     )
-    selection_ids = fields.List(
-        fields.Str(),
-        required=True,
-        description="UUID созданных записей выбора (по одной на каждую категорию). Соответствуют порядку category_ids. Нужны для последующего подтверждения и отображения. Обязательное поле.",
-    )
-    message = fields.Str(required=True, description="Текст подтверждения для пользователя (например, «Выбор сохранён»). Обязательное поле.")
 
 
 class SelectionConfirmResponseSchema(Schema):

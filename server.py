@@ -114,6 +114,7 @@ if __name__ == "__main__":
 
         web.post(prefix + '/client/calculate', calculate.calculate),
         
+        web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
         web.post(prefix + '/client/selection', selection.confirm_selection),
     ]
     for route in api_routes:

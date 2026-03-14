@@ -2,6 +2,7 @@ import aiohttp
 from database.database import Database
 from core import serialize_json
 from core import get_all_categories, logger
+from config import ML_SERVICE_URL
 
 
 async def get_calculate_items(user_id: int) -> list[dict]:
@@ -38,7 +39,7 @@ async def get_calculate_items(user_id: int) -> list[dict]:
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                "http://0.0.0.0:8008/predict",
+                f"{ML_SERVICE_URL.rstrip('/')}/predict",
                 json={"categories": categories, "client_id": user_id, "top_n": get_all_categories()},
             ) as response:
                 if response.status != 200:

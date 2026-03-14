@@ -64,6 +64,33 @@ class Admin_selection_settings(BaseModel):
 
 @docs(
     tags=["Client"],
+    summary="Получить текущий выбор категорий (только id)",
+    description="Возвращает массив category_id выбранных пользователем категорий. 404, если выбор ещё не делался.",
+    responses={
+        200: {"description": "Выбор есть", "schema": sh.SelectionCurrentResponseSchema},
+        404: {"description": "Пользователь не найден или выбор не делался"},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+async def get_current_selection(request: web.Request) -> web.Response:
+    try:
+        try:
+            user_id = validate.validate_user_id(request.match_info["user_id"], "user_id")
+        except ValueError as e:
+            return validate.format_400_error(request, message=str(e))
+        if not await users_fns.user_exists(user_id):
+            return validate.format_404_error(request, message="Пользователь не найден")
+        category_ids = await sel_fns.get_current_category_ids(user_id)
+        if category_ids is None:
+            return validate.format_404_error(request, message="Выбор категорий ещё не делался")
+        return web.json_response({"category_ids": category_ids}, status=200)
+    except Exception:
+        logger.exception("get_current_selection handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Client"],
     summary="Сохранить выбор ровно из N категорий",
     description="В теле передаётся user_id (BIGINT) и ровно N category_ids (UUID), где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля: user_id, category_ids (массив ровно из N UUID).",
     responses={
@@ -92,25 +119,19 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
                 ],
             )
 
-        created_selection_ids = await sel_fns.save_selection_batch(
-            parsed.user_id, parsed.category_ids
-        )
+        current = await sel_fns.get_current_category_ids(parsed.user_id)
+        if current is not None and len(current) == len(parsed.category_ids) and set(current) == set(parsed.category_ids):
+            return web.json_response({"category_ids": parsed.category_ids}, status=200)
+
+        await sel_fns.save_selection_batch(parsed.user_id, parsed.category_ids)
         await audit_fns.write_audit(
             entity_type="client",
             entity_id=str(parsed.user_id),
             action="selection",
             actor=str(parsed.user_id),
-            details={"category_ids": parsed.category_ids, "selection_ids": created_selection_ids},
+            details={"category_ids": parsed.category_ids},
         )
-        return web.json_response(
-            {
-                "user_id": parsed.user_id,
-                "category_ids": parsed.category_ids,
-                "selection_ids": created_selection_ids,
-                "message": "Выбор из 5 категорий сохранён",
-            },
-            status=200,
-        )
+        return web.json_response({"category_ids": parsed.category_ids}, status=200)
     except Exception:
         logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)

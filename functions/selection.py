@@ -4,39 +4,19 @@ from database.database import Database
 REQUIRED_SELECTION_COUNT = 5
 
 
-def row_to_selection_detail(row: dict) -> dict:
-    return {
-        "selection_id": str(row["selection_id"]),
-        "category_id": str(row["category_id"]),
-        "name": row["name"],
-        "subtitle": row["subtitle"],
-        "rate": {"min": row["rate_min"], "max": row["rate_max"]},
-        "expected_benefit_amount": None,
-        "budget_message": None,
-    }
-
-
-_SELECTION_JOIN_SQL = """
-    SELECT
-        s.selection_id,
-        s.category_id,
-        c.name,
-        c.subtitle,
-        c.rate_min,
-        c.rate_max
-    FROM selections s
-    JOIN categories c ON c.category_id = s.category_id
-    WHERE s.idempotency_key = $1
-"""
-
-
-async def get_selection(idempotency_key: str) -> list[dict] | None:
-    """Возвращает список записей выбора по ключу идемпотентности (selection_id из path)."""
+async def get_current_category_ids(user_id: int) -> list[str] | None:
+    """
+    Возвращает список category_id выбранных категорий пользователя (только id, в порядке записей).
+    None, если у пользователя нет выбора.
+    """
     async with Database() as db:
-        rows = await db.execute_all(_SELECTION_JOIN_SQL, (idempotency_key,)) or []
+        rows = await db.execute_all(
+            "SELECT category_id FROM selections WHERE user_id = $1::bigint ORDER BY created_at",
+            (user_id,),
+        ) or []
     if not rows:
         return None
-    return [row_to_selection_detail(r) for r in rows]
+    return [str(r["category_id"]) for r in rows]
 
 
 async def check_categories_exist(category_ids: list[str]) -> bool:
@@ -50,30 +30,16 @@ async def check_categories_exist(category_ids: list[str]) -> bool:
     return len(rows) == len(category_ids)
 
 
-IDEMPOTENCY_KEY_MAX_LENGTH = 128
-
-
-def validate_idempotency_key(key: str | None) -> None:
-    """Проверяет длину idempotency_key (VARCHAR(128) в БД)."""
-    if key is None:
-        return
-    if len(key) > IDEMPOTENCY_KEY_MAX_LENGTH:
-        raise ValueError(f"idempotency_key cannot exceed {IDEMPOTENCY_KEY_MAX_LENGTH} characters")
-
-
 def _generate_selection_uuid() -> str:
     return str(uuid.uuid4())
 
 
-async def save_selection_batch(
-    user_id: int, category_ids: list[str], idempotency_key: str | None = None
-) -> list[str]:
+async def save_selection_batch(user_id: int, category_ids: list[str]) -> list[str]:
     """
-    Сохраняет ровно 5 категорий в selections для пользователя.
-    Старые записи по user_id удаляются, вставляются 5 новых.
+    Сохраняет ровно N категорий в selections для пользователя.
+    Старые записи по user_id удаляются, вставляются новые.
     Возвращает список созданных selection_id (UUID строк).
     """
-    validate_idempotency_key(idempotency_key)
     created_ids = []
     async with Database() as db:
         await db.execute("DELETE FROM selections WHERE user_id = $1::bigint", (user_id,))
@@ -81,10 +47,10 @@ async def save_selection_batch(
             sel_id = _generate_selection_uuid()
             await db.execute(
                 """
-                INSERT INTO selections (selection_id, user_id, category_id, idempotency_key)
-                VALUES ($1, $2::bigint, $3, $4)
+                INSERT INTO selections (selection_id, user_id, category_id)
+                VALUES ($1, $2::bigint, $3)
                 """,
-                (sel_id, user_id, cat_id, idempotency_key),
+                (sel_id, user_id, cat_id),
             )
             created_ids.append(sel_id)
     return created_ids
