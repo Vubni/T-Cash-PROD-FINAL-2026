@@ -66,4 +66,4 @@ deploy_test:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete ./ ubuntu@158.160.20.196:${APP_DIR}
-    - ssh ubuntu@158.160.20.196 "cd ${APP_DIR} && docker compose up -d --build"
+    - ssh ubuntu@158.160.90.4 "cd ${APP_DIR} && docker compose up -d --build"
