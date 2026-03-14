@@ -25,7 +25,26 @@ async def request_logging_middleware(request: web.Request, handler):
         request.path_qs,
         request.remote,
     )
-    return await handler(request)
+    try:
+        response = await handler(request)
+    except web.HTTPException as ex:
+        # Логируем статус, если хендлер выбросил HTTP-исключение
+        logger.info(
+            "HTTP %s %s -> %s",
+            request.method,
+            request.path_qs,
+            ex.status,
+        )
+        raise
+
+    # Логируем статус успешного ответа
+    logger.info(
+        "HTTP %s %s -> %s",
+        request.method,
+        request.path_qs,
+        response.status,
+    )
+    return response
 
 
 async def handle_get_file(request: web.Request) -> web.Response:

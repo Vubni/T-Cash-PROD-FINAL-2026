@@ -45,7 +45,7 @@ class Selection_submit_body(BaseModel):
 @docs(
     tags=["Client"],
     summary="Сохранить выбор ровно из 5 категорий",
-    description="В теле передаётся user_id и ровно 5 category_ids; в selections создаётся 5 строк. **Обязательные** поля: user_id, category_ids (массив ровно из 5 UUID).",
+    description="В теле передаётся user_id (UUID) и ровно 5 category_ids (UUID); в selections создаётся 5 строк. **Обязательные** поля: user_id, category_ids (массив ровно из 5 UUID).",
     responses={
         200: {"description": "Выбор сохранён", "schema": sh.SelectionSubmitResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
