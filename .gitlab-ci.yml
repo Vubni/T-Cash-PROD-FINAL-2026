@@ -57,7 +57,7 @@ deploy_prod:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
-    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && docker compose up -d --build"
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose up -d --build"
 
 deploy_test:
   stage: deploy
@@ -79,4 +79,4 @@ deploy_test:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
-    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && docker compose up -d --build"
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose up -d --build"
