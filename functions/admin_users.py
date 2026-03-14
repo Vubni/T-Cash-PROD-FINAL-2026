@@ -34,7 +34,22 @@ async def get_admin_by_login(login: str) -> dict | None:
 
 
 async def ensure_main_admin(login: str, password: str) -> None:
-    await create_main_admin(login, password)
+    """
+    Гарантирует наличие главного админа.
+
+    Если таблицы admin_users ещё нет (например, init.sql не применился),
+    не падаем при старте сервера, а просто логируем предупреждение.
+    """
+    try:
+        await create_main_admin(login, password)
+    except Exception as e:
+        # Если нет таблицы admin_users, не блокируем запуск приложения.
+        msg = str(e)
+        if "UndefinedTableError" in msg or 'relation "admin_users" does not exist' in msg:
+            from config import logger
+            logger.warning("Таблица admin_users отсутствует, пропускаю ensure_main_admin: %s", e)
+            return
+        raise
 
 
 async def create_main_admin(login: str, password: str) -> dict | None:

@@ -13,6 +13,7 @@ from database.functions import (
     init_db,
     ensure_users_from_csv,
     ensure_selections_user_id_column,
+    ensure_categories_from_csv,
 )
 from functions import admin_users as admin_users_fns
 
@@ -81,6 +82,7 @@ if __name__ == "__main__":
         await admin_users_fns.ensure_main_admin(main_login, main_password)
         logger.info("Главный админ создан.")
         await ensure_users_from_csv()
+        await ensure_categories_from_csv()
         await ensure_selections_user_id_column()
 
     asyncio.run(startup())
