@@ -2,7 +2,16 @@
 
 ### Описание
 
-Backend‑сервис для MVP программы кэшбэка. Реализует админские ручки (категории, аудит) и клиентские ручки (расчёт категорий, выбор и подтверждение выбора).
+**Backend**
+
+API: **categories**, **rules**, **offers/run**, **selection**, **progress**, **audit**.
+
+Сервер гарантирует:
+- диапазоны ставок и лимиты;
+- идемпотентность и защиту от повторных действий (в т.ч. заголовок `Idempotency-Key` при подтверждении выбора);
+- проверку всех бюджетных инвариантов на сервере, а не только в интерфейсе.
+
+Реализует админские ручки (категории, правила, аудит) и клиентские (запуск офферов, выбор, подтверждение, прогресс).
 
 Стек:
 - Python + aiohttp
@@ -21,6 +30,10 @@ backend/
 │   ├── audit.py              # эндпоинты /api/v1/admin/audit
 │   ├── calculate.py          # эндпоинты /api/v1/client/calculate
 │   ├── categories.py         # эндпоинты /api/v1/admin/categories
+│   ├── icons.py              # загрузка иконок
+│   ├── offers.py             # эндпоинт /api/v1/client/offers/run
+│   ├── progress.py           # эндпоинт /api/v1/client/progress
+│   ├── rules.py              # эндпоинты /api/v1/admin/rules
 │   ├── selection.py          # эндпоинты /api/v1/client/selection/*
 │   └── validate.py           # схемы валидации и формат ошибок
 ├── database/
@@ -32,7 +45,7 @@ backend/
 │   └── schems.py             # marshmallow‑схемы для swagger и API
 ├── functions/                # служебные/потенциальные бизнес‑функции (пока пусто)
 ├── postgres/
-│   └── init.sql              # создание схемы БД (categories, selections, audit_log)
+│   └── init.sql              # создание схемы БД (rules, categories, selections, audit_log)
 ├── static/                   # статика и фронт (index.html и ассеты)
 ├── .gitignore
 ├── docker-compose.yml        # описание сервисов app + db
@@ -72,16 +85,16 @@ docker compose down
 ### API обзор
 
 Админские эндпоинты:
-- `GET  /api/v1/admin/categories` — список категорий кэшбэка.
-- `POST /api/v1/admin/categories` — создание категории.
-- `GET  /api/v1/admin/categories/{category_id}` — получение категории.
-- `PATCH /api/v1/admin/categories/{category_id}` — частичное обновление категории.
-- `GET  /api/v1/admin/audit` — журнал аудита изменений.
+- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}.
+- **rules**: `GET` / `POST` /api/v1/admin/rules, `GET` / `PATCH` /api/v1/admin/rules/{rule_id}.
+- `POST /api/v1/admin/icons/{icon_key}` — загрузка иконки.
+- **audit**: `GET /api/v1/admin/audit` — журнал аудита.
 
 Клиентские эндпоинты:
-- `POST /api/v1/client/calculate` — расчёт списка категорий для клиента.
-- `GET  /api/v1/client/selection/{selection_id}` — получение конкретного выбора.
-- `POST /api/v1/client/selection/{selection_id}` — подтверждение выбора (поддерживается `Idempotency-Key`).
+- **offers/run**: `POST /api/v1/client/offers/run` — запуск офферов (расчёт списка категорий для клиента).
+- `POST /api/v1/client/calculate` — расчёт списка категорий (альтернатива offers/run).
+- **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} — получение и подтверждение выбора (`Idempotency-Key`).
+- **progress**: `GET /api/v1/client/progress` — прогресс клиента по офферам.
 
 Все схемы запросов/ответов описаны через `docs/schems.py` и видны в Swagger.
 
@@ -94,40 +107,49 @@ docker compose down
   - создаёт aiohttp‑приложение;
   - подключает CORS и middleware валидации (`validation_middleware`);
   - настраивает Swagger (`/doc`, `/swagger.json`);
-  - регистрирует роуты из модулей `api.categories`, `api.audit`, `api.calculate`, `api.selection`;
+  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.calculate`, `api.offers`, `api.selection`, `api.progress`;
   - проксирует все остальные запросы на статику через `handle_get_file`.
 
 **Модули API**
-- `api/categories.py` — CRUD категории кэшбэка.
+- `api/categories.py` — CRUD категорий кэшбэка (с привязкой к правилу `rule_id`).
+- `api/rules.py` — CRUD правил отбора (возраст мин/макс, пол, заработок).
 - `api/audit.py` — чтение журнала аудита.
-- `api/calculate.py` — расчёт клиентского списка категорий по периоду.
-- `api/selection.py` — получение и подтверждение выбора.
-- `api/validate.py` — описания схем валидации и общий формат ошибок.
+- `api/calculate.py` — расчёт списка категорий для клиента.
+- `api/offers.py` — запуск офферов (`offers/run`).
+- `api/selection.py` — получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
+- `api/progress.py` — прогресс клиента.
+- `api/validate.py` — схемы валидации и формат ошибок.
 
 **База данных**
 
 PostgreSQL поднимается из `docker-compose.yml` и инициализируется скриптом `postgres/init.sql`.
 
 Схема:
+- Таблица `rules`
+  - `id` — внутренний автоинкрементный ID.
+  - `rule_id` — бизнес‑ID правила (уникальный).
+  - `min_age`, `max_age` — минимальный и максимальный возраст (nullable).
+  - `gender` — пол (nullable).
+  - `income` — заработок (nullable).
+  - `created_at`, `updated_at` — временные метки.
+
 - Таблица `categories`
   - `id` — внутренний автоинкрементный ID.
-  - `category_id` — бизнес‑ID категории (используется в API и связях).
+  - `category_id` — бизнес‑ID категории (уникальный).
   - `name`, `subtitle`, `icon_key` — метаданные категории.
   - `budget_amount` — общий бюджет.
   - `target_users` — целевое число уникальных пользователей в период.
-  - `avg_spend_per_user` — средний чек/траты одного пользователя по категории (заглушка для будущего ML).
-  - `audience_segments` — список сегментов аудитории, для которых категория доступна.
-  - `rule_personalized` — признак, что для категории вообще применяются персонализированные правила.
-  - `rule_budget_mode` — режим работы с бюджетом.
-  - `rule_fallback_message` — текст сообщения при недоступности.
-  - `created_at`, `updated_at` — системные временные метки.
+  - `avg_spend_per_user` — средний чек/траты одного пользователя по категории.
+  - `audience_segments` — список сегментов аудитории.
+  - `rule_id` — ссылка на `rules.rule_id` (правило отбора: возраст, пол, заработок).
+  - `created_at`, `updated_at` — временные метки.
 
 - Таблица `selections`
   - `id` — внутренний ID выбора.
   - `selection_id` — внешний ID выбора (отдаётся клиенту).
-  - `category_id` — ссылка на `categories.category_id`.
+  - `category_id` — ссылка на `categories.category_id` (TEXT).
   - `expected_benefit_amount` — ожидаемая выгода.
-  - `availability_status`, `availability_reason` — технический и человекочитаемый статусы доступности.
+  - `availability_status`, `availability_reason` — статусы доступности.
   - `idempotency_key` — ключ идемпотентности для подтверждения.
   - `created_at`, `updated_at` — временные метки.
 

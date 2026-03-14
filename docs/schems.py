@@ -219,18 +219,11 @@ class CategoryRateSchema(Schema):
 
 
 class CategoryRuleSchema(Schema):
-    personalized = fields.Bool(
-        required=True,
-        description="Признак, что категория участвует в персональном ранжировании",
-    )
-    budget_mode = fields.Str(
-        required=True,
-        description="Режим контроля бюджета, например hard_limit или soft_limit",
-    )
-    fallback_message = fields.Str(
-        required=True,
-        description="Текст, который можно показать пользователю, если категория недоступна",
-    )
+    rule_id = fields.Str(required=True, description="Идентификатор правила отбора")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст")
+    gender = fields.Str(allow_none=True, description="Пол")
+    income = fields.Int(allow_none=True, description="Заработок")
 
 
 class CategoryHistoryItemSchema(Schema):
@@ -289,18 +282,7 @@ class CategoryCreateSchema(Schema):
         required=True,
         description="Сегменты аудитории категории",
     )
-    rule_personalized = fields.Bool(
-        required=True,
-        description="Участвует ли категория в персональном подборе",
-    )
-    rule_budget_mode = fields.Str(
-        required=True,
-        description="Режим бюджетного контроля для категории",
-    )
-    rule_fallback_message = fields.Str(
-        required=True,
-        description="Сообщение для пользователя, если категория недоступна",
-    )
+    rule_id = fields.Str(required=True, description="Идентификатор правила отбора (возраст, пол, заработок)")
 
 
 class CategoryUpdateSchema(Schema):
@@ -315,12 +297,43 @@ class CategoryUpdateSchema(Schema):
         required=False,
         description="Новый список сегментов аудитории",
     )
-    rule_personalized = fields.Bool(required=False, description="Новый флаг персонализации")
-    rule_budget_mode = fields.Str(required=False, description="Новый режим бюджетного контроля")
-    rule_fallback_message = fields.Str(
-        required=False,
-        description="Новое fallback-сообщение для пользователя",
-    )
+    rule_id = fields.Str(required=False, description="Идентификатор правила отбора")
+
+
+class RuleDetailSchema(Schema):
+    rule_id = fields.Str(required=True, description="Идентификатор правила")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст")
+    gender = fields.Str(allow_none=True, description="Пол")
+    income = fields.Int(allow_none=True, description="Заработок")
+
+
+class RuleListItemSchema(Schema):
+    rule_id = fields.Str(required=True)
+    min_age = fields.Int(allow_none=True)
+    max_age = fields.Int(allow_none=True)
+    gender = fields.Str(allow_none=True)
+    income = fields.Int(allow_none=True)
+
+
+class RuleListResponseSchema(Schema):
+    items = fields.List(fields.Nested(RuleListItemSchema), required=True)
+    total = fields.Int(required=True)
+
+
+class RuleCreateSchema(Schema):
+    rule_id = fields.Str(required=False, description="Идентификатор правила (опционально, сгенерируется автоматически)")
+    min_age = fields.Int(required=False, allow_none=True)
+    max_age = fields.Int(required=False, allow_none=True)
+    gender = fields.Str(required=False, allow_none=True)
+    income = fields.Int(required=False, allow_none=True)
+
+
+class RuleUpdateSchema(Schema):
+    min_age = fields.Int(required=False, allow_none=True)
+    max_age = fields.Int(required=False, allow_none=True)
+    gender = fields.Str(required=False, allow_none=True)
+    income = fields.Int(required=False, allow_none=True)
 
 
 class AuditEventSchema(Schema):
@@ -410,3 +423,18 @@ class SelectionConfirmResponseSchema(Schema):
         description="Ожидаемая выгода после подтверждения выбора",
     )
     message = fields.Str(required=True, description="Комментарий backend по результату подтверждения")
+
+
+class ProgressItemSchema(Schema):
+    selection_id = fields.Str(description="Идентификатор выбора")
+    category_id = fields.Str(description="Идентификатор категории")
+    status = fields.Str(description="Статус прогресса")
+
+
+class ProgressListResponseSchema(Schema):
+    items = fields.List(
+        fields.Nested(ProgressItemSchema),
+        required=True,
+        description="Список записей прогресса",
+    )
+    total = fields.Int(required=True, description="Общее количество")

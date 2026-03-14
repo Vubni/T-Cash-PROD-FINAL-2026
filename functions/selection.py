@@ -11,8 +11,8 @@ def row_to_selection_detail(row: dict) -> dict:
     )
     icon_key = row["icon_key"]
     return {
-        "selection_id": row["selection_id"],
-        "category_id": row["category_id"],
+        "selection_id": str(row["selection_id"]),
+        "category_id": str(row["category_id"]),
         "name": row["name"],
         "subtitle": row["subtitle"],
         "icon_key": icon_key,

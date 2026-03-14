@@ -5,6 +5,17 @@ from database.database import Database
 from functions.rate import calc_rate
 
 
+def _rule_from_row(item: dict) -> dict:
+    r = item.get("rule_id")
+    return {
+        "rule_id": str(r) if r is not None else None,
+        "min_age": item.get("min_age"),
+        "max_age": item.get("max_age"),
+        "gender": item.get("gender"),
+        "income": item.get("income"),
+    }
+
+
 def row_to_category(item: dict) -> dict:
     rate = calc_rate(
         budget_amount=item.get("budget_amount") or 0,
@@ -13,7 +24,7 @@ def row_to_category(item: dict) -> dict:
     )
     icon_key = item["icon_key"]
     return {
-        "id": item["category_id"],
+        "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
         "icon_key": icon_key,
@@ -23,11 +34,7 @@ def row_to_category(item: dict) -> dict:
         "audience": {
             "segments": item["audience_segments"],
         },
-        "rule": {
-            "personalized": item["rule_personalized"],
-            "budget_mode": item["rule_budget_mode"],
-            "fallback_message": item["rule_fallback_message"],
-        },
+        "rule": _rule_from_row(item),
         "history": [],
     }
 
@@ -40,7 +47,7 @@ def row_to_category_list_item(item: dict) -> dict:
     )
     icon_key = item["icon_key"]
     return {
-        "id": item["category_id"],
+        "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
         "icon_key": icon_key,
@@ -51,18 +58,21 @@ def row_to_category_list_item(item: dict) -> dict:
 
 
 _CATEGORY_SELECT_FIELDS = """
-    category_id,
-    name,
-    subtitle,
-    icon_key,
-    budget_amount,
-    target_users,
-    avg_spend_per_user,
-    audience_segments,
-    rule_personalized,
-    rule_budget_mode,
-    rule_fallback_message
+    c.category_id,
+    c.name,
+    c.subtitle,
+    c.icon_key,
+    c.budget_amount,
+    c.target_users,
+    c.avg_spend_per_user,
+    c.audience_segments,
+    c.rule_id,
+    r.min_age,
+    r.max_age,
+    r.gender,
+    r.income
 """
+_CATEGORY_FROM_JOIN = "FROM categories c LEFT JOIN rules r ON r.rule_id = c.rule_id"
 
 
 async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
@@ -72,12 +82,10 @@ async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
         total = row_count["n"] if row_count else 0
 
         sql = f"""
-            SELECT
-                {_CATEGORY_SELECT_FIELDS}
-            FROM categories
-            ORDER BY created_at DESC, category_id
-            OFFSET $1
-            LIMIT $2
+            SELECT {_CATEGORY_SELECT_FIELDS}
+            {_CATEGORY_FROM_JOIN}
+            ORDER BY c.created_at DESC, c.category_id
+            OFFSET $1 LIMIT $2
         """
         rows = await db.execute_all(sql, (offset, limit)) or []
         items = [row_to_category_list_item(row) for row in rows]
@@ -94,33 +102,18 @@ async def create_category(
     target_users: int,
     avg_spend_per_user: int,
     audience_segments: list,
-    rule_personalized: bool,
-    rule_budget_mode: str,
-    rule_fallback_message: str,
+    rule_id: str,
 ) -> dict | None:
     if not category_id:
-        category_id = f"cat_{uuid4().hex[:8]}"
+        category_id = str(uuid4())
     async with Database() as db:
         sql = """
             INSERT INTO categories (
-                category_id,
-                name,
-                subtitle,
-                icon_key,
-                budget_amount,
-                target_users,
-                avg_spend_per_user,
-                audience_segments,
-                rule_personalized,
-                rule_budget_mode,
-                rule_fallback_message
+                category_id, name, subtitle, icon_key,
+                budget_amount, target_users, avg_spend_per_user,
+                audience_segments, rule_id
             )
-            VALUES (
-                $1, $2, $3, $4,
-                $6, $7,
-                $8, $9,
-                $10, $11
-            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         """
         await db.execute(
             sql,
@@ -133,9 +126,7 @@ async def create_category(
                 target_users,
                 avg_spend_per_user,
                 audience_segments,
-                rule_personalized,
-                rule_budget_mode,
-                rule_fallback_message,
+                rule_id,
             ),
         )
         return await _get_category(db, category_id)
@@ -148,10 +139,9 @@ async def get_category(category_id: str) -> dict | None:
 
 async def _get_category(db: Database, category_id: str) -> dict | None:
     sql = f"""
-        SELECT
-            {_CATEGORY_SELECT_FIELDS}
-        FROM categories
-        WHERE category_id = $1
+        SELECT {_CATEGORY_SELECT_FIELDS}
+        {_CATEGORY_FROM_JOIN}
+        WHERE c.category_id = $1
     """
     row = await db.execute(sql, (category_id,))
     if row is None:
@@ -169,9 +159,7 @@ async def update_category(
     target_users: int | None = None,
     avg_spend_per_user: int | None = None,
     audience_segments: list | None = None,
-    rule_personalized: bool | None = None,
-    rule_budget_mode: str | None = None,
-    rule_fallback_message: str | None = None,
+    rule_id: str | None = None,
 ) -> dict | None:
     fields = []
     params = []
@@ -188,9 +176,7 @@ async def update_category(
     add("target_users", target_users)
     add("avg_spend_per_user", avg_spend_per_user)
     add("audience_segments", audience_segments)
-    add("rule_personalized", rule_personalized)
-    add("rule_budget_mode", rule_budget_mode)
-    add("rule_fallback_message", rule_fallback_message)
+    add("rule_id", rule_id)
 
     if not fields:
         return await get_category(category_id)

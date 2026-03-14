@@ -47,13 +47,9 @@ class Admin_category_create(BaseModel):
     target_users: int
     avg_spend_per_user: int
     audience_segments: list[str]
-    rule_personalized: bool
-    rule_budget_mode: str
-    rule_fallback_message: str
+    rule_id: str
 
-    @field_validator(
-        "name", "subtitle", "icon_key", "rule_budget_mode", "rule_fallback_message"
-    )
+    @field_validator("name", "subtitle", "icon_key")
     @classmethod
     def check_non_empty_strings(cls, v: str) -> str:
         if not v or not v.strip():
@@ -61,6 +57,18 @@ class Admin_category_create(BaseModel):
         if len(v) > STRING_FIELD_MAX_LENGTH:
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
+
+    @field_validator("category_id")
+    @classmethod
+    def category_id_uuid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate.validate_uuid(v, "category_id")
+
+    @field_validator("rule_id")
+    @classmethod
+    def rule_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "rule_id")
 
     @field_validator("audience_segments")
     @classmethod
@@ -96,9 +104,14 @@ class Admin_category_update(BaseModel):
     target_users: Optional[int] = None
     avg_spend_per_user: Optional[int] = None
     audience_segments: Optional[list[str]] = None
-    rule_personalized: Optional[bool] = None
-    rule_budget_mode: Optional[str] = None
-    rule_fallback_message: Optional[str] = None
+    rule_id: Optional[str] = None
+
+    @field_validator("rule_id")
+    @classmethod
+    def rule_id_uuid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate.validate_uuid(v, "rule_id")
 
     @field_validator("audience_segments")
     @classmethod
@@ -135,12 +148,8 @@ class Category_id_path(BaseModel):
 
     @field_validator("category_id")
     @classmethod
-    def category_id_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("category_id cannot be empty")
-        if len(v) > STRING_FIELD_MAX_LENGTH:
-            raise ValueError(f"category_id cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
-        return v
+    def category_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "category_id")
 
 
 @docs(
@@ -200,9 +209,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             target_users=parsed.target_users,
             avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
-            rule_personalized=parsed.rule_personalized,
-            rule_budget_mode=parsed.rule_budget_mode,
-            rule_fallback_message=parsed.rule_fallback_message,
+            rule_id=parsed.rule_id,
         )
         if response is None:
             return validate.format_500_error(request)
@@ -275,9 +282,7 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             target_users=parsed.target_users,
             avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
-            rule_personalized=parsed.rule_personalized,
-            rule_budget_mode=parsed.rule_budget_mode,
-            rule_fallback_message=parsed.rule_fallback_message,
+            rule_id=parsed.rule_id,
         )
         if response is None:
             raise web.HTTPNotFound()

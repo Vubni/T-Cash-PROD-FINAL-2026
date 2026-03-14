@@ -3,12 +3,10 @@ from aiohttp_apispec import docs, request_schema
 from pydantic import BaseModel, field_validator
 
 from api import validate
+from api.validate import validate_uuid
 from config import logger
 from docs import schems as sh
 from functions import selection as sel_fns
-
-
-SELECTION_ID_MAX_LENGTH = 128
 
 
 class Selection_id_path(BaseModel):
@@ -18,12 +16,8 @@ class Selection_id_path(BaseModel):
 
     @field_validator("selection_id")
     @classmethod
-    def selection_id_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("selection_id cannot be empty")
-        if len(v) > SELECTION_ID_MAX_LENGTH:
-            raise ValueError(f"selection_id cannot exceed {SELECTION_ID_MAX_LENGTH} characters")
-        return v
+    def selection_id_uuid(cls, v: str) -> str:
+        return validate_uuid(v, "selection_id")
 
 
 class Selection_confirm(BaseModel):
@@ -34,12 +28,8 @@ class Selection_confirm(BaseModel):
 
     @field_validator("selection_id")
     @classmethod
-    def selection_id_not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("selection_id cannot be empty")
-        if len(v) > SELECTION_ID_MAX_LENGTH:
-            raise ValueError(f"selection_id cannot exceed {SELECTION_ID_MAX_LENGTH} characters")
-        return v
+    def selection_id_uuid(cls, v: str) -> str:
+        return validate_uuid(v, "selection_id")
 
 
 @docs(

@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, calculate, selection, icons)
+from api import (categories, audit, calculate, selection, icons, rules, offers, progress)
 
 from database.functions import init_db
 
@@ -74,12 +74,18 @@ if __name__ == "__main__":
         web.post(prefix + 'api/v1/admin/categories', categories.create_category),
         web.get(prefix + 'api/v1/admin/categories/{category_id}', categories.get_category),
         web.patch(prefix + 'api/v1/admin/categories/{category_id}', categories.update_category),
+        web.get(prefix + 'api/v1/admin/rules', rules.list_rules),
+        web.post(prefix + 'api/v1/admin/rules', rules.create_rule),
+        web.get(prefix + 'api/v1/admin/rules/{rule_id}', rules.get_rule),
+        web.patch(prefix + 'api/v1/admin/rules/{rule_id}', rules.update_rule),
         web.post(prefix + 'api/v1/admin/icons/{icon_key}', icons.upload_icon),
         web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
 
         web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
+        web.post(prefix + 'api/v1/client/offers/run', offers.run_offers),
         web.get(prefix + 'api/v1/client/selection/{selection_id}', selection.get_selection),
         web.post(prefix + 'api/v1/client/selection/{selection_id}', selection.confirm_selection),
+        web.get(prefix + 'api/v1/client/progress', progress.get_progress),
 
         web.get('/{path:.*}', handle_get_file)
     ]

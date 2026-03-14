@@ -53,7 +53,7 @@ def _build_icons_dir() -> str:
         },
     ],
 )
-async def upload_icon(request: web.Request) -> web.Response:
+async def Сupload_icon(request: web.Request) -> web.Response:
     try:
         icon_key = request.match_info.get("icon_key")
         if not icon_key:

@@ -1,6 +1,17 @@
+-- rule_id — единственный первичный ключ, отдельное поле id не нужно
+CREATE TABLE IF NOT EXISTS rules (
+    rule_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    min_age         INT         NULL,
+    max_age         INT         NULL,
+    gender          TEXT        NULL,
+    income          BIGINT      NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- category_id — первичный ключ
 CREATE TABLE IF NOT EXISTS categories (
-    id              BIGSERIAL PRIMARY KEY,
-    category_id     TEXT UNIQUE NOT NULL,
+    category_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     name            TEXT        NOT NULL,
     subtitle        TEXT        NOT NULL,
     icon_key        TEXT        NOT NULL,
@@ -8,23 +19,21 @@ CREATE TABLE IF NOT EXISTS categories (
     target_users    INT         NOT NULL,
     avg_spend_per_user BIGINT   NOT NULL,
     audience_segments TEXT[]    NOT NULL,
-    rule_personalized  BOOLEAN  NOT NULL,
-    rule_budget_mode   TEXT     NOT NULL,
-    rule_fallback_message TEXT  NOT NULL,
+    rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- selection_id — первичный ключ
 CREATE TABLE IF NOT EXISTS selections (
-    id                  BIGSERIAL   PRIMARY KEY,
-    selection_id        TEXT        UNIQUE NOT NULL,
-    category_id         UUID        NOT NULL REFERENCES categories(category_id),
+    selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    category_id     UUID        NOT NULL REFERENCES categories(category_id),
     expected_benefit_amount BIGINT  NULL,
     availability_status TEXT        NULL,
     availability_reason TEXT        NULL,
-    idempotency_key     TEXT        NULL,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    idempotency_key TEXT        NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (

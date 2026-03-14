@@ -138,6 +138,18 @@ def format_500_error(
 ) -> web.Response:
     return format_http_error(request, 500, "INTERNAL_ERROR", message, details=details)
 
+
+def validate_uuid(value: str, field_name: str = "id") -> str:
+    """Проверяет, что строка является валидным UUID. Возвращает нормализованную строку."""
+    if not value or not str(value).strip():
+        raise ValueError(f"{field_name} cannot be empty")
+    s = str(value).strip().lower()
+    try:
+        uuid.UUID(s)
+    except (ValueError, TypeError, AttributeError):
+        raise ValueError(f"{field_name} must be a valid UUID")
+    return s
+
 class EmailError(Exception):
     def __init__(self, message="Ошибка проверки email", errors=None):
         self.message = message
