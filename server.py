@@ -47,7 +47,6 @@ if __name__ == "__main__":
         await admin_users_fns.ensure_main_admin(main_login, main_password)
         logger.info("Главный админ создан.")
 
-        # Однократный импорт пользователей из CSV при первом запуске
         await ensure_users_from_csv()
 
     asyncio.run(startup())
@@ -84,7 +83,7 @@ if __name__ == "__main__":
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))
 
-    apispec_instance = setup_aiohttp_apispec(
+    setup_aiohttp_apispec(
         app,
         title="Cashback API",
         version="v1",
@@ -92,6 +91,22 @@ if __name__ == "__main__":
         swagger_path="/",
         in_place=True,
     )
+    admin_bearer_scheme = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT токен админа (получить через POST /api/v1/admin/auth/login). В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
+    }
+    swagger_dict = app["swagger_dict"]
+    if "components" in swagger_dict:
+        swagger_dict.setdefault("components", {}).setdefault("securitySchemes", {})["adminBearer"] = admin_bearer_scheme
+    else:
+        swagger_dict.setdefault("securityDefinitions", {})["adminBearer"] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": admin_bearer_scheme.get("description", ""),
+        }
 
     cors.add(app.router.add_route("GET", "/{path:.*}", handle_get_file))
 

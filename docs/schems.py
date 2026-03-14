@@ -337,9 +337,7 @@ class AdminLoginSchema(Schema):
 
 
 class AdminApproveSchema(Schema):
-    main_login = fields.Str(required=True, description="Логин главного администратора")
-    main_password = fields.Str(required=True, description="Пароль главного администратора")
-    admin_id = fields.Int(required=True, description="ID обычного администратора, которого нужно одобрить")
+    admin_id = fields.Int(required=True, description="ID обычного администратора, которого нужно одобрить (Authorization: Bearer <токен супер-админа>)")
 
 
 class AdminAuthResponseSchema(Schema):

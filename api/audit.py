@@ -32,7 +32,8 @@ class Audit_list(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Журнал аудита",
-    description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке.",
+    description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Журнал аудита получен", "schema": sh.AuditListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -68,7 +69,7 @@ class Audit_list(BaseModel):
         },
     ],
 )
-@validate.validate(Audit_list)
+@validate.validate(Audit_list, require_admin=True)
 async def list_audit(request: web.Request, parsed: Audit_list) -> web.Response:
     try:
         limit = parsed.limit or 50

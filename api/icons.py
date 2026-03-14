@@ -6,6 +6,8 @@ from config import logger
 from api import validate
 from docs import schems as sh
 
+from api.validate import require_ordinary_admin
+
 
 ALLOWED_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg", ".webp"}
 
@@ -27,8 +29,9 @@ def _build_icons_dir() -> str:
     description=(
         "Загружает файл иконки и сохраняет его на сервере в каталоге static/icons. "
         "Имя файла формируется из icon_key и расширения исходного файла. "
-        "Возвращает URL, по которому фронтенд может забирать иконку."
+        "Возвращает URL, по которому фронтенд может забирать иконку. Требуется JWT админа."
     ),
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {
             "description": "Иконка успешно загружена",
@@ -53,6 +56,7 @@ def _build_icons_dir() -> str:
         },
     ],
 )
+@require_ordinary_admin
 async def upload_icon(request: web.Request) -> web.Response:
     try:
         icon_key = request.match_info.get("icon_key")

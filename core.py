@@ -8,7 +8,11 @@ import jwt
 import uuid
 from config import SECRET, logger
 
+ADMIN_SCOPE = "admin"
+
+
 async def check_authorization(request: web.Request):
+    """Проверка Bearer-токена клиента (не админа)."""
     try:
         auth_header = request.headers.get("Authorization")
 
@@ -16,10 +20,39 @@ async def check_authorization(request: web.Request):
             parts = auth_header.split()
             if len(parts) == 2 and parts[0].lower() == "bearer":
                 result = check_token(parts[1])
+                if isinstance(result, dict) and result.get("scope") == ADMIN_SCOPE:
+                    return None
                 return result
         return None
     except Exception as e:
         logger.error("check_authorization error: ", e)
+        return None
+
+
+async def check_admin_authorization(request: web.Request) -> dict | None:
+    """
+    Проверка Bearer-токена админа. Возвращает payload с admin_id, main_admin, approved
+    или None при отсутствии/невалидном токене.
+    Принимает заголовок "Authorization: Bearer <token>" или "Authorization: <token>"
+    (для совместимости со Swagger UI, который может не добавлять префикс Bearer).
+    """
+    try:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return None
+        auth_header = auth_header.strip()
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+        else:
+            token = auth_header
+        if not token:
+            return None
+        decoded = check_token(token)
+        if not isinstance(decoded, dict) or decoded.get("scope") != ADMIN_SCOPE:
+            return None
+        return decoded
+    except Exception as e:
+        logger.error("check_admin_authorization error: %s", e)
         return None
 
 
