@@ -280,6 +280,7 @@ def validate(
                     "Слишком много полей в запросе",
                     details={"max_fields": MAX_REQUEST_FIELDS},
                 )
+            # user_id везде ожидается как UUID (строка); не приводим к int/float
             string_only_keys = {"user_id"}
             for key, value in all_data.items():
                 if key in string_only_keys:

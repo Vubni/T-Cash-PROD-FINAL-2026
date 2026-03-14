@@ -1,8 +1,20 @@
 import csv
 import os
+import uuid as uuid_module
 
 from config import logger
 from database.database import Database
+
+
+def _is_valid_uuid(value: str) -> bool:
+    """Проверяет, что строка является валидным UUID (user_id везде ожидается как UUID)."""
+    if not value or not value.strip():
+        return False
+    try:
+        uuid_module.UUID(str(value).strip())
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 async def init_db():
@@ -33,11 +45,16 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                     header_skipped = True
                     if row[0].strip().lower() != "user_id":
                         raw = row[0].strip()
-                        if raw:
+                        if raw and _is_valid_uuid(raw):
                             to_insert.append((raw,))
+                        elif raw:
+                            logger.warning("Пропуск невалидного user_id в CSV (ожидается UUID): %r", raw)
                     continue
                 raw = row[0].strip()
                 if not raw:
+                    continue
+                if not _is_valid_uuid(raw):
+                    logger.warning("Пропуск невалидного user_id в CSV (ожидается UUID): %r", raw)
                     continue
                 to_insert.append((raw,))
     except OSError as e:
