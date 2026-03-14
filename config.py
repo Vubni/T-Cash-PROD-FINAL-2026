@@ -8,7 +8,7 @@ DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"),
 SECRET = os.getenv("RANDOM_SECRET", "AJd27GqoS#gvxp@V")
 
 # URL ML-сервиса для расчёта категорий (на той же машине — 127.0.0.1, в Docker/k8s — имя сервиса)
-ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://127.0.0.1:8008")
+ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://host.docker.internal:8008")
 
 # Настройки выбора категорий (файл config/categories_config.json)
 CATEGORIES_CONFIG_PATH = os.getenv(
