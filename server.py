@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users)
+from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users, admin_auth)
 
 from database.functions import init_db
 
@@ -61,8 +61,12 @@ if __name__ == "__main__":
         web.post(prefix + 'api/v1/admin/icons/{icon_key}', icons.upload_icon),
         web.get(prefix + 'api/v1/admin/audit', audit.list_audit),
 
-        web.get(prefix + 'api/v1/users', users.list_users),
-        web.get(prefix + 'api/v1/users/{user_id}', users.get_user),
+        web.get(prefix + 'api/v1/users/{user_id}/exists', users.user_exists),
+
+        web.post(prefix + 'api/v1/admin/auth/register-main', admin_auth.register_main_admin),
+        web.post(prefix + 'api/v1/admin/auth/register', admin_auth.register_admin),
+        web.post(prefix + 'api/v1/admin/auth/login', admin_auth.login_admin),
+        web.post(prefix + 'api/v1/admin/auth/approve', admin_auth.approve_admin),
 
         web.post(prefix + 'api/v1/client/calculate', calculate.calculate),
         web.get(prefix + 'api/v1/client/selection/{selection_id}', selection.get_selection),

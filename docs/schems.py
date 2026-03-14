@@ -321,6 +321,34 @@ class RuleListResponseSchema(Schema):
     total = fields.Int(required=True)
 
 
+class UserExistsResponseSchema(Schema):
+    user_id = fields.Str(required=True, description="UUID пользователя")
+    exists = fields.Bool(required=True, description="True, если пользователь есть в таблице users")
+
+
+class AdminRegisterSchema(Schema):
+    login = fields.Str(required=True, description="Логин администратора")
+    password = fields.Str(required=True, description="Пароль администратора")
+
+
+class AdminLoginSchema(Schema):
+    login = fields.Str(required=True, description="Логин администратора")
+    password = fields.Str(required=True, description="Пароль администратора")
+
+
+class AdminApproveSchema(Schema):
+    main_login = fields.Str(required=True, description="Логин главного администратора")
+    main_password = fields.Str(required=True, description="Пароль главного администратора")
+    admin_id = fields.Int(required=True, description="ID обычного администратора, которого нужно одобрить")
+
+
+class AdminAuthResponseSchema(Schema):
+    admin_id = fields.Int(required=True, description="ID администратора")
+    login = fields.Str(required=True, description="Логин администратора")
+    main_admin = fields.Bool(required=True, description="Является ли администратор главным")
+    approved = fields.Bool(required=True, description="Одобрен ли администратор главным админом")
+
+
 class RuleCreateSchema(Schema):
     rule_id = fields.Str(required=False, description="Идентификатор правила (опционально, сгенерируется автоматически)")
     min_age = fields.Int(required=False, allow_none=True)

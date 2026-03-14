@@ -1,5 +1,4 @@
 """Журнал аудита: чтение записей из БД."""
-
 from database.database import Database
 
 

@@ -1,4 +1,4 @@
-"""Эндпоинты пользователей: список, получение по id (только id и name для фронта)."""
+"""Эндпоинт пользователей: проверить, существует ли пользователь по user_id."""
 
 from aiohttp import web
 from aiohttp_apispec import docs
@@ -10,12 +10,7 @@ from docs import schems as sh
 from functions import users as users_fns
 
 
-def _user_to_response(row: dict) -> dict:
-    """В ответ на фронт только id и name."""
-    return {"id": str(row["user_id"]), "name": row["name"]}
-
-
-class User_id_path(BaseModel):
+class UserExistsPath(BaseModel):
     model_config = {"extra": "forbid"}
 
     user_id: str
@@ -30,29 +25,10 @@ class User_id_path(BaseModel):
 
 @docs(
     tags=["Users"],
-    summary="Список пользователей",
-    description="Возвращает всех пользователей (id, name) для выбора на фронте.",
+    summary="Проверить, существует ли пользователь",
+    description="Возвращает флаг exists по user_id.",
     responses={
-        200: {"description": "Список пользователей", "schema": sh.UserListResponseSchema},
-        **sh.RESPONSES_HTTP_ERROR,
-    },
-)
-async def list_users(request: web.Request) -> web.Response:
-    try:
-        items = await users_fns.list_users()
-        out = [_user_to_response(r) for r in items]
-        return web.json_response({"items": out, "total": len(out)}, status=200)
-    except Exception:
-        logger.exception("list_users handler failed")
-        return validate.format_500_error(request)
-
-
-@docs(
-    tags=["Users"],
-    summary="Получить пользователя по id",
-    description="Возвращает одного пользователя (id, name). 404 если не найден.",
-    responses={
-        200: {"description": "Пользователь найден", "schema": sh.UserSchema},
+        200: {"description": "Результат проверки", "schema": sh.UserExistsResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
@@ -66,15 +42,12 @@ async def list_users(request: web.Request) -> web.Response:
         },
     ],
 )
-@validate.validate(User_id_path)
-async def get_user(request: web.Request, parsed: User_id_path) -> web.Response:
+@validate.validate(UserExistsPath)
+async def user_exists(request: web.Request, parsed: UserExistsPath) -> web.Response:
     try:
-        user = await users_fns.get_user(parsed.user_id)
-        if user is None:
-            raise web.HTTPNotFound()
-        return web.json_response(_user_to_response(user), status=200)
-    except web.HTTPNotFound:
-        raise
+        exists = await users_fns.user_exists(parsed.user_id)
+        return web.json_response({"user_id": parsed.user_id, "exists": exists}, status=200)
     except Exception:
-        logger.exception("get_user handler failed")
+        logger.exception("user_exists handler failed")
         return validate.format_500_error(request)
+

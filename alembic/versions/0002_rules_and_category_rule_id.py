@@ -2,7 +2,6 @@
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = "0002_rules_and_category_rule_id"
 down_revision = "0001_initial_schema"

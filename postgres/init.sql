@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- selection_id — первичный ключ
 CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
@@ -44,4 +43,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
     actor        TEXT        NOT NULL,
     details      JSONB       NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    user_id UUID PRIMARY KEY
+);
+
+
+CREATE TABLE IF NOT EXISTS admin_users (
+    admin_id   BIGSERIAL PRIMARY KEY,
+    main_admin BOOLEAN   NOT NULL,
+    login      TEXT      NOT NULL UNIQUE,
+    password   TEXT      NOT NULL,
+    approved   BOOLEAN   NOT NULL DEFAULT FALSE
 );
