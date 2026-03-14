@@ -281,8 +281,10 @@ def validate(
                     "Слишком много полей в запросе",
                     details={"max_fields": MAX_REQUEST_FIELDS},
                 )
-
+            string_only_keys = {"user_id"}
             for key, value in all_data.items():
+                if key in string_only_keys:
+                    continue
                 if isinstance(value, str):
                     if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
                         try:

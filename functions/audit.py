@@ -1,5 +1,29 @@
-"""Журнал аудита: чтение записей из БД."""
+"""Журнал аудита: чтение и запись записей в БД."""
+import json
+from config import logger
 from database.database import Database
+
+
+async def write_audit(
+    entity_type: str,
+    entity_id: str,
+    action: str,
+    actor: str,
+    details: dict | None = None,
+) -> None:
+    """Пишет одну запись в audit_log (действия клиента или админа). Не бросает исключений."""
+    try:
+        details_json = json.dumps(details) if details is not None else None
+        async with Database() as db:
+            await db.execute(
+                """
+                INSERT INTO audit_log (entity_type, entity_id, action, actor, details)
+                VALUES ($1, $2, $3, $4, $5::jsonb)
+                """,
+                (entity_type, entity_id, action, actor, details_json),
+            )
+    except Exception as e:
+        logger.warning("Ошибка записи в audit_log: %s", e)
 
 
 async def list_audit(

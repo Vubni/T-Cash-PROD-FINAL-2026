@@ -4,7 +4,7 @@ from database.database import Database
 from functions.rate import calc_rate
 
 
-async def get_calculate_items(user_id: int) -> list[dict]:
+async def get_calculate_items(user_id: str) -> list[dict]:
     """
     Возвращает для пользователя его выборы (selections) с данными категории.
     Если выборов нет — возвращает все категории как доступные варианты.
@@ -22,7 +22,7 @@ async def get_calculate_items(user_id: int) -> list[dict]:
                 c.budget_amount
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
-            WHERE s.user_id = $1
+            WHERE s.user_id = $1::uuid
         """
         rows = await db.execute_all(sql, (user_id,)) or []
 

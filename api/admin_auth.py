@@ -57,6 +57,30 @@ class AdminApproveBody(BaseModel):
         return v
 
 
+class EmptyBody(BaseModel):
+    model_config = {"extra": "ignore"}
+
+
+@docs(
+    tags=["Admin"],
+    summary="Список заявок на админа",
+    description="Возвращает список админов с approved = false (только для супер-админа).",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Список заявок", "schema": sh.PendingAdminsResponseSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@validate.validate(EmptyBody, require_super_admin=True)
+async def list_pending(request: web.Request, parsed: EmptyBody) -> web.Response:
+    try:
+        items = await admin_users.list_pending_admins()
+        return web.json_response({"items": items}, status=200)
+    except Exception:
+        logger.exception("list_pending handler failed")
+        return validate.format_500_error(request)
+
+
 @docs(
     tags=["Admin"],
     summary="Регистрация обычного админа (заявка)",

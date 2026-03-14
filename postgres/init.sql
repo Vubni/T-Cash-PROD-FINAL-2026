@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID        NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
     expected_benefit_amount BIGINT  NULL,
     availability_status TEXT        NULL,
@@ -43,10 +44,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS users (
-    user_id BIGINT PRIMARY KEY
-);
 
+INSERT INTO rules (rule_id, min_age, max_age, gender, income)
+VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
+ON CONFLICT (rule_id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS admin_users (
     admin_id   BIGSERIAL PRIMARY KEY,
