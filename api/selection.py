@@ -5,6 +5,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from api import validate
 from config import logger
 from docs import schems as sh
+from functions import audit as audit_fns
 from functions import selection as sel_fns
 from functions import users as users_fns
 
@@ -15,15 +16,13 @@ REQUIRED_SELECTION_COUNT = 5
 class Selection_submit_body(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: int
+    user_id: str
     category_ids: list[str]
 
     @field_validator("user_id")
     @classmethod
-    def user_id_positive(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("user_id должен быть положительным целым числом")
-        return v
+    def user_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "user_id")
 
     @model_validator(mode="after")
     def exactly_five_categories(self) -> "Selection_submit_body":
@@ -69,9 +68,16 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
         created_selection_ids = await sel_fns.save_selection_batch(
             parsed.user_id, parsed.category_ids
         )
+        await audit_fns.write_audit(
+            entity_type="client",
+            entity_id=str(parsed.user_id),
+            action="selection",
+            actor=str(parsed.user_id),
+            details={"category_ids": parsed.category_ids, "selection_ids": created_selection_ids},
+        )
         return web.json_response(
             {
-                "user_id": parsed.user_id,
+                "user_id": str(parsed.user_id),
                 "category_ids": parsed.category_ids,
                 "selection_ids": created_selection_ids,
                 "message": "Выбор из 5 категорий сохранён",

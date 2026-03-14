@@ -62,7 +62,7 @@ def _generate_selection_uuid() -> str:
 
 
 async def save_selection_batch(
-    user_id: int, category_ids: list[str], idempotency_key: str | None = None
+    user_id: str, category_ids: list[str], idempotency_key: str | None = None
 ) -> list[str]:
     """
     Сохраняет ровно 5 категорий в selections для пользователя.
@@ -71,13 +71,13 @@ async def save_selection_batch(
     """
     created_ids = []
     async with Database() as db:
-        await db.execute("DELETE FROM selections WHERE user_id = $1", (user_id,))
+        await db.execute("DELETE FROM selections WHERE user_id = $1::uuid", (user_id,))
         for cat_id in category_ids:
             sel_id = _generate_selection_uuid()
             await db.execute(
                 """
                 INSERT INTO selections (selection_id, user_id, category_id, idempotency_key)
-                VALUES ($1, $2, $3, $4)
+                VALUES ($1, $2::uuid, $3, $4)
                 """,
                 (sel_id, user_id, cat_id, idempotency_key),
             )

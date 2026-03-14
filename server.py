@@ -9,8 +9,13 @@ from config import logger
 import asyncio
 from api import (categories, audit, calculate, selection, icons, rules, offers, progress, users, admin_auth)
 
-from database.functions import init_db, ensure_users_from_csv
+from database.functions import (
+    init_db,
+    ensure_users_from_csv,
+    ensure_selections_user_id_column,
+)
 from functions import admin_users as admin_users_fns
+from functions import users as users_fns
 
 
 async def handle_get_file(request: web.Request) -> web.Response:
@@ -46,8 +51,9 @@ if __name__ == "__main__":
         main_password = os.environ.get("MAIN_ADMIN_PASSWORD", "admin")
         await admin_users_fns.ensure_main_admin(main_login, main_password)
         logger.info("Главный админ создан.")
-
         await ensure_users_from_csv()
+        await users_fns.ensure_test_user()
+        await ensure_selections_user_id_column()
 
     asyncio.run(startup())
 
