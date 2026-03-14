@@ -19,14 +19,10 @@ services:
       DB_PASSWORD: password
       DB_DB: prod
       RANDOM_SECRET: "AJd27GqoS#gvxp@V"
-      # ML на хосте (порт 80): контейнер обращается к хосту через host.docker.internal
-      # Если ML в этом же compose как сервис ml — задайте ML_SERVICE_URL=http://ml:80
-      ML_SERVICE_URL: "http://host.docker.internal:80"
     depends_on:
       - db
     ports:
       - "8080:8080"
-    # Чтобы с контейнера достучаться до сервисов на хосте (в т.ч. другой контейнер на порту 80)
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
