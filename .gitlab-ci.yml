@@ -6,7 +6,6 @@ stages:
   - deploy
 
 variables:
-  SSH_KNOWN_HOSTS: "178.154.217.140 158.160.90.4"
   APP_DIR: "/home/ubuntu/backend"
 
 test:
@@ -43,27 +42,41 @@ deploy_prod:
   image: alpine:latest
   only:
     - master
+  variables:
+    DEPLOY_HOST: "178.154.217.140"
   before_script:
     - apk add --no-cache openssh rsync
     - mkdir -p ~/.ssh
-    - echo "$SSH_KNOWN_HOSTS" | xargs -n1 ssh-keyscan -H >> ~/.ssh/known_hosts
+    - ssh-keyscan -H ${DEPLOY_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
+    - |
+      if [ -z "$PROD_SSH_PRIVATE_KEY" ]; then
+        echo "ERROR: PROD_SSH_PRIVATE_KEY is not set in CI/CD variables (Settings -> CI/CD -> Variables)"
+        exit 1
+      fi
     - echo "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
   script:
-    - rsync -az --delete ./ ubuntu@178.154.217.140:${APP_DIR}
-    - ssh ubuntu@178.154.217.140 "cd ${APP_DIR} && docker compose up -d --build"
+    - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && docker compose up -d --build"
 
 deploy_test:
   stage: deploy
   image: alpine:latest
   only:
     - experiment
+  variables:
+    DEPLOY_HOST: "158.160.90.4"
   before_script:
     - apk add --no-cache openssh rsync
     - mkdir -p ~/.ssh
-    - echo "$SSH_KNOWN_HOSTS" | xargs -n1 ssh-keyscan -H >> ~/.ssh/known_hosts
+    - ssh-keyscan -H ${DEPLOY_HOST} >> ~/.ssh/known_hosts 2>/dev/null || true
+    - |
+      if [ -z "$TEST_SSH_PRIVATE_KEY" ]; then
+        echo "ERROR: TEST_SSH_PRIVATE_KEY is not set in CI/CD variables (Settings -> CI/CD -> Variables)"
+        exit 1
+      fi
     - echo "$TEST_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
     - chmod 600 ~/.ssh/id_rsa
   script:
-    - rsync -az --delete ./ ubuntu@158.160.90.4:${APP_DIR}
-    - ssh ubuntu@158.160.90.4 "cd ${APP_DIR} && docker compose up -d --build"
+    - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && docker compose up -d --build"
