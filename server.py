@@ -71,18 +71,8 @@ async def handle_get_file(request: web.Request) -> web.Response:
     return web.HTTPNotFound()
 
 
-if __name__ == "__main__":
-    async def startup():
-        await init_db()
-        main_login = os.environ.get("MAIN_ADMIN_LOGIN", "admin")
-        main_password = os.environ.get("MAIN_ADMIN_PASSWORD", "admin")
-        await admin_users_fns.ensure_main_admin(main_login, main_password)
-        logger.info("Главный админ создан.")
-        await ensure_users_from_csv()
-        await ensure_categories_from_csv()
-
-    asyncio.run(startup())
-
+def create_app() -> web.Application:
+    """Создаёт и возвращает aiohttp Application (для запуска и для тестов)."""
     app = web.Application()
 
     cors = aiohttp_cors.setup(app, defaults={
@@ -113,7 +103,9 @@ if __name__ == "__main__":
         web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
         web.post(prefix + '/client/calculate', calculate.calculate),
-        
+        web.post(prefix + '/offers/run', offers.run_offers),
+        web.get(prefix + '/progress', progress.get_progress),
+
         web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
         web.post(prefix + '/client/selection', selection.confirm_selection),
     ]
@@ -149,7 +141,23 @@ if __name__ == "__main__":
 
     app.middlewares.append(request_logging_middleware)
     app.middlewares.append(validation_middleware)
-    
+
+    return app
+
+
+if __name__ == "__main__":
+    async def startup():
+        await init_db()
+        main_login = os.environ.get("MAIN_ADMIN_LOGIN", "admin")
+        main_password = os.environ.get("MAIN_ADMIN_PASSWORD", "admin")
+        await admin_users_fns.ensure_main_admin(main_login, main_password)
+        logger.info("Главный админ создан.")
+        await ensure_users_from_csv()
+        await ensure_categories_from_csv()
+
+    asyncio.run(startup())
+
+    app = create_app()
     logger.info("Запуск сервера. . .")
     web.run_app(
         app,
