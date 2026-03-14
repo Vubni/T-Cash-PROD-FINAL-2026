@@ -354,12 +354,30 @@ class AuditListResponseSchema(Schema):
     total = fields.Int(required=True, description="Количество событий в ответе")
 
 
+class UserSchema(Schema):
+    id = fields.Str(required=True, description="UUID пользователя")
+    name = fields.Str(required=True, description="Имя пользователя")
+
+
+class UserListResponseSchema(Schema):
+    items = fields.List(
+        fields.Nested(UserSchema),
+        required=True,
+        description="Список пользователей",
+    )
+    total = fields.Int(required=True, description="Количество")
+
+
 class CalculateRequestSchema(Schema):
-    pass
+    user_id = fields.Str(required=True, description="UUID пользователя (выбор на фронте)")
 
 
 class CalculateCategoryItemSchema(Schema):
-    selection_id = fields.Str(required=True, description="Идентификатор выбора для дальнейшего перехода в selection")
+    selection_id = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Идентификатор выбора (если уже сохранён) или null для варианта категории",
+    )
     category_id = fields.Str(required=True, description="Идентификатор категории")
     name = fields.Str(required=True, description="Название категории")
     subtitle = fields.Str(required=True, description="Подзаголовок категории")
@@ -367,12 +385,14 @@ class CalculateCategoryItemSchema(Schema):
     icon_url = fields.Str(required=False, description="Путь до иконки категории")
     rate = fields.Nested(CategoryRateSchema, required=True)
     expected_benefit_amount = fields.Float(
-        required=True,
-        description="Ожидаемая выгода пользователя по категории",
+        required=False,
+        allow_none=True,
+        description="Ожидаемая выгода по категории (null если ещё не выбран)",
     )
     availability_status = fields.Str(
-        required=True,
-        description="Статус доступности категории, например available или budget_limited",
+        required=False,
+        allow_none=True,
+        description="Статус доступности: available, budget_limited и т.д.",
     )
     availability_reason = fields.Str(
         required=False,
@@ -382,10 +402,11 @@ class CalculateCategoryItemSchema(Schema):
 
 
 class CalculateResponseSchema(Schema):
+    user_id = fields.Str(required=True, description="Пользователь, для которого рассчитано")
     items = fields.List(
         fields.Nested(CalculateCategoryItemSchema),
         required=True,
-        description="Список всех категорий, возвращённых calculate",
+        description="Категории/выборы для пользователя за период",
     )
 
 
@@ -413,6 +434,30 @@ class SelectionConfirmSchema(Schema):
         required=False,
         description="Флаг подтверждения выбора. По умолчанию true",
     )
+
+
+class SelectionSubmitBodySchema(Schema):
+    user_id = fields.Str(required=True, description="UUID пользователя")
+    category_ids = fields.List(
+        fields.Str(),
+        required=True,
+        description="Ровно 5 идентификаторов категорий (UUID)",
+    )
+
+
+class SelectionSubmitResponseSchema(Schema):
+    selection_id = fields.Str(required=True, description="Идентификатор запроса (из path)")
+    category_ids = fields.List(
+        fields.Str(),
+        required=True,
+        description="Сохранённые 5 категорий",
+    )
+    selection_ids = fields.List(
+        fields.Str(),
+        required=True,
+        description="Созданные selection_id для каждой из 5 строк",
+    )
+    message = fields.Str(required=True, description="Подтверждение сохранения")
 
 
 class SelectionConfirmResponseSchema(Schema):
