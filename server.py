@@ -1,10 +1,10 @@
 import os
 from aiohttp import web
-from aiohttp_apispec import setup_aiohttp_apispec, validation_middleware
+from aiohttp_apispec import docs, setup_aiohttp_apispec, validation_middleware
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import categories, audit, selection, users, admin_auth, calculate, rules
+from api import categories, audit, selection, users, admin_auth, calculate
 
 from database.database import Database
 from database.functions import (
@@ -18,11 +18,38 @@ from database.functions import (
 from functions import admin_users as admin_users_fns
 
 
+@docs(
+    tags=["Health"],
+    summary="Liveness",
+    description="Проверка, что процесс жив. Всегда 200 при рабочем приложении. Для Kubernetes liveness probe.",
+    responses={200: {"description": "Сервис запущен", "schema": {"type": "object", "properties": {"status": {"type": "string", "example": "ok"}}}}},
+)
 async def health_liveness(_request: web.Request) -> web.Response:
     """Liveness: процесс жив. Всегда 200 при рабочем приложении."""
     return web.json_response({"status": "ok"}, status=200)
 
 
+@docs(
+    tags=["Health"],
+    summary="Readiness",
+    description="Проверка готовности к приёму трафика (подключение к БД). Для Kubernetes readiness probe. 503 при недоступности БД.",
+    responses={
+        200: {
+            "description": "Готов к приёму трафика",
+            "schema": {
+                "type": "object",
+                "properties": {"status": {"type": "string"}, "database": {"type": "string"}},
+            },
+        },
+        503: {
+            "description": "БД недоступна",
+            "schema": {
+                "type": "object",
+                "properties": {"status": {"type": "string"}, "database": {"type": "string"}, "detail": {"type": "string"}},
+            },
+        },
+    },
+)
 async def health_ready(request: web.Request) -> web.Response:
     """Readiness: приложение готово принимать трафик (проверка БД)."""
     try:
@@ -114,16 +141,15 @@ def create_app() -> web.Application:
         web.post(prefix + "/admin/categories", categories.create_category),
         web.get(prefix + "/admin/categories/{category_id}", categories.get_category),
         web.post(prefix + "/admin/categories/{category_id}/icon", categories.upload_category_icon),
+        web.get(prefix + "/admin/categories/{category_id}/rule", categories.get_category_rule),
         web.post(prefix + "/admin/categories/{category_id}/rule", categories.create_category_rule),
+        web.patch(prefix + "/admin/categories/{category_id}/rule", categories.update_category_rule),
+        web.delete(prefix + "/admin/categories/{category_id}/rule", categories.delete_category_rule),
         web.patch(prefix + "/admin/categories/{category_id}", categories.update_category),
         web.post(prefix + "/admin/categories/{category_id}/run", categories.run_category),
         web.post(prefix + "/admin/categories/{category_id}/pause", categories.pause_category),
         web.delete(prefix + "/admin/categories/{category_id}/archive", categories.archive_category),
         web.get(prefix + "/admin/categories/{category_id}/audit", audit.list_audit),
-        web.get(prefix + "/admin/rules", rules.list_rules),
-        web.post(prefix + "/admin/rules", rules.create_rule),
-        web.get(prefix + "/admin/rules/{rule_id}", rules.get_rule),
-        web.patch(prefix + "/admin/rules/{rule_id}", rules.update_rule),
         web.get(prefix + "/admin/categories/settings", selection.get_selection_settings),
         web.post(prefix + "/admin/categories/settings", selection.update_selection_settings),
 
@@ -146,7 +172,7 @@ def create_app() -> web.Application:
         title="Cashback API",
         version="v1",
         url="/swagger.json",
-        swagger_path="/",
+        swagger_path="/doc",
         in_place=True,
     )
     admin_bearer_scheme = {
@@ -162,6 +188,13 @@ def create_app() -> web.Application:
         "description": "JWT токен пользователя (получить через GET /api/v1/users/{user_id}/auth). В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
     }
     swagger_dict = app["swagger_dict"]
+    if "info" not in swagger_dict:
+        swagger_dict["info"] = {}
+    swagger_dict["info"].setdefault(
+        "description",
+        "API кэшбэка: админка категорий и правил отбора, расчёт офферов для клиента, подтверждение выбора категорий. "
+        "Авторизация: JWT админа (adminBearer) или JWT пользователя (userBearer). Спецификация: /swagger.json.",
+    )
     if "components" in swagger_dict:
         components = swagger_dict.setdefault("components", {})
         security_schemes = components.setdefault("securitySchemes", {})

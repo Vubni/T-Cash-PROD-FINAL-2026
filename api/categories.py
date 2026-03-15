@@ -89,7 +89,6 @@ class Admin_category_update(BaseModel):
     icon_path: Optional[str] = None
     rate_min: Optional[int] = None
     rate_max: Optional[int] = None
-    rule_id: Optional[str] = None
     status: Optional[str] = None
 
     @field_validator("name", "subtitle")
@@ -115,13 +114,6 @@ class Admin_category_update(BaseModel):
         if len(v) > STRING_FIELD_MAX_LENGTH:
             raise ValueError(f"icon_path cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
-
-    @field_validator("rule_id")
-    @classmethod
-    def rule_id_uuid(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        return validate.validate_uuid(v, "rule_id")
 
     @field_validator("rate_min", "rate_max")
     @classmethod
@@ -378,6 +370,74 @@ async def upload_category_icon(request: web.Request, parsed: Category_id_path) -
         return validate.format_500_error(request)
 
 
+class Category_rule_update(BaseModel):
+    """Path: category_id. Body: опциональные поля правила."""
+
+    model_config = {"extra": "forbid"}
+
+    category_id: str
+    min_age: Optional[int] = None
+    max_age: Optional[int] = None
+    gender: Optional[str] = None
+    income: Optional[int] = None
+
+    @field_validator("gender")
+    @classmethod
+    def gender_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        if v.strip().lower() not in GENDER_ALLOWED:
+            raise ValueError(f"gender must be one of: {', '.join(GENDER_ALLOWED)}")
+        return v.strip().lower()
+
+    @field_validator("min_age", "max_age")
+    @classmethod
+    def age_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("age must be non-negative")
+        return v
+
+    @field_validator("income")
+    @classmethod
+    def income_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("income must be non-negative")
+        return v
+
+    @field_validator("category_id")
+    @classmethod
+    def category_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "category_id")
+
+
+@docs(
+    tags=["Admin"],
+    summary="Получить правило категории",
+    description="Возвращает правило отбора (возраст, пол, заработок), привязанное к категории. Требуется JWT админа. 404, если у категории нет правила.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Правило получено", "schema": sh.RuleDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {"in": "path", "name": "category_id", "type": "string", "required": True, "description": "Идентификатор категории (UUID)."},
+    ],
+)
+@validate.validate(Category_id_path, require_admin=True)
+async def get_category_rule(request: web.Request, parsed: Category_id_path) -> web.Response:
+    try:
+        category = await cat_fns.get_category(parsed.category_id)
+        if category is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        rule = category.get("rule")
+        if not rule or not rule.get("rule_id"):
+            return validate.format_404_error(request, message="У категории нет правила")
+        return web.json_response(rule, status=200)
+    except Exception:
+        logger.exception("get_category_rule handler failed")
+        return validate.format_500_error(request)
+
+
 @docs(
     tags=["Admin"],
     summary="Создать правило и привязать к категории",
@@ -405,7 +465,6 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         if category is None:
             return validate.format_404_error(request, message="Категория не найдена")
         rule = await rules_fns.create_rule(
-            rule_id=parsed.rule_id,
             min_age=parsed.min_age,
             max_age=parsed.max_age,
             gender=parsed.gender,
@@ -424,8 +483,77 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
 
 @docs(
     tags=["Admin"],
+    summary="Изменить правило категории",
+    description="Частично обновляет правило отбора, привязанное к категории. Требуется JWT админа. Все поля тела опциональны.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Правило обновлено", "schema": sh.RuleDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {"in": "path", "name": "category_id", "type": "string", "required": True, "description": "Идентификатор категории (UUID)."},
+    ],
+)
+@request_schema(sh.RuleUpdateSchema)
+@validate.validate(Category_rule_update, require_admin=True)
+async def update_category_rule(request: web.Request, parsed: Category_rule_update) -> web.Response:
+    try:
+        category_id = parsed.category_id
+        category = await cat_fns.get_category(category_id)
+        if category is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        rule_id = (category.get("rule") or {}).get("rule_id")
+        if not rule_id:
+            return validate.format_404_error(request, message="У категории нет правила")
+        response = await rules_fns.update_rule(
+            rule_id,
+            min_age=parsed.min_age,
+            max_age=parsed.max_age,
+            gender=parsed.gender,
+            income=parsed.income,
+        )
+        if response is None:
+            return validate.format_404_error(request, message="Правило не найдено")
+        return web.json_response(response, status=200)
+    except Exception:
+        logger.exception("update_category_rule handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
+    summary="Удалить правило категории",
+    description="Отвязывает и удаляет правило отбора у категории. Требуется JWT админа. 404, если у категории нет правила.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        204: {"description": "Правило удалено"},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {"in": "path", "name": "category_id", "type": "string", "required": True, "description": "Идентификатор категории (UUID)."},
+    ],
+)
+@validate.validate(Category_id_path, require_admin=True)
+async def delete_category_rule(request: web.Request, parsed: Category_id_path) -> web.Response:
+    try:
+        category = await cat_fns.get_category(parsed.category_id)
+        if category is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        rule_id = (category.get("rule") or {}).get("rule_id")
+        if not rule_id:
+            return validate.format_404_error(request, message="У категории нет правила")
+        await cat_fns.update_category(parsed.category_id, _rule_id_set_null=True)
+        await rules_fns.delete_rule(rule_id)
+        return web.Response(status=204)
+    except Exception:
+        logger.exception("delete_category_rule handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Можно менять бюджет, диапазон кэшбэка (rate_min, rate_max) и правило. Требуется JWT админа. Все поля **опциональны**: name, subtitle, budget_amount, rate_min, rate_max, rule_id.",
+    description="Частично обновляет категорию. Можно менять бюджет и диапазон кэшбэка (rate_min, rate_max). Правила — через POST/PATCH/DELETE .../categories/{id}/rule. Требуется JWT админа. Все поля **опциональны**: name, subtitle, budget_amount, rate_min, rate_max, status.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -453,7 +581,6 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
-            rule_id=parsed.rule_id,
             status=parsed.status,
         )
         if response is None:

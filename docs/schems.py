@@ -469,16 +469,12 @@ class CategoryUpdateSchema(Schema):
     )
     rate_min = fields.Int(required=False, description="Новый минимальный кэшбек в процентах (0–100). Опционально.")
     rate_max = fields.Int(required=False, description="Новый максимальный кэшбек в процентах (0–100). Опционально.")
-    rule_id = fields.Str(
-        required=False,
-        description="UUID правила отбора. Привязывает категорию к правилу (возраст, пол, доход) или меняет привязку. Опционально.",
-    )
 
 
 class RuleDetailSchema(Schema):
     rule_id = fields.Str(
         required=True,
-        description="UUID правила. Используется при привязке к категории (rule_id в PATCH категории). Обязательное поле.",
+        description="UUID правила. Возвращается в ответах GET/POST/PATCH .../categories/{id}/rule. Обязательное поле.",
     )
     min_age = fields.Int(
         allow_none=True, description="Минимальный возраст пользователя в годах; null — ограничение не задано."

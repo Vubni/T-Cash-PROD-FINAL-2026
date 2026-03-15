@@ -122,8 +122,9 @@ async def update_category(
     budget_amount: int | None = None,
     rate_min: int | None = None,
     rate_max: int | None = None,
-    rule_id: str | None = None,
     status: str | None = None,
+    rule_id: str | None = None,
+    _rule_id_set_null: bool = False,
 ) -> dict | None:
     fields = []
     params = []
@@ -139,10 +140,13 @@ async def update_category(
     add("budget_amount", budget_amount)
     add("rate_min", rate_min)
     add("rate_max", rate_max)
-    add("rule_id", rule_id)
     add("status", status)
+    if _rule_id_set_null:
+        fields.append("rule_id = NULL")
+    else:
+        add("rule_id", rule_id)
 
-    if not fields:
+    if not fields and not _rule_id_set_null:
         return await get_category(category_id)
 
     async with Database() as db:

@@ -4,7 +4,7 @@
 
 **Backend**
 
-API: **categories**, **rules**, **offers/run**, **selection**, **audit**.
+API: **categories** (включая правила отбора), **offers/run**, **selection**, **audit**.
 
 Сервер гарантирует:
 - диапазоны ставок и лимиты;
@@ -28,9 +28,8 @@ backend/
 ├── api/
 │   ├── __init__.py
 │   ├── audit.py              # эндпоинты /api/v1/admin/audit
-│   ├── categories.py         # эндпоинты /api/v1/admin/categories
+│   ├── categories.py         # эндпоинты /api/v1/admin/categories и .../{id}/rule
 │   ├── calculate.py          # эндпоинт /api/v1/offers/run
-│   ├── rules.py              # эндпоинты /api/v1/admin/rules
 │   ├── selection.py          # эндпоинты /api/v1/client/selection/*
 │   └── validate.py           # схемы валидации и формат ошибок
 ├── database/
@@ -40,7 +39,7 @@ backend/
 ├── docs/
 │   ├── __init__.py
 │   └── schems.py             # marshmallow‑схемы для swagger и API
-├── functions/                # служебные/потенциальные бизнес‑функции (пока пусто)
+├── functions/                # бизнес‑логика (categories, rules, calculate, admin_users)
 ├── postgres/
 │   └── init.sql              # создание схемы БД (rules, categories, selections, audit_log)
 ├── static/                   # статика и фронт (index.html и ассеты)
@@ -82,8 +81,7 @@ docker compose down
 ### API обзор
 
 Админские эндпоинты:
-- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}.
-- **rules**: `GET` / `POST` /api/v1/admin/rules, `GET` / `PATCH` /api/v1/admin/rules/{rule_id}.
+- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}; правило отбора — `GET` / `POST` / `PATCH` / `DELETE` .../categories/{category_id}/rule.
 - **audit**: `GET /api/v1/admin/audit` — журнал аудита.
 
 Клиентские эндпоинты:
@@ -101,12 +99,11 @@ docker compose down
   - создаёт aiohttp‑приложение;
   - подключает CORS и middleware валидации (`validation_middleware`);
   - настраивает Swagger (`/doc`, `/swagger.json`);
-  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.calculate`, `api.selection`;
+  - регистрирует роуты из модулей `api.categories`, `api.audit`, `api.calculate`, `api.selection`;
   - проксирует все остальные запросы на статику через `handle_get_file`.
 
 **Модули API**
-- `api/categories.py` — CRUD категорий кэшбэка (с привязкой к правилу `rule_id`).
-- `api/rules.py` — CRUD правил отбора (возраст мин/макс, пол, заработок).
+- `api/categories.py` — CRUD категорий кэшбэка и правил отбора (возраст, пол, заработок) в рамках категории: GET/POST/PATCH/DELETE .../categories/{id}/rule.
 - `api/audit.py` — чтение журнала аудита.
 - `api/calculate.py` — запуск офферов (`POST /api/v1/offers/run`).
 - `api/selection.py` — получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
