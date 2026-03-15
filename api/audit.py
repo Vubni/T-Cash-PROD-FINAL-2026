@@ -11,7 +11,7 @@ from functions import audit as audit_fns
 
 LIMIT_MAX = 500
 
-ы
+
 class Audit_list(BaseModel):
     model_config = {"extra": "forbid"}
 
