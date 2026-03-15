@@ -43,12 +43,12 @@ async def get_calculate_items(user_id: int) -> dict:
         payload = {
             "categories": ML_CATEGORY_NAMES,
             "client_id": str(user_id),
-            "top_n": max(1, get_all_categories()+1),
+            "top_n": max(1, get_all_categories() + 1),
         }
         logger.info(
             "ML predict request: url=%s categories_count=%s client_id=%s top_n=%s",
             f"{ML_SERVICE_URL.rstrip('/')}/predict",
-            len(category_names),
+            len(payload["categories"]),
             user_id,
             payload["top_n"],
         )
@@ -69,6 +69,7 @@ async def get_calculate_items(user_id: int) -> dict:
                 data = await response.json()
         predictions = data["predictions"]
 
+    async with Database() as db:
         for predict in predictions:
             category = await db.execute("SELECT * FROM categories WHERE name = $1", (predict["category"],))
             if not category:

@@ -145,7 +145,7 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                 name = row[1].strip()
                 if not category_id or not name:
                     continue
-                subtitle = row[2].strip() if len(row) > 2 else name
+                subtitle = (row[2].strip() if len(row) > 2 else "") or name
                 budget_amount = 0
                 if len(row) > 4 and row[4].strip():
                     try:
@@ -176,27 +176,34 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
             )
         )
 
-    async with Database() as db:
-        await db.executemany(
-            """
-            INSERT INTO categories (
-                category_id,
-                name,
-                subtitle,
-                budget_amount,
-                rate_min,
-                rate_max,
-                rule_id
+    try:
+        async with Database() as db:
+            ok = await db.executemany(
+                """
+                INSERT INTO categories (
+                    category_id,
+                    name,
+                    subtitle,
+                    budget_amount,
+                    rate_min,
+                    rate_max,
+                    rule_id
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7
+                )
+                ON CONFLICT (category_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    subtitle = EXCLUDED.subtitle,
+                    budget_amount = EXCLUDED.budget_amount,
+                    rule_id = EXCLUDED.rule_id
+                """,
+                params,
             )
-            VALUES (
-                $1, $2, $3, $4, $5, $6, $7
-            )
-            ON CONFLICT (category_id) DO UPDATE SET
-                name = EXCLUDED.name,
-                subtitle = EXCLUDED.subtitle,
-                budget_amount = EXCLUDED.budget_amount,
-                rule_id = EXCLUDED.rule_id
-            """,
-            params,
-        )
-    logger.info(f"Импортировано/обновлено категорий из CSV: {len(params)}")
+            if ok is not True:
+                logger.error("Импорт категорий из CSV не выполнен (ошибка БД, см. выше)")
+                return
+    except Exception as e:
+        logger.exception("Импорт категорий из CSV завершился с ошибкой: %s", e)
+        return
+    logger.info("Импортировано/обновлено категорий из CSV: %d", len(params))
