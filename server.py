@@ -139,11 +139,18 @@ def create_app() -> web.Application:
         security_schemes["adminBearer"] = admin_bearer_scheme
         security_schemes["userBearer"] = user_bearer_scheme
     else:
-        swagger_dict.setdefault("securityDefinitions", {})["adminBearer"] = {
+        security_definitions = swagger_dict.setdefault("securityDefinitions", {})
+        security_definitions["adminBearer"] = {
             "type": "apiKey",
             "in": "header",
             "name": "Authorization",
             "description": admin_bearer_scheme.get("description", ""),
+        }
+        security_definitions["userBearer"] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": user_bearer_scheme.get("description", ""),
         }
 
     cors.add(app.router.add_route("GET", "/{path:.*}", handle_get_file))
