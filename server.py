@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, selection, rules, offers, users, admin_auth, calculate)
+from api import (categories, audit, selection, rules, users, admin_auth, calculate)
 
 from database.functions import (
     init_db,
@@ -103,10 +103,9 @@ def create_app() -> web.Application:
         web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
         web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
-        web.post(prefix + '/client/calculate', calculate.calculate),
+        web.post(prefix + '/offers/run', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),
         web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
-        web.post(prefix + '/offers/run', offers.run_offers),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))

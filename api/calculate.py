@@ -22,9 +22,9 @@ class Client_calculate(BaseModel):
 
 
 @docs(
-    tags=["Client"],
-    summary="Рассчитать категории для пользователя",
-    description="По переданному в теле запроса user_id (BIGINT) возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля. В теле: **обязательное** — user_id.",
+    tags=["Offers"],
+    summary="Запуск офферов (расчёт категорий для клиента)",
+    description="POST /api/v1/offers/run. По переданному в теле запроса user_id (BIGINT) возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля. В теле: **обязательное** — user_id.",
     responses={
         200: {"description": "Список категорий рассчитан", "schema": sh.CalculateResponseSchema},
         404: {"description": "Пользователь не найден", "schema": sh.HttpErrorSchema},

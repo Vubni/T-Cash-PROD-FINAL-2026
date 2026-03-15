@@ -101,7 +101,7 @@ flowchart LR
 
 Реализация:
 
-- [api/offers.py](/Users/egor/Проекты/backend/api/offers.py)
+- [api/calculate.py](/Users/egor/Проекты/backend/api/calculate.py)
 
 Что получает клиент:
 

@@ -1,14 +1,11 @@
 import aiohttp
 from database.database import Database
 from core import serialize_json, ML_CATEGORY_NAMES, logger
-from core import get_all_categories, get_max_selection_count
+from core import get_all_categories
 from config import ML_SERVICE_URL
 
 
 async def get_calculate_items(user_id: int) -> dict:
-    """Возвращает {"items": [...], "already_selected_categories": bool}.
-    already_selected_categories=True — данные из кэша (уже выбранные категории из selections).
-    """
     items = []
     async with Database() as db:
         sql = """
@@ -49,7 +46,7 @@ async def get_calculate_items(user_id: int) -> dict:
                 json={
                     "categories": category_names,
                     "client_id": str(user_id),
-                    "top_n": max(1, get_max_selection_count()),
+                    "top_n": max(1, get_all_categories()),
                 },
             ) as response:
                 if response.status != 200:
@@ -73,6 +70,7 @@ async def get_calculate_items(user_id: int) -> dict:
             if estimated <= 0:
                 continue
             percent = int(category["budget_amount"] * 100 / estimated)
+            logger.info("Category: %s, Estimated: %s, Percent: %s", category["name"], estimated, percent)
             items.append(
                 {
                     "category_id": category["category_id"],

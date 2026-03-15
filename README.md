@@ -29,7 +29,7 @@ backend/
 │   ├── __init__.py
 │   ├── audit.py              # эндпоинты /api/v1/admin/audit
 │   ├── categories.py         # эндпоинты /api/v1/admin/categories
-│   ├── offers.py             # эндпоинт /api/v1/offers/run
+│   ├── calculate.py          # эндпоинт /api/v1/offers/run
 │   ├── rules.py              # эндпоинты /api/v1/admin/rules
 │   ├── selection.py          # эндпоинты /api/v1/client/selection/*
 │   └── validate.py           # схемы валидации и формат ошибок
@@ -101,14 +101,14 @@ docker compose down
   - создаёт aiohttp‑приложение;
   - подключает CORS и middleware валидации (`validation_middleware`);
   - настраивает Swagger (`/doc`, `/swagger.json`);
-  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.offers`, `api.selection`;
+  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.calculate`, `api.selection`;
   - проксирует все остальные запросы на статику через `handle_get_file`.
 
 **Модули API**
 - `api/categories.py` — CRUD категорий кэшбэка (с привязкой к правилу `rule_id`).
 - `api/rules.py` — CRUD правил отбора (возраст мин/макс, пол, заработок).
 - `api/audit.py` — чтение журнала аудита.
-- `api/offers.py` — запуск офферов (`POST /api/v1/offers/run`).
+- `api/calculate.py` — запуск офферов (`POST /api/v1/offers/run`).
 - `api/selection.py` — получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
 - `api/validate.py` — схемы валидации и формат ошибок.
 

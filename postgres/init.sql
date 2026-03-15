@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS categories (
     name            VARCHAR(500) NOT NULL CHECK (char_length(name) >= 1 AND char_length(name) <= 500),
     subtitle        VARCHAR(500) NOT NULL CHECK (char_length(subtitle) >= 1 AND char_length(subtitle) <= 500),
     budget_amount   INT      NOT NULL CHECK (budget_amount >= 0),
-    rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100),
-    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min),
+    rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100) DEFAULT 1,
+    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 17,
     rule_id         UUID        NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
