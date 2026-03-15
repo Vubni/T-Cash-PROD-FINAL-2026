@@ -1,6 +1,6 @@
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError
-from aiohttp_apispec import docs, request_schema
+from aiohttp_apispec import docs
 from pydantic import BaseModel
 
 from api import validate
@@ -29,7 +29,6 @@ class Client_calculate(BaseModel):
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
-@request_schema(sh.CalculateRequestSchema)
 @validate.validate(Client_calculate, require_auth=True)
 async def calculate(request: web.Request, parsed: Client_calculate) -> web.Response:
     try:
