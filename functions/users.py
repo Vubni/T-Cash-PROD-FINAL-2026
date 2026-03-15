@@ -1,7 +1,5 @@
 """Пользователи: вспомогательные функции работы с users."""
 
-import os
-
 from config import logger
 from database.database import Database
 

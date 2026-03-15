@@ -7,7 +7,7 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, selection, rules, users, admin_auth, calculate)
+from api import (categories, audit, selection, users, admin_auth, calculate)
 
 from database.functions import (
     init_db,

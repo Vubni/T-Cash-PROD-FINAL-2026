@@ -1,6 +1,3 @@
-
-from uuid import uuid4
-
 from database.database import Database
 
 

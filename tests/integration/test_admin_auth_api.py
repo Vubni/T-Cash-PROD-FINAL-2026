@@ -1,8 +1,3 @@
-"""
-Интеграционные тесты для Admin Auth API
-"""
-
-import pytest
 from unittest.mock import patch
 import json
 

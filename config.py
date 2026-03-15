@@ -1,4 +1,5 @@
-import os, json
+import os
+import json
 
 DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"), 
              "user": os.getenv("DB_USER"), 

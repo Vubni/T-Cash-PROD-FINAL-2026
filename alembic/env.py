@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 
 from sqlalchemy import MetaData, Table, Column, BigInteger
-from sqlalchemy import Text, Integer, Boolean
+from sqlalchemy import Text, Boolean
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP
 
 config = context.config
