@@ -7,8 +7,7 @@ from api import validate
 from config import logger
 from docs import schems as sh
 from functions import calculate as calc_fns
-from functions import users as users_fns
-from core import check_authorization
+
 
 class Client_calculate(BaseModel):
     model_config = {"extra": "forbid"}
@@ -47,7 +46,8 @@ async def calculate(request: web.Request, _: Client_calculate) -> web.Response:
                 "items": result["items"],
                 "already_selected_categories": result["already_selected_categories"],
             },
-            status=200)
+            status=200,
+        )
     except (ClientConnectorError, ConnectionRefusedError, OSError) as e:
         logger.warning("calculate: external service unreachable: %s", e)
         return validate.format_500_error(request)

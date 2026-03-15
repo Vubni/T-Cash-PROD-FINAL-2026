@@ -1,4 +1,3 @@
-
 from aiohttp import web
 from aiohttp_apispec import docs
 from pydantic import BaseModel, field_validator
@@ -34,10 +33,7 @@ class Audit_list(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Журнал аудита по категории",
-    description=(
-        "Возвращает список событий аудита по изменениям конкретной категории. "
-        "Требуется JWT админа."
-    ),
+    description=("Возвращает список событий аудита по изменениям конкретной категории. Требуется JWT админа."),
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Журнал аудита получен", "schema": sh.AuditListResponseSchema},

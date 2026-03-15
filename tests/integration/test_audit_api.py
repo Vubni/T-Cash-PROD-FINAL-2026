@@ -128,4 +128,3 @@ async def test_get_audit_database_error(aiohttp_client, app):
         assert resp.status == 500
         body = await resp.json()
         assert body["code"] == "INTERNAL_ERROR"
-
