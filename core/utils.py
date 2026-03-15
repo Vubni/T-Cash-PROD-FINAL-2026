@@ -10,7 +10,6 @@ from decimal import Decimal
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
-
 from config import (
     ALL_CATEGORIES_DEFAULT,
     CATEGORIES_CONFIG_PATH,
