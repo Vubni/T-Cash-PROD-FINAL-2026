@@ -249,19 +249,10 @@ def validate(
                 request["user_payload"] = payload
 
             if request.method in ("POST", "PUT", "PATCH"):
-                content_type = request.headers.get("Content-Type", "")
-                if not content_type.startswith("application/json"):
-                    return format_400_error(
-                        request,
-                        "Неподдерживаемый Content-Type",
-                        details={"hint": "Используйте Content-Type: application/json"},
-                    )
-
-            if request.method == "GET":
-                data = dict(request.query)
-            else:
                 content_length = request.headers.get("Content-Length")
-                if content_length:
+                if not content_length or content_length == "0":
+                    data = {}
+                else:
                     try:
                         size = int(content_length)
                         if size > 10 * 1024 * 1024:
@@ -273,20 +264,32 @@ def validate(
                     except ValueError:
                         pass
 
-                try:
-                    data = await request.json()
-                except json.JSONDecodeError:
-                    return format_400_error(
-                        request,
-                        "Невалидный JSON",
-                        details={"hint": "Проверьте запятые/кавычки"},
-                    )
-                except Exception:
-                    return format_400_error(
-                        request,
-                        "Ошибка обработки запроса",
-                        details={"hint": "Проверьте формат и размер запроса"},
-                    )
+                    content_type = request.headers.get("Content-Type", "")
+                    if not content_type.startswith("application/json"):
+                        return format_400_error(
+                            request,
+                            "Неподдерживаемый Content-Type",
+                            details={"hint": "Используйте Content-Type: application/json"},
+                        )
+
+                    try:
+                        data = await request.json()
+                    except json.JSONDecodeError:
+                        return format_400_error(
+                            request,
+                            "Невалидный JSON",
+                            details={"hint": "Проверьте запятые/кавычки"},
+                        )
+                    except Exception:
+                        return format_400_error(
+                            request,
+                            "Ошибка обработки запроса",
+                            details={"hint": "Проверьте формат и размер запроса"},
+                        )
+            elif request.method == "GET":
+                data = dict(request.query)
+            else:
+                data = {}
 
             all_data = dict(request.match_info)
             all_data.update(dict(request.query))
