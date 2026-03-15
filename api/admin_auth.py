@@ -12,7 +12,7 @@ from functions import admin_users
 
 
 LOGIN_MAX_LENGTH = 40
-PASSWORD_MAX_LENGTH = 255
+PASSWORD_MAX_LENGTH = 40
 
 
 class AdminRegisterBody(BaseModel):
@@ -32,6 +32,8 @@ class AdminRegisterBody(BaseModel):
     @field_validator("login")
     @classmethod
     def login_length(cls, v: str) -> str:
+        if len(v) < 4:
+            raise ValueError("login должен быть не короче 4 символов")
         if len(v) > LOGIN_MAX_LENGTH:
             raise ValueError(f"login не может быть длиннее {LOGIN_MAX_LENGTH} символов")
         return v
@@ -39,6 +41,8 @@ class AdminRegisterBody(BaseModel):
     @field_validator("password")
     @classmethod
     def password_length(cls, v: str) -> str:
+        if len(v) < 4:
+            raise ValueError("password должен быть не короче 4 символов")
         if len(v) > PASSWORD_MAX_LENGTH:
             raise ValueError(f"password не может быть длиннее {PASSWORD_MAX_LENGTH} символов")
         return v

@@ -328,17 +328,17 @@ class UserAuthResponseSchema(Schema):
     )
 
 
-ADMIN_LOGIN_MAX = 255
-ADMIN_PASSWORD_MAX = 255
+ADMIN_LOGIN_MAX =40
+ADMIN_PASSWORD_MAX = 40
 
 class AdminRegisterSchema(Schema):
-    login = fields.Str(required=True, validate=validate.Length(min=1, max=ADMIN_LOGIN_MAX), description="Логин нового администратора (1–255 символов). Уникальный. Обязательное поле.")
-    password = fields.Str(required=True, validate=validate.Length(min=1, max=ADMIN_PASSWORD_MAX), description="Пароль администратора (1–255 символов). После регистрации нужна одобрение главным админом. Обязательное поле.")
+    login = fields.Str(required=True, validate=validate.Length(min=4, max=ADMIN_LOGIN_MAX), description="Логин нового администратора (4–20 символов). Уникальный. Обязательное поле.")
+    password = fields.Str(required=True,validate=validate.Length(min=4, max=ADMIN_PASSWORD_MAX),description="Пароль администратора (4–20 символов). После регистрации нужно одобрение главным админом. Обязательное поле.",)
 
 
 class AdminLoginSchema(Schema):
-    login = fields.Str(required=True, validate=validate.Length(min=1, max=ADMIN_LOGIN_MAX), description="Логин администратора (1–255 символов). Обязательное поле.")
-    password = fields.Str(required=True, validate=validate.Length(min=1, max=ADMIN_PASSWORD_MAX), description="Пароль администратора (1–255 символов). Обязательное поле.")
+    login = fields.Str(required=True,validate=validate.Length(min=4, max=ADMIN_LOGIN_MAX),description="Логин администратора (4–20 символов). Обязательное поле.",)
+    password = fields.Str(required=True,validate=validate.Length(min=4, max=ADMIN_PASSWORD_MAX),description="Пароль администратора (4–20 символов). Обязательное поле.",)
 
 
 class AdminApproveSchema(Schema):
