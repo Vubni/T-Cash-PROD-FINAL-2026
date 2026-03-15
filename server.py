@@ -136,7 +136,7 @@ def create_app() -> web.Application:
         title="Cashback API",
         version="v1",
         url="/swagger.json",
-        swagger_path="/doc",
+        swagger_path="/",
         in_place=True,
     )
     admin_bearer_scheme = {
