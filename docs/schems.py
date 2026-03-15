@@ -318,7 +318,7 @@ class RuleListResponseSchema(Schema):
 
 
 class UserExistsResponseSchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя, по которому проверяли наличие. Обязательное поле.")
+    user_id = fields.Int(required=True, description="BIGINT идентификатор пользователя, по которому проверяли наличие. Обязательное поле.")
     exists = fields.Bool(required=True, description="true — пользователь есть в системе (можно использовать для расчёта/выбора); false — нет. Обязательное поле.")
 
 
@@ -453,9 +453,9 @@ class UserListResponseSchema(Schema):
 
 
 class CalculateRequestSchema(Schema):
-    user_id = fields.Str(
+    user_id = fields.Int(
         required=True,
-        description="UUID пользователя, для которого нужно рассчитать доступные категории и выгоду. Берётся с фронта (текущий пользователь). Обязательное поле.",
+        description="BIGINT идентификатор пользователя, для которого нужно рассчитать доступные категории и выгоду. Берётся с фронта (текущий пользователь). Обязательное поле.",
     )
 
 
@@ -488,9 +488,9 @@ class CalculateCategoryItemSchema(Schema):
 
 
 class CalculateResponseSchema(Schema):
-    user_id = fields.Str(
+    user_id = fields.Int(
         required=True,
-        description="UUID пользователя, для которого выполнен расчёт. Совпадает с user_id из тела запроса. Обязательное поле.",
+        description="BIGINT идентификатор пользователя, для которого выполнен расчёт. Совпадает с user_id из тела запроса. Обязательное поле.",
     )
     items = fields.List(
         fields.Nested(CalculateCategoryItemSchema),
@@ -549,9 +549,9 @@ class SelectionCurrentResponseSchema(Schema):
 
 
 class SelectionSubmitBodySchema(Schema):
-    user_id = fields.Str(
+    user_id = fields.Int(
         required=True,
-        description="UUID пользователя, который отправляет выбор. Обычно текущий пользователь с фронта. Обязательное поле.",
+        description="BIGINT идентификатор пользователя, который отправляет выбор. Обычно текущий пользователь с фронта. Обязательное поле.",
     )
     category_ids = fields.List(
         fields.Str(),
@@ -561,7 +561,7 @@ class SelectionSubmitBodySchema(Schema):
 
 
 class SelectionSubmitResponseSchema(Schema):
-    user_id = fields.Str(required=True, description="UUID пользователя, для которого сохранён выбор. Обязательное поле.")
+    user_id = fields.Int(required=True, description="BIGINT идентификатор пользователя, для которого сохранён выбор. Обязательное поле.")
     category_ids = fields.List(
         fields.Str(),
         required=True,

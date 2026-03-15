@@ -46,14 +46,7 @@ pytest tests/unit/test_users.py::TestUserExists::test_user_exists_true
 
 ## Типы данных
 
-### Текущие (временно)
-- `user_id` в `/users/{user_id}/exists`: **UUID**
-- `user_id` в `/client/*`: **UUID** 
-- `category_id`: **UUID**
-- `admin_id`: **integer**
-
-### Будущие (после merge)
-- `user_id` везде: **integer**
+- `user_id` везде (в т.ч. `/users/{user_id}/exists`, `POST /api/v1/offers/run`, `/client/*`): **integer** (BIGINT)
 - `category_id`: **UUID**
 - `admin_id`: **integer**
 

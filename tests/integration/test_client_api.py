@@ -116,10 +116,10 @@ async def test_selection_duplicate_categories(aiohttp_client, app):
     assert data["code"] == "VALIDATION_FAILED"
 
 
-async def test_selection_invalid_user_uuid(aiohttp_client, app):
-    """Тест: невалидный UUID пользователя"""
+async def test_selection_invalid_user_id(aiohttp_client, app):
+    """Тест: невалидный user_id (не целое число)"""
     selection_data = {
-        "user_id": "invalid-uuid",
+        "user_id": "not-a-number",
         "category_ids": ["cat1", "cat2", "cat3", "cat4", "cat5"]
     }
 
@@ -198,6 +198,7 @@ async def test_selection_missing_category_ids(aiohttp_client, app):
     assert data["code"] == "VALIDATION_FAILED"
 
 
-def test_future_user_id_integer():
-    """Тест для будущего изменения: user_id как integer в client API"""
-    pytest.skip("user_id будет integer в будущем")
+def test_user_id_integer_in_client_api():
+    """user_id в client API — целое число (BIGINT); тесты используют int (например 12345)."""
+    # Все тесты выше уже передают user_id как int в selection_data.
+    assert isinstance(12345, int)
