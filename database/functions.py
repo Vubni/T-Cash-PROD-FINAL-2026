@@ -5,6 +5,14 @@ from config import logger
 from database.database import Database
 
 
+_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _data_path(filename: str) -> str:
+    """Путь к файлу в data/ относительно корня backend."""
+    return os.path.join(_BACKEND_ROOT, "data", filename)
+
+
 async def init_db():
     """
     Базовая инициализация БД.
@@ -27,15 +35,36 @@ async def ensure_selections_user_id_column() -> None:
         logger.warning("Колонка selections.user_id: %s", e)
 
 
-async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
+_BIGINT_MIN = -(2**63)
+_BIGINT_MAX = 2**63 - 1
+
+
+def _parse_user_id(raw: str) -> int | None:
+    """Парсит строку в user_id (BIGINT). Возвращает int или None при невалидном значении."""
+    s = raw.strip()
+    if not s:
+        return None
+    try:
+        n = int(s)
+        if _BIGINT_MIN <= n <= _BIGINT_MAX:
+            return n
+    except ValueError:
+        pass
+    return None
+
+
+async def ensure_users_from_csv(csv_path: str | None = None) -> None:
+    if csv_path is None:
+        csv_path = _data_path("users.csv")
     if not os.path.exists(csv_path):
-        logger.warning(f"Файл с пользователями не найден: {csv_path}")
+        logger.warning("Файл с пользователями не найден: %s", csv_path)
         return
 
-    to_insert: list[tuple[str]] = []
+    to_insert: list[tuple[int]] = []
+    skipped = 0
 
     try:
-        with open(csv_path, newline="", encoding="utf-8") as f:
+        with open(csv_path, newline="", encoding="utf-8-sig") as f:
             reader = csv.reader(f)
             header_skipped = False
             for row in reader:
@@ -44,16 +73,19 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 if not header_skipped:
                     header_skipped = True
                     continue
-                raw = row[0].strip()
-                if not raw:
+                user_id = _parse_user_id(row[0])
+                if user_id is None:
+                    skipped += 1
                     continue
-                to_insert.append((raw,))
+                to_insert.append((user_id,))
     except OSError as e:
-        logger.error(f"Не удалось прочитать файл пользователей {csv_path}: {e}")
+        logger.error("Не удалось прочитать файл пользователей %s: %s", csv_path, e)
         return
 
+    if skipped:
+        logger.warning("Пропущено невалидных строк в %s: %d", csv_path, skipped)
     if not to_insert:
-        logger.info(f"В файле {csv_path} не найдено валидных пользователей для импорта.")
+        logger.info("В файле %s не найдено валидных пользователей для импорта.", csv_path)
         return
 
     try:
@@ -63,27 +95,35 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 logger.info("Таблица users уже содержит записи, импорт из CSV пропущен.")
                 return
 
-            await db.executemany(
-                "INSERT INTO users (user_id) VALUES ($1::bigint) ON CONFLICT (user_id) DO NOTHING",
-                to_insert,
-            )
-            logger.info(f"Импортировано пользователей из CSV: {len(to_insert)}")
+            batch_size = 5000
+            for i in range(0, len(to_insert), batch_size):
+                batch = to_insert[i : i + batch_size]
+                await db.executemany(
+                    "INSERT INTO users (user_id) VALUES ($1::bigint) ON CONFLICT (user_id) DO NOTHING",
+                    batch,
+                )
+            logger.info("Импортировано пользователей из CSV: %d", len(to_insert))
     except Exception as e:
         msg = str(e)
         if (
             "UndefinedTableError" in msg
-            or 'relation \"users\" does not exist' in msg
+            or 'relation "users" does not exist' in msg
             or "DataError" in msg
             or "invalid input for query argument" in msg
         ):
-            logger.warning("Не удалось импортировать пользователей из CSV, пропускаю ensure_users_from_csv: %s", e)
+            logger.warning(
+                "Не удалось импортировать пользователей из CSV, пропускаю ensure_users_from_csv: %s",
+                e,
+            )
             return
         raise
 
 
-async def ensure_categories_from_csv(csv_path: str = "data/categories.csv") -> None:
+async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
+    if csv_path is None:
+        csv_path = _data_path("categories.csv")
     if not os.path.exists(csv_path):
-        logger.warning(f"Файл с категориями не найден: {csv_path}")
+        logger.warning("Файл с категориями не найден: %s", csv_path)
         return
 
     rows: list[tuple[str, str]] = []
