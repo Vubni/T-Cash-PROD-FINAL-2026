@@ -43,8 +43,9 @@ async def test_get_calculate_items_returns_from_cache_when_selections_exist():
 
 @pytest.mark.asyncio
 async def test_get_calculate_items_calls_ml_with_correct_body_when_no_cache():
-    """Без кэша: загружаем категории из БД (LIMIT get_all_categories), шлём в ML categories, client_id, top_n."""
+    """Без кэша: в ML всегда шлём ML_CATEGORY_NAMES, client_id, top_n."""
     from functions.calculate import get_calculate_items
+    from core import ML_CATEGORY_NAMES
 
     db_categories = [
         {"category_id": "c1", "name": "Аптеки", "subtitle": "Лекарства", "rate_min": 3, "rate_max": 10, "budget_amount": 100_000},
@@ -104,7 +105,7 @@ async def test_get_calculate_items_calls_ml_with_correct_body_when_no_cache():
     assert call_args[0][0].endswith("/predict")
     body = call_args[1]["json"]
     assert "categories" in body
-    assert body["categories"] == ["Аптеки"]
+    assert body["categories"] == ML_CATEGORY_NAMES
     assert body["client_id"] == "99999"
     assert body["top_n"] == 1
 

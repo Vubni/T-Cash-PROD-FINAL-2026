@@ -64,33 +64,6 @@ class Admin_selection_settings(BaseModel):
 
 @docs(
     tags=["Client"],
-    summary="Получить текущий выбор категорий (только id)",
-    description="Возвращает массив category_id выбранных пользователем категорий. 404, если выбор ещё не делался.",
-    responses={
-        200: {"description": "Выбор есть", "schema": sh.SelectionCurrentResponseSchema},
-        404: {"description": "Пользователь не найден или выбор не делался"},
-        **sh.RESPONSES_HTTP_ERROR,
-    },
-)
-async def get_current_selection(request: web.Request) -> web.Response:
-    try:
-        try:
-            user_id = validate.validate_user_id(request.match_info["user_id"], "user_id")
-        except ValueError as e:
-            return validate.format_400_error(request, message=str(e))
-        if not await users_fns.user_exists(user_id):
-            return validate.format_404_error(request, message="Пользователь не найден")
-        category_ids = await sel_fns.get_current_category_ids(user_id)
-        if category_ids is None:
-            return validate.format_404_error(request, message="Выбор категорий ещё не делался")
-        return web.json_response({"category_ids": category_ids}, status=200)
-    except Exception:
-        logger.exception("get_current_selection handler failed")
-        return validate.format_500_error(request)
-
-
-@docs(
-    tags=["Client"],
     summary="Сохранить выбор ровно из N категорий",
     description="В теле передаётся user_id (BIGINT) и ровно N category_ids (UUID), где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля: user_id, category_ids (массив ровно из N UUID).",
     responses={

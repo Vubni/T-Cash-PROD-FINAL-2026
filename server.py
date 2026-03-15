@@ -105,7 +105,6 @@ def create_app() -> web.Application:
 
         web.post(prefix + '/offers/run', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),
-        web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))
