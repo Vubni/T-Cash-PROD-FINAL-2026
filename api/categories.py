@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 
 from aiohttp import web
 from aiohttp_apispec import docs, request_schema
@@ -13,6 +14,10 @@ from functions import rules as rules_fns
 
 LIMIT_MAX = 500
 STRING_FIELD_MAX_LENGTH = 500
+
+
+_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_STATIC_DIR = os.path.join(_BACKEND_ROOT, "static")
 
 
 class Admin_categories_list(BaseModel):
@@ -307,6 +312,71 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
         return web.json_response(response, status=200)
     except Exception:
         logger.exception("get_category handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
+    summary="Загрузить иконку для категории",
+    description=(
+        "Загружает файл иконки для указанной категории и сохраняет относительный путь в поле icon_path. "
+        "Фронтенд затем может получать эту иконку по URL `/icons/<filename>` (относительно хоста бэкенда). "
+        "Требуется JWT админа. Тело запроса — multipart/form-data с полем `file`."
+    ),
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Иконка загружена, категория обновлена", "schema": sh.CategoryDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID), для которой загружается иконка.",
+        }
+    ],
+)
+@validate.validate(Category_id_path, require_admin=True)
+async def upload_category_icon(request: web.Request, parsed: Category_id_path) -> web.Response:
+    try:
+        reader = await request.multipart()
+        field = await reader.next()
+
+        if field is None or field.name not in ("file", "icon"):
+            return validate.format_400_error(request, message="Ожидается файл в поле 'file' или 'icon'")
+
+        filename = field.filename
+        if not filename:
+            return validate.format_400_error(request, message="Имя файла иконки не задано")
+
+        _name, ext = os.path.splitext(filename)
+        if not ext:
+            ext = ".png"
+        ext = ext.lower()
+
+        os.makedirs(os.path.join(_STATIC_DIR, "icons"), exist_ok=True)
+
+        safe_filename = f"{parsed.category_id}{ext}"
+        full_path = os.path.join(_STATIC_DIR, "icons", safe_filename)
+
+        # Читаем и сохраняем файл чанками, чтобы не держать весь файл в памяти
+        with open(full_path, "wb") as f:
+            while True:
+                chunk = await field.read_chunk()
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        icon_rel_path = f"icons/{safe_filename}"
+        updated = await cat_fns.update_category(parsed.category_id, icon_path=icon_rel_path)
+        if updated is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+
+        return web.json_response(updated, status=200)
+    except Exception:
+        logger.exception("upload_category_icon handler failed")
         return validate.format_500_error(request)
 
 
