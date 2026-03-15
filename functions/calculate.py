@@ -55,6 +55,7 @@ async def get_calculate_items(user_id: int) -> dict:
         if not category_names:
             category_names = ML_CATEGORY_NAMES
 
+        logger.info("Calculating categories for user %s: %s", user_id, category_names)
         payload = {
             "categories": category_names,
             "client_id": str(user_id),
