@@ -43,7 +43,7 @@ async def get_calculate_items(user_id: int) -> dict:
         payload = {
             "categories": ML_CATEGORY_NAMES,
             "client_id": str(user_id),
-            "top_n": max(1, get_all_categories()),
+            "top_n": max(1, get_all_categories()+1),
         }
         logger.info(
             "ML predict request: url=%s categories_count=%s client_id=%s top_n=%s",
@@ -78,7 +78,7 @@ async def get_calculate_items(user_id: int) -> dict:
             if estimated <= 0:
                 continue
             percent = int(category["budget_amount"] * 100 / estimated)
-            logger.info("Category: %s, Estimated: %s, Percent: %s", category["name"], estimated, percent)
+            logger.info("Category: %s, Estimated: %s, Percent: %s", category["budget_amount"], estimated, percent)
             items.append(
                 {
                     "category_id": category["category_id"],
