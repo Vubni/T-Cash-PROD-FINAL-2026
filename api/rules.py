@@ -82,10 +82,18 @@ class Rule_create(BaseModel):
 class Rule_update(BaseModel):
     model_config = {"extra": "forbid"}
 
+    rule_id: Optional[str] = None
     min_age: Optional[int] = None
     max_age: Optional[int] = None
     gender: Optional[str] = None
     income: Optional[int] = None
+
+    @field_validator("rule_id")
+    @classmethod
+    def rule_id_uuid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_uuid(v, "rule_id")
 
     @field_validator("gender")
     @classmethod
@@ -183,10 +191,8 @@ async def get_rule(request: web.Request, parsed: Rule_id_path) -> web.Response:
     try:
         response = await rules_fns.get_rule(parsed.rule_id)
         if response is None:
-            raise web.HTTPNotFound()
+            return validate.format_404_error(request, message="Правило не найдено")
         return web.json_response(response, status=200)
-    except web.HTTPNotFound:
-        raise
     except Exception:
         logger.exception("get_rule handler failed")
         return validate.format_500_error(request)
@@ -254,10 +260,8 @@ async def update_rule(request: web.Request, parsed: Rule_update) -> web.Response
             income=parsed.income,
         )
         if response is None:
-            raise web.HTTPNotFound()
+            return validate.format_404_error(request, message="Правило не найдено")
         return web.json_response(response, status=200)
-    except web.HTTPNotFound:
-        raise
     except Exception:
         logger.exception("update_rule handler failed")
         return validate.format_500_error(request)

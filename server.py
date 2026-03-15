@@ -4,7 +4,7 @@ from aiohttp_apispec import setup_aiohttp_apispec, validation_middleware
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import categories, audit, selection, users, admin_auth, calculate
+from api import categories, audit, selection, users, admin_auth, calculate, rules
 
 from database.database import Database
 from database.functions import (
@@ -120,7 +120,10 @@ def create_app() -> web.Application:
         web.post(prefix + "/admin/categories/{category_id}/pause", categories.pause_category),
         web.delete(prefix + "/admin/categories/{category_id}/archive", categories.archive_category),
         web.get(prefix + "/admin/categories/{category_id}/audit", audit.list_audit),
-    
+        web.get(prefix + "/admin/rules", rules.list_rules),
+        web.post(prefix + "/admin/rules", rules.create_rule),
+        web.get(prefix + "/admin/rules/{rule_id}", rules.get_rule),
+        web.patch(prefix + "/admin/rules/{rule_id}", rules.update_rule),
         web.get(prefix + "/admin/categories/settings", selection.get_selection_settings),
         web.post(prefix + "/admin/categories/settings", selection.update_selection_settings),
 

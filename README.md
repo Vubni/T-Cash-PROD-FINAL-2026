@@ -139,7 +139,6 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
   - `category_id` — ссылка на `categories.category_id` (TEXT).
   - `expected_benefit_amount` — ожидаемая выгода.
   - `availability_status`, `availability_reason` — статусы доступности.
-  - `idempotency_key` — ключ идемпотентности для подтверждения.
   - `created_at`, `updated_at` — временные метки.
 
 - Таблица `audit_log`

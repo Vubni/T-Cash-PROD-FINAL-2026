@@ -63,7 +63,10 @@ async def create_rule(
             VALUES ($1, $2, $3, $4, $5)
         """
         await db.execute(sql, (rule_id, min_age, max_age, gender, income))
-        return await get_rule(rule_id)
+        row = await db.execute(f"SELECT {_RULE_SELECT} FROM rules WHERE rule_id = $1", (rule_id,))
+        if row is None:
+            return None
+        return row_to_rule(row)
 
 
 async def update_rule(
