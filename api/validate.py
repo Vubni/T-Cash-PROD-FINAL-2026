@@ -11,6 +11,7 @@ import uuid
 T = TypeVar("T", bound=BaseModel)
 
 SECURITY_ADMIN_BEARER = [{"adminBearer": []}]
+SECURITY_USER_BEARER = [{"userBearer": []}]
 
 def generate_trace_id() -> str:
     return str(uuid.uuid4())

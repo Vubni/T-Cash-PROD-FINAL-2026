@@ -1,7 +1,7 @@
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp_apispec import docs, request_schema
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 from api import validate
 from config import logger
@@ -13,18 +13,16 @@ from functions import users as users_fns
 class Client_calculate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: int
-
-    @field_validator("user_id", mode="before")
-    @classmethod
-    def user_id_bigint(cls, v: str | int) -> int:
-        return validate.validate_user_id(v, "user_id")
-
 
 @docs(
     tags=["Offers"],
     summary="Запуск офферов (расчёт категорий для клиента)",
-    description="POST /api/v1/offers/run. По переданному в теле запроса user_id (BIGINT) возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля. В теле: **обязательное** — user_id.",
+    description=(
+        "POST /api/v1/offers/run. Возвращает категории/выборы для текущего авторизованного пользователя. "
+        "user_id берётся из JWT-токена пользователя (заголовок Authorization: Bearer <token>, полученный через "
+        "GET /api/v1/users/{user_id}/auth). Тело запроса пустое."
+    ),
+    security=validate.SECURITY_USER_BEARER,
     responses={
         200: {"description": "Список категорий рассчитан", "schema": sh.CalculateResponseSchema},
         404: {"description": "Пользователь не найден", "schema": sh.HttpErrorSchema},
@@ -32,10 +30,13 @@ class Client_calculate(BaseModel):
     },
 )
 @request_schema(sh.CalculateRequestSchema)
-@validate.validate(Client_calculate)
+@validate.validate(Client_calculate, require_auth=True)
 async def calculate(request: web.Request, parsed: Client_calculate) -> web.Response:
     try:
-        user_id = parsed.user_id
+        payload = request.get("user_payload") or {}
+        user_id = payload.get("user_id")
+        if user_id is None:
+            return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
 
         if not await users_fns.user_exists(user_id):
             return validate.format_404_error(request, message="Пользователь не найден")

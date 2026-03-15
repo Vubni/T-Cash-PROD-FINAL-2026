@@ -95,7 +95,7 @@ def create_app() -> web.Application:
         web.get(prefix + '/admin/audit', audit.list_audit),
         web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
 
-        web.get(prefix + '/users/{user_id}/exists', users.user_exists),
+        web.get(prefix + '/users/{user_id}/auth', users.user_auth),
 
         web.post(prefix + '/admin/auth/register', admin_auth.register_admin),
         web.post(prefix + '/admin/auth/login', admin_auth.login_admin),
@@ -123,9 +123,18 @@ def create_app() -> web.Application:
         "bearerFormat": "JWT",
         "description": "JWT токен админа (получить через POST /api/v1/admin/auth/login). В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
     }
+    user_bearer_scheme = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT токен пользователя (получить через GET /api/v1/users/{user_id}/auth). В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
+    }
     swagger_dict = app["swagger_dict"]
     if "components" in swagger_dict:
-        swagger_dict.setdefault("components", {}).setdefault("securitySchemes", {})["adminBearer"] = admin_bearer_scheme
+        components = swagger_dict.setdefault("components", {})
+        security_schemes = components.setdefault("securitySchemes", {})
+        security_schemes["adminBearer"] = admin_bearer_scheme
+        security_schemes["userBearer"] = user_bearer_scheme
     else:
         swagger_dict.setdefault("securityDefinitions", {})["adminBearer"] = {
             "type": "apiKey",

@@ -21,13 +21,7 @@ from functions import users as users_fns
 class Selection_submit_body(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: int
     category_ids: list[str]
-
-    @field_validator("user_id", mode="before")
-    @classmethod
-    def user_id_bigint(cls, v: str | int) -> int:
-        return validate.validate_user_id(v, "user_id")
 
     @field_validator("category_ids")
     @classmethod
@@ -65,17 +59,29 @@ class Admin_selection_settings(BaseModel):
 @docs(
     tags=["Client"],
     summary="Сохранить выбор ровно из N категорий",
-    description="В теле передаётся user_id (BIGINT) и ровно N category_ids (UUID), где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля: user_id, category_ids (массив ровно из N UUID).",
+    description=(
+        "Сохраняет выбор категорий для текущего авторизованного пользователя. "
+        "user_id берётся из JWT-токена пользователя (заголовок Authorization: Bearer <token>, полученный через "
+        "GET /api/v1/users/{user_id}/auth). В теле передаётся ровно N category_ids (UUID), "
+        "где N задаётся в настройках; в selections создаётся N строк. **Обязательные** поля тела: "
+        "category_ids (массив ровно из N UUID)."
+    ),
+    security=validate.SECURITY_USER_BEARER,
     responses={
         200: {"description": "Выбор сохранён", "schema": sh.SelectionSubmitResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
 @request_schema(sh.SelectionSubmitBodySchema)
-@validate.validate(Selection_submit_body)
+@validate.validate(Selection_submit_body, require_auth=True)
 async def confirm_selection(request: web.Request, parsed: Selection_submit_body) -> web.Response:
     try:
-        if not await users_fns.user_exists(parsed.user_id):
+        payload = request.get("user_payload") or {}
+        user_id = payload.get("user_id")
+        if user_id is None:
+            return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
+
+        if not await users_fns.user_exists(user_id):
             return validate.format_404_error(request, message="Пользователь не найден")
 
         exists = await sel_fns.check_categories_exist(parsed.category_ids)
@@ -92,16 +98,16 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
                 ],
             )
 
-        current = await sel_fns.get_current_category_ids(parsed.user_id)
+        current = await sel_fns.get_current_category_ids(user_id)
         if current is not None and len(current) == len(parsed.category_ids) and set(current) == set(parsed.category_ids):
             return web.json_response({"category_ids": parsed.category_ids}, status=200)
 
-        await sel_fns.save_selection_batch(parsed.user_id, parsed.category_ids)
+        await sel_fns.save_selection_batch(user_id, parsed.category_ids)
         await audit_fns.write_audit(
             entity_type="client",
-            entity_id=str(parsed.user_id),
+            entity_id=str(user_id),
             action="selection",
-            actor=str(parsed.user_id),
+            actor=str(user_id),
             details={"category_ids": parsed.category_ids},
         )
         return web.json_response({"category_ids": parsed.category_ids}, status=200)

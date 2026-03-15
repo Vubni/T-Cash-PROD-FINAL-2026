@@ -317,9 +317,15 @@ class RuleListResponseSchema(Schema):
     total = fields.Int(required=True, description="Общее число правил; для пагинации. Обязательное поле.")
 
 
-class UserExistsResponseSchema(Schema):
-    user_id = fields.Int(required=True, description="BIGINT идентификатор пользователя, по которому проверяли наличие. Обязательное поле.")
-    exists = fields.Bool(required=True, description="true — пользователь есть в системе (можно использовать для расчёта/выбора); false — нет. Обязательное поле.")
+class UserAuthResponseSchema(Schema):
+    user_id = fields.Int(
+        required=True,
+        description="BIGINT идентификатор пользователя, для которого выдан JWT-токен. Обязательное поле.",
+    )
+    token = fields.Str(
+        required=True,
+        description="JWT-токен пользователя для авторизованных клиентских запросов. Передавать в заголовке Authorization: Bearer <token>. Обязательное поле.",
+    )
 
 
 ADMIN_LOGIN_MAX = 255
@@ -453,10 +459,7 @@ class UserListResponseSchema(Schema):
 
 
 class CalculateRequestSchema(Schema):
-    user_id = fields.Int(
-        required=True,
-        description="BIGINT идентификатор пользователя, для которого нужно рассчитать доступные категории и выгоду. Берётся с фронта (текущий пользователь). Обязательное поле.",
-    )
+    pass
 
 
 class CalculateCategoryItemSchema(Schema):
@@ -549,14 +552,15 @@ class SelectionCurrentResponseSchema(Schema):
 
 
 class SelectionSubmitBodySchema(Schema):
-    user_id = fields.Int(
-        required=True,
-        description="BIGINT идентификатор пользователя, который отправляет выбор. Обычно текущий пользователь с фронта. Обязательное поле.",
-    )
     category_ids = fields.List(
         fields.Str(),
         required=True,
-        description="Массив UUID категорий, которые пользователь выбрал. Количество должно совпадать с max_selection_count из настроек (например, ровно 5). Обязательное поле.",
+        description=(
+            "Массив UUID категорий, которые пользователь выбрал. Количество должно совпадать с "
+            "max_selection_count из настроек (например, ровно 5). Обязательное поле. "
+            "user_id берётся из JWT-токена пользователя, переданного в заголовке Authorization "
+            "(токен получен через GET /api/v1/users/{user_id}/auth)."
+        ),
     )
 
 

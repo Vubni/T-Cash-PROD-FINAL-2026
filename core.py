@@ -22,6 +22,7 @@ from datetime import UTC, date, datetime
 from datetime import time as time_type
 
 ADMIN_SCOPE = "admin"
+USER_SCOPE = "user"
 
 def serialize_json(obj):
     if hasattr(obj, "model_dump"):
