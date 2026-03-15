@@ -671,6 +671,7 @@ class AuditEventSchema(Schema):
         validate=validate.Length(min=1, max=AUDIT_ACTOR_MAX),
         description="Кто выполнил действие (1–255 символов): логин или ID. Обязательное поле.",
     )
+    details = fields.Dict(required=False, allow_none=True, missing=None, description="Дополнительные данные события (например, изменённые поля). Опционально.")
     created_at = fields.Str(required=True, description="Дата и время события в ISO 8601. Обязательное поле.")
 
 

@@ -61,6 +61,20 @@ Authorization: Bearer <token>
 
 ---
 
+## Журнал аудита по категории
+
+После любого изменения категории (run / pause / archive, PATCH, загрузка иконки, привязка правила) в журнал пишется запись. Чтобы проверить, что **audit_log не пустой**:
+
+1. Получите JWT админа (логин через **POST /api/v1/admin/auth**).
+2. Выполните изменение категории, например:
+   - **POST** `/api/v1/admin/categories/{{ category_id }}/run` или **/pause**, или **DELETE** **/archive**
+   - либо **PATCH** `/api/v1/admin/categories/{{ category_id }}` с телом `{"status": "paused"}` и т.п.
+3. Запросите журнал аудита:
+   - **GET** `/api/v1/admin/categories/{{ category_id }}/audit`
+4. В ответе 200 поле **`items`** должно содержать события (action: `running`, `paused`, `archived`, `update`, `create`, `icon_upload`, `rule_attached`). В каждом событии есть **`details`** (если передавались) и **`actor`** (например, `admin:1`).
+
+---
+
 ## Проверка состояния сервиса (health)
 
 Для оркестраторов (Docker, Kubernetes) и мониторинга доступны эндпоинты без префикса `/api/v1`:

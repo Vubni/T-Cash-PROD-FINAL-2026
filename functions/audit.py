@@ -60,6 +60,7 @@ async def list_audit(
                 entity_id,
                 action,
                 actor,
+                details,
                 created_at
             FROM audit_log
             WHERE ($1::text IS NULL OR entity_type = $1)
@@ -82,6 +83,7 @@ async def list_audit(
             "entity_id": row["entity_id"],
             "action": row["action"],
             "actor": row["actor"],
+            "details": row.get("details"),
             "created_at": row["created_at"],
         }
         for row in rows
