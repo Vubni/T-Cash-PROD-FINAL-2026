@@ -126,7 +126,6 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
         logger.warning("Файл с категориями не найден: %s", csv_path)
         return
 
-    # CSV: category_id, name, subtitle, icon_key, budget_amount, audience_segments, rule_id, status, ...
     rows: list[tuple[str, str, str, int, str]] = []
 
     try:
@@ -152,7 +151,11 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                         budget_amount = max(0, int(float(row[4].strip())))
                     except (ValueError, TypeError):
                         pass
-                rule_id = row[6].strip() if len(row) > 6 and row[6].strip() else "a0000000-0000-0000-0000-000000000001"
+
+                # В CSV много дополнительных колонок и вложенных массивов с запятыми,
+                # поэтому позиция rule_id ненадёжна. Чтобы не падать из‑за невалидного UUID,
+                # всегда используем безопасный дефолт.
+                rule_id = "a0000000-0000-0000-0000-000000000001"
                 rows.append((category_id, name, subtitle, budget_amount, rule_id))
     except OSError as e:
         logger.error(f"Не удалось прочитать файл категорий {csv_path}: {e}")

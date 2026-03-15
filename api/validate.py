@@ -189,11 +189,6 @@ async def _check_ordinary_admin(request: web.Request) -> web.Response | None:
     admin = await admin_users.get_admin_by_id(payload.get("admin_id"))
     if not admin or not admin.get("approved"):
         return format_401_error(request, "Админ не найден или не одобрен")
-    if admin.get("main_admin"):
-        return format_403_error(
-            request,
-            "Супер-админ может только одобрять новых админов; управление категориями и правилами недоступно",
-        )
     request["admin_payload"] = payload
     return None
 
