@@ -1,6 +1,11 @@
 from marshmallow import Schema, fields, validate
 
 
+class HealthLivenessResponseSchema(Schema):
+    """Ответ GET /health: статус процесса."""
+    status = fields.Str(description="Всегда 'ok' при рабочем процессе.")
+
+
 class TokenResponseSchema(Schema):
     token = fields.Str(
         description="JWT-токен для авторизованных запросов. Передавать в заголовке Authorization: Bearer <token>."

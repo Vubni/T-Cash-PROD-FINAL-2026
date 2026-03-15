@@ -5,8 +5,8 @@ import aiohttp_cors
 from config import logger
 import asyncio
 from api import categories, audit, selection, users, admin_auth, calculate
+from docs import schems as sh
 
-from database.database import Database
 from database.functions import (
     init_db,
     ensure_users_from_csv,
@@ -20,48 +20,13 @@ from functions import admin_users as admin_users_fns
 
 @docs(
     tags=["Health"],
-    summary="Liveness",
-    description="Проверка, что процесс жив. Всегда 200 при рабочем приложении. Для Kubernetes liveness probe.",
-    responses={200: {"description": "Сервис запущен", "schema": {"type": "object", "properties": {"status": {"type": "string", "example": "ok"}}}}},
+    summary="Health",
+    description="Проверка, что сервис жив. Всегда 200 при рабочем приложении.",
+    responses={200: {"description": "Сервис запущен", "schema": sh.HealthLivenessResponseSchema}},
 )
-async def health_liveness(_request: web.Request) -> web.Response:
-    """Liveness: процесс жив. Всегда 200 при рабочем приложении."""
+async def health(_request: web.Request) -> web.Response:
+    """Health: процесс жив. Всегда 200 при рабочем приложении."""
     return web.json_response({"status": "ok"}, status=200)
-
-
-@docs(
-    tags=["Health"],
-    summary="Readiness",
-    description="Проверка готовности к приёму трафика (подключение к БД). Для Kubernetes readiness probe. 503 при недоступности БД.",
-    responses={
-        200: {
-            "description": "Готов к приёму трафика",
-            "schema": {
-                "type": "object",
-                "properties": {"status": {"type": "string"}, "database": {"type": "string"}},
-            },
-        },
-        503: {
-            "description": "БД недоступна",
-            "schema": {
-                "type": "object",
-                "properties": {"status": {"type": "string"}, "database": {"type": "string"}, "detail": {"type": "string"}},
-            },
-        },
-    },
-)
-async def health_ready(request: web.Request) -> web.Response:
-    """Readiness: приложение готово принимать трафик (проверка БД)."""
-    try:
-        async with Database() as db:
-            await db.execute("SELECT 1", ())
-        return web.json_response({"status": "ok", "database": "connected"}, status=200)
-    except Exception as e:
-        logger.warning("health ready: database check failed: %s", e)
-        return web.json_response(
-            {"status": "degraded", "database": "unavailable", "detail": str(e)},
-            status=503,
-        )
 
 
 @web.middleware
@@ -135,8 +100,7 @@ def create_app() -> web.Application:
     )
     prefix = "/api/v1"
     api_routes = [
-        web.get("/health", health_liveness),
-        web.get("/health/ready", health_ready),
+        web.get("/health", health),
         web.get(prefix + "/admin/categories", categories.list_categories),
         web.post(prefix + "/admin/categories", categories.create_category),
         web.get(prefix + "/admin/categories/{category_id}", categories.get_category),
