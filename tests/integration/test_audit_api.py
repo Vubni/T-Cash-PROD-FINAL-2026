@@ -30,17 +30,16 @@ async def test_get_audit_success(aiohttp_client, app):
     with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = test_records
 
-        client = await aiohttp_client(app)
-        resp = await client.get(
-            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
-            headers=_admin_headers(),
-        )
-
-        assert resp.status == 200
-        data = await resp.json()
-        assert data["total"] == 1
-        assert len(data["items"]) == 1
-        assert data["items"][0]["action"] == "create"
+        async with aiohttp_client(app) as client:
+            resp = await client.get(
+                f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+                headers=_admin_headers(),
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert data["total"] == 1
+            assert len(data["items"]) == 1
+            assert data["items"][0]["action"] == "create"
 
         mock_audit.assert_called_once()
         _, kwargs = mock_audit.call_args
@@ -56,15 +55,14 @@ async def test_get_audit_with_limit(aiohttp_client, app):
     with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = test_records
 
-        client = await aiohttp_client(app)
-        resp = await client.get(
-            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=5",
-            headers=_admin_headers(),
-        )
-
-        assert resp.status == 200
-        data = await resp.json()
-        assert data["total"] == 0
+        async with aiohttp_client(app) as client:
+            resp = await client.get(
+                f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=5",
+                headers=_admin_headers(),
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert data["total"] == 0
         mock_audit.assert_called_once()
         _, kwargs = mock_audit.call_args
         assert kwargs["entity_type"] == "category"
@@ -74,44 +72,44 @@ async def test_get_audit_with_limit(aiohttp_client, app):
 
 async def test_get_audit_invalid_limit(aiohttp_client, app):
     """❌ Негативный: limit=0 и limit>MAX дают 422 VALIDATION_FAILED."""
-    client = await aiohttp_client(app)
+    async with aiohttp_client(app) as client:
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=0",
+            headers=_admin_headers(),
+        )
+        assert resp.status == 422
+        body = await resp.json()
+        assert body["code"] == "VALIDATION_FAILED"
 
-    resp = await client.get(
-        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=0",
-        headers=_admin_headers(),
-    )
-    assert resp.status == 422
-    body = await resp.json()
-    assert body["code"] == "VALIDATION_FAILED"
-
-    resp = await client.get(
-        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=501",
-        headers=_admin_headers(),
-    )
-    assert resp.status == 422
-    body = await resp.json()
-    assert body["code"] == "VALIDATION_FAILED"
+    async with aiohttp_client(app) as client:
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=501",
+            headers=_admin_headers(),
+        )
+        assert resp.status == 422
+        body = await resp.json()
+        assert body["code"] == "VALIDATION_FAILED"
 
 
 async def test_get_audit_unauthorized(aiohttp_client, app):
     """❌ Негативный: без токена возвращается 401 UNAUTHORIZED."""
-    client = await aiohttp_client(app)
-    resp = await client.get(f"/api/v1/admin/categories/{_CATEGORY_ID}/audit")
-    assert resp.status == 401
-    body = await resp.json()
-    assert body["code"] == "UNAUTHORIZED"
+    async with aiohttp_client(app) as client:
+        resp = await client.get(f"/api/v1/admin/categories/{_CATEGORY_ID}/audit")
+        assert resp.status == 401
+        body = await resp.json()
+        assert body["code"] == "UNAUTHORIZED"
 
 
 async def test_get_audit_invalid_token(aiohttp_client, app):
     """❌ Негативный: невалидный токен возвращает 401 UNAUTHORIZED."""
-    client = await aiohttp_client(app)
-    resp = await client.get(
-        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
-        headers=_admin_headers(token="invalid_token"),
-    )
-    assert resp.status == 401
-    body = await resp.json()
-    assert body["code"] == "UNAUTHORIZED"
+    async with aiohttp_client(app) as client:
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+            headers=_admin_headers(token="invalid_token"),
+        )
+        assert resp.status == 401
+        body = await resp.json()
+        assert body["code"] == "UNAUTHORIZED"
 
 
 async def test_get_audit_database_error(aiohttp_client, app):
@@ -119,12 +117,11 @@ async def test_get_audit_database_error(aiohttp_client, app):
     with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.side_effect = Exception("Database connection failed")
 
-        client = await aiohttp_client(app)
-        resp = await client.get(
-            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
-            headers=_admin_headers(),
-        )
-
-        assert resp.status == 500
-        body = await resp.json()
-        assert body["code"] == "INTERNAL_ERROR"
+        async with aiohttp_client(app) as client:
+            resp = await client.get(
+                f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+                headers=_admin_headers(),
+            )
+            assert resp.status == 500
+            body = await resp.json()
+            assert body["code"] == "INTERNAL_ERROR"

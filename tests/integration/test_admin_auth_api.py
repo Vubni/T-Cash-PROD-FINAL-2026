@@ -8,17 +8,16 @@ async def test_register_admin_success(aiohttp_client, app):
     with patch("functions.admin_users.create_admin") as mock_register:
         mock_register.return_value = {"admin_id": 5, "login": "newadmin", "approved": False}
 
-        client = await aiohttp_client(app)
-        resp = await client.request(
-            "POST",
-            "/api/v1/admin/auth/register",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(admin_data),
-        )
-
-        assert resp.status == 201
-        data = await resp.json()
-        assert data["admin_id"] == 5
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/admin/auth/register",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(admin_data),
+            )
+            assert resp.status == 201
+            data = await resp.json()
+            assert data["admin_id"] == 5
 
 
 async def test_login_admin_success(aiohttp_client, app):
@@ -32,17 +31,16 @@ async def test_login_admin_success(aiohttp_client, app):
             "main_admin": False,
         }
 
-        client = await aiohttp_client(app)
-        resp = await client.request(
-            "POST",
-            "/api/v1/admin/auth/login",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(login_data),
-        )
-
-        assert resp.status == 200
-        data = await resp.json()
-        assert data["admin_id"] == 1
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/admin/auth/login",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(login_data),
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert data["admin_id"] == 1
 
 
 async def test_approve_admin_success(aiohttp_client, app):
@@ -56,12 +54,12 @@ async def test_approve_admin_success(aiohttp_client, app):
             "approved": True,
         }
 
-        client = await aiohttp_client(app)
-        resp = await client.request(
-            "POST",
-            "/api/v1/admin/auth/approve",
-            headers={"Content-Type": "application/json", "Authorization": "Bearer main_token"},
-            data=json.dumps(approve_data),
-        )
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/admin/auth/approve",
+                headers={"Content-Type": "application/json", "Authorization": "Bearer main_token"},
+                data=json.dumps(approve_data),
+            )
 
         assert resp.status == 200

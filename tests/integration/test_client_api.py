@@ -47,17 +47,16 @@ async def test_selection_success(aiohttp_client, app):
         mock_get_current.return_value = None  # нет текущего выбора — сохраняем новый
         mock_save.return_value = []
 
-        client = await aiohttp_client(app)
-        resp = await client.request(
-            "POST",
-            "/api/v1/client/selection",
-            headers=_auth_headers(),
-            data=json.dumps(selection_data),
-        )
-
-        assert resp.status == 200
-        data = await resp.json()
-        assert "category_ids" in data
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/client/selection",
+                headers=_auth_headers(),
+                data=json.dumps(selection_data),
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert "category_ids" in data
 
 
 async def test_selection_user_not_found(aiohttp_client, app):
@@ -67,17 +66,16 @@ async def test_selection_user_not_found(aiohttp_client, app):
     with patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists:
         mock_user_exists.return_value = False
 
-        client = await aiohttp_client(app)
-        resp = await client.request(
-            "POST",
-            "/api/v1/client/selection",
-            headers=_auth_headers(),
-            data=json.dumps(selection_data),
-        )
-
-        assert resp.status == 404
-        data = await resp.json()
-        assert data["code"] == "NOT_FOUND"
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/client/selection",
+                headers=_auth_headers(),
+                data=json.dumps(selection_data),
+            )
+            assert resp.status == 404
+            data = await resp.json()
+            assert data["code"] == "NOT_FOUND"
 
 
 async def test_selection_not_five_categories(aiohttp_client, app):
@@ -90,17 +88,16 @@ async def test_selection_not_five_categories(aiohttp_client, app):
         ]
     }
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers=_auth_headers(),
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers=_auth_headers(),
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 422
+        data = await resp.json()
+        assert data["code"] == "VALIDATION_FAILED"
 
 
 async def test_selection_duplicate_categories(aiohttp_client, app):
@@ -115,34 +112,32 @@ async def test_selection_duplicate_categories(aiohttp_client, app):
         ]
     }
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers=_auth_headers(),
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers=_auth_headers(),
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 422
+        data = await resp.json()
+        assert data["code"] == "VALIDATION_FAILED"
 
 
 async def test_selection_invalid_user_id(aiohttp_client, app):
     """Тест: невалидный JWT (некорректный токен) -> 401"""
     selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers={"Content-Type": "application/json", "Authorization": "Bearer invalid_token"},
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 401
-    data = await resp.json()
-    assert data["code"] == "UNAUTHORIZED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers={"Content-Type": "application/json", "Authorization": "Bearer invalid_token"},
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 401
+        data = await resp.json()
+        assert data["code"] == "UNAUTHORIZED"
 
 
 async def test_selection_invalid_category_uuid(aiohttp_client, app):
@@ -157,17 +152,16 @@ async def test_selection_invalid_category_uuid(aiohttp_client, app):
         ]
     }
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers=_auth_headers(),
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers=_auth_headers(),
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 422
+        data = await resp.json()
+        assert data["code"] == "VALIDATION_FAILED"
 
 
 async def test_selection_missing_user_id(aiohttp_client, app):
@@ -177,37 +171,35 @@ async def test_selection_missing_user_id(aiohttp_client, app):
     # Токен без user_id
     token_without_user = core.create_token({})
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token_without_user}",
-        },
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 401
-    data = await resp.json()
-    assert data["code"] == "UNAUTHORIZED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token_without_user}",
+            },
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 401
+        data = await resp.json()
+        assert data["code"] == "UNAUTHORIZED"
 
 
 async def test_selection_missing_category_ids(aiohttp_client, app):
     """Тест: отсутствует category_ids"""
     selection_data = {}
 
-    client = await aiohttp_client(app)
-    resp = await client.request(
-        "POST",
-        "/api/v1/client/selection",
-        headers=_auth_headers(),
-        data=json.dumps(selection_data),
-    )
-
-    assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers=_auth_headers(),
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 422
+        data = await resp.json()
+        assert data["code"] == "VALIDATION_FAILED"
 
 
 def test_user_id_integer_in_client_api():
