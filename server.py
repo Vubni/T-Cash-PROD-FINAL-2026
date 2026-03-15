@@ -102,9 +102,7 @@ def create_app() -> web.Application:
         web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
         web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
-        web.post(prefix + '/client/calculate', calculate.calculate),
-        web.post(prefix + '/offers/run', offers.run_offers),
-        web.get(prefix + '/progress', progress.get_progress),
+        web.post(prefix + '/offers/run', calculate.calculate),
 
         web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
         web.post(prefix + '/client/selection', selection.confirm_selection),
