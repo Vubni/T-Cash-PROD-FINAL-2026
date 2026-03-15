@@ -35,6 +35,38 @@ async def ensure_selections_user_id_column() -> None:
         logger.warning("Колонка selections.user_id: %s", e)
 
 
+async def ensure_categories_status_column() -> None:
+    """Добавляет колонку status в categories, если её нет (совместимость со старыми БД)."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE categories
+                ADD COLUMN IF NOT EXISTS status VARCHAR(20)
+                    NOT NULL DEFAULT 'running'
+                    CHECK (status IN ('running', 'paused', 'archived'))
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка categories.status: %s", e)
+
+
+async def ensure_categories_icon_column() -> None:
+    """Добавляет колонку icon_path в categories, если её нет (совместимость со старыми БД)."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE categories
+                ADD COLUMN IF NOT EXISTS icon_path VARCHAR(255) NULL
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка categories.icon_path: %s", e)
+
+
 _BIGINT_MIN = -(2**63)
 _BIGINT_MAX = 2**63 - 1
 
@@ -54,57 +86,128 @@ def _parse_user_id(raw: str) -> int | None:
 
 
 def _parse_age(age_bucket: str | None) -> int:
+    """
+    Нормализует возрастной диапазон из CSV в «типичный» возраст пользователя.
+
+    Примеры:
+    - "<=25"  -> 25
+    - "26-35" -> 30
+    - "36-45" -> 40
+    - "46-55" -> 50
+    - "56-65" -> 60
+    - "65+"   -> 70
+    """
     s = (age_bucket or "").strip()
     if not s:
         return 30
+
+    # "<=25" -> 25
     if s.startswith("<="):
         try:
-            return int(s[2:].replace("+", "").replace(" ", "").replace("k", ""))
+            return int(s[2:])
         except ValueError:
             return 25
+
+    # "26-35" -> (26 + 35) // 2
     if "-" in s:
-        left, _sep, _right = s.partition("-")
+        left, _sep, right = s.partition("-")
         try:
-            return int(left)
+            left_i = int(left)
+            right_i = int(right)
+            return (left_i + right_i) // 2
         except ValueError:
             return 30
+
+    # "65+" -> 70 (условно типичный возраст для 65+)
     if s.endswith("+"):
         try:
-            return int(s[:-1])
+            base = int(s[:-1])
+            return base + 5
         except ValueError:
             return 65
-    return 30
+
+    # На всякий случай пытаемся распарсить просто число
+    try:
+        return int(s)
+    except ValueError:
+        return 30
 
 
 def _parse_income(income_bucket: str | None) -> int:
+    """
+    Преобразует диапазон дохода вида "<=30k", "60-100k", "250k+" в одно число.
+
+    Возвращаем значение в тех же единицах, что и в CSV (k -> * 1000), используя:
+    - для "<=30k"  — верхнюю границу (30000),
+    - для "60-100k" — середину диапазона ((60000 + 100000) // 2 = 80000),
+    - для "250k+"  — нижнюю границу диапазона (250000).
+    """
+
+    def _parse_number_token(token: str) -> int | None:
+        """Парсит один числовой фрагмент вроде '30k' или '250' в абсолютное значение."""
+        t = token.strip().lower()
+        if not t:
+            return None
+        multiplier = 1
+        if t.endswith("k"):
+            multiplier = 1000
+            t = t[:-1]
+        try:
+            return int(float(t)) * multiplier
+        except ValueError:
+            return None
+
     s = (income_bucket or "").strip()
     if not s:
         return 0
     s = s.lower().replace(" ", "")
-    if "k" in s:
-        s = s.replace("k", "000")
-    if s.startswith("<="):
-        num = s[2:].rstrip("+")
-        try:
-            return int(num)
-        except ValueError:
-            return 0
+
+    # "<=30k" / "≤30k"
+    if s.startswith("<=") or s.startswith("≤"):
+        num_part = s[2:] if s.startswith("<=") else s[1:]
+        num_part = num_part.rstrip("+")
+        val = _parse_number_token(num_part)
+        return val if val is not None else 0
+
+    # "60-100k" — берём центр диапазона
     if "-" in s:
-        left, _sep, _right = s.partition("-")
-        try:
-            return int(left)
-        except ValueError:
-            return 0
-    if s.endswith("+"):
-        num = s[:-1]
-        try:
-            return int(num)
-        except ValueError:
-            return 0
-    try:
-        return int(s)
-    except ValueError:
+        left, _sep, right = s.partition("-")
+        left_val = _parse_number_token(left)
+        right_val = _parse_number_token(right)
+        if left_val is not None and right_val is not None:
+            return (left_val + right_val) // 2
+        if left_val is not None:
+            return left_val
+        if right_val is not None:
+            return right_val
         return 0
+
+    # "250k+" — нижняя граница
+    if s.endswith("+"):
+        num_part = s[:-1]
+        val = _parse_number_token(num_part)
+        return val if val is not None else 0
+
+    # Просто число / число с 'k'
+    val = _parse_number_token(s)
+    return val if val is not None else 0
+
+
+def _parse_gender(gender_code: str | None) -> str:
+    """
+    Преобразует код пола из CSV в строковое значение для БД.
+
+    По договорённости:
+    - "cat_4" -> "female"
+    - "cat_6" -> "male"
+    Всё остальное -> "other".
+    """
+    code = (gender_code or "").strip().lower()
+    if code == "cat_4":
+        return "female"
+    if code == "cat_6":
+        return "male"
+    return "other"
 
 
 async def ensure_users_from_csv(csv_path: str | None = None) -> None:
@@ -127,7 +230,7 @@ async def ensure_users_from_csv(csv_path: str | None = None) -> None:
                     skipped += 1
                     continue
                 age = _parse_age(row.get("soc_dem___age_bucket"))
-                gender = "other"
+                gender = _parse_gender(row.get("soc_dem___gender_cd"))
                 income = _parse_income(row.get("soc_dem___income_bucket"))
                 to_insert.append((user_id, age, gender, income))
     except OSError as e:

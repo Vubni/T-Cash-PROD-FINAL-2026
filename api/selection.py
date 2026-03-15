@@ -13,7 +13,6 @@ from core import (
     save_categories_config,
 )
 from docs import schems as sh
-from functions import audit as audit_fns
 from functions import selection as sel_fns
 from functions import users as users_fns
 
@@ -103,13 +102,6 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
             return web.json_response({"category_ids": parsed.category_ids}, status=200)
 
         await sel_fns.save_selection_batch(user_id, parsed.category_ids)
-        await audit_fns.write_audit(
-            entity_type="client",
-            entity_id=str(user_id),
-            action="selection",
-            actor=str(user_id),
-            details={"category_ids": parsed.category_ids},
-        )
         return web.json_response({"category_ids": parsed.category_ids}, status=200)
     except Exception:
         logger.exception("confirm_selection handler failed")

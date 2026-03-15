@@ -45,6 +45,7 @@ class Admin_category_create(BaseModel):
 
     name: str
     subtitle: str
+    icon_path: Optional[str] = None
     budget_amount: float
     rate_min: int
     rate_max: int
@@ -81,9 +82,11 @@ class Admin_category_update(BaseModel):
     name: Optional[str] = None
     subtitle: Optional[str] = None
     budget_amount: Optional[float] = None
+    icon_path: Optional[str] = None
     rate_min: Optional[int] = None
     rate_max: Optional[int] = None
     rule_id: Optional[str] = None
+    status: Optional[str] = None
 
     @field_validator("name", "subtitle")
     @classmethod
@@ -95,6 +98,18 @@ class Admin_category_update(BaseModel):
             raise ValueError("Field cannot be empty")
         if len(v) > STRING_FIELD_MAX_LENGTH:
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
+        return v
+
+    @field_validator("icon_path")
+    @classmethod
+    def icon_path_length(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) > STRING_FIELD_MAX_LENGTH:
+            raise ValueError(f"icon_path cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
 
     @field_validator("rule_id")
@@ -110,6 +125,17 @@ class Admin_category_update(BaseModel):
         if v is not None and (v < RATE_MIN_LIMIT or v > RATE_MAX_LIMIT):
             raise ValueError(f"rate must be between {RATE_MIN_LIMIT} and {RATE_MAX_LIMIT}")
         return v
+
+    @field_validator("status")
+    @classmethod
+    def status_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed = {"running", "paused", "archived"}
+        value = v.strip().lower()
+        if value not in allowed:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed))}")
+        return value
 
     @model_validator(mode="after")
     def check_payload(self) -> "Admin_category_update":
@@ -244,6 +270,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
         response = await cat_fns.create_category(
             name=parsed.name,
             subtitle=parsed.subtitle,
+            icon_path=parsed.icon_path,
             budget_amount=int(parsed.budget_amount),
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
@@ -358,10 +385,12 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
+            icon_path=parsed.icon_path,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
             rule_id=parsed.rule_id,
+            status=parsed.status,
         )
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
@@ -369,3 +398,101 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
     except Exception:
         logger.exception("update_category handler failed")
         return validate.format_500_error(request)
+
+
+class Category_status_path(BaseModel):
+    model_config = {"extra": "forbid"}
+
+    category_id: str
+
+    @field_validator("category_id")
+    @classmethod
+    def category_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "category_id")
+
+
+async def _change_category_status(
+    request: web.Request,
+    parsed: Category_status_path,
+    new_status: str,
+) -> web.Response:
+    try:
+        response = await cat_fns.update_category_status(parsed.category_id, new_status)
+        if response is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        return web.json_response(response, status=200)
+    except Exception:
+        logger.exception("category status change handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
+    summary="Запустить категорию кэшбэка",
+    description="Переводит категорию в статус running (запущена) и включает её в расчёты и выдачу клиенту. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Статус категории изменён на running", "schema": sh.CategoryDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
+        }
+    ],
+)
+@validate.validate(Category_status_path, require_admin=True)
+async def run_category(request: web.Request, parsed: Category_status_path) -> web.Response:
+    return await _change_category_status(request, parsed, "running")
+
+
+@docs(
+    tags=["Admin"],
+    summary="Поставить категорию на паузу",
+    description="Переводит категорию в статус paused — категория скрывается из клиентских расчётов, но остаётся в системе. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Статус категории изменён на paused", "schema": sh.CategoryDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
+        }
+    ],
+)
+@validate.validate(Category_status_path, require_admin=True)
+async def pause_category(request: web.Request, parsed: Category_status_path) -> web.Response:
+    return await _change_category_status(request, parsed, "paused")
+
+
+@docs(
+    tags=["Admin"],
+    summary="Отправить категорию в архив",
+    description="Переводит категорию в статус archived — мягкое удаление. Категория не участвует в расчётах и не отображается клиенту, но остаётся в админке. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Статус категории изменён на archived", "schema": sh.CategoryDetailSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+    parameters=[
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
+        }
+    ],
+)
+@validate.validate(Category_status_path, require_admin=True)
+async def archive_category(request: web.Request, parsed: Category_status_path) -> web.Response:
+    return await _change_category_status(request, parsed, "archived")

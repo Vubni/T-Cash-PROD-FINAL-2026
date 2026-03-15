@@ -14,6 +14,8 @@ from database.functions import (
     ensure_users_from_csv,
     ensure_selections_user_id_column,
     ensure_categories_from_csv,
+    ensure_categories_status_column,
+    ensure_categories_icon_column,
 )
 from functions import admin_users as admin_users_fns
 
@@ -92,7 +94,10 @@ def create_app() -> web.Application:
         web.get(prefix + '/admin/categories/{category_id}', categories.get_category),
         web.post(prefix + '/admin/categories/{category_id}/rule', categories.create_category_rule),
         web.patch(prefix + '/admin/categories/{category_id}', categories.update_category),
-        web.get(prefix + '/admin/audit', audit.list_audit),
+        web.post(prefix + '/admin/categories/{category_id}/run', categories.run_category),
+        web.post(prefix + '/admin/categories/{category_id}/pause', categories.pause_category),
+        web.delete(prefix + '/admin/categories/{category_id}/archive', categories.archive_category),
+        web.get(prefix + '/admin/categories/{category_id}/audit', audit.list_audit),
         web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
 
         web.get(prefix + '/users/{user_id}/auth', users.user_auth),
@@ -161,6 +166,8 @@ if __name__ == "__main__":
         await ensure_users_from_csv()
         await ensure_categories_from_csv()
         await ensure_selections_user_id_column()
+        await ensure_categories_status_column()
+        await ensure_categories_icon_column()
 
     asyncio.run(startup())
 

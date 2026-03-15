@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS categories (
     rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100) DEFAULT 1,
     rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 17,
     rule_id         UUID        NULL REFERENCES rules(rule_id),
+    icon_path       VARCHAR(255) NULL,
+    status          VARCHAR(20) NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'paused', 'archived')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

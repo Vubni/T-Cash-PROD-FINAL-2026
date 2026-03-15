@@ -16,10 +16,13 @@ LIMIT_MAX = 500
 class Audit_list(BaseModel):
     model_config = {"extra": "forbid"}
 
-    entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
-    action: Optional[str] = None
+    category_id: str
     limit: int = 50
+
+    @field_validator("category_id")
+    @classmethod
+    def category_id_uuid(cls, v: str) -> str:
+        return validate.validate_uuid(v, "category_id")
 
     @field_validator("limit")
     @classmethod
@@ -31,8 +34,11 @@ class Audit_list(BaseModel):
 
 @docs(
     tags=["Admin"],
-    summary="Журнал аудита",
-    description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке. Требуется JWT админа.",
+    summary="Журнал аудита по категории",
+    description=(
+        "Возвращает список событий аудита по изменениям конкретной категории. "
+        "Требуется JWT админа."
+    ),
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Журнал аудита получен", "schema": sh.AuditListResponseSchema},
@@ -40,25 +46,11 @@ class Audit_list(BaseModel):
     },
     parameters=[
         {
-            "in": "query",
-            "name": "entity_type",
+            "in": "path",
+            "name": "category_id",
             "type": "string",
-            "required": False,
-            "description": "Фильтр по типу сущности. Опционально.",
-        },
-        {
-            "in": "query",
-            "name": "entity_id",
-            "type": "string",
-            "required": False,
-            "description": "Фильтр по идентификатору сущности. Опционально.",
-        },
-        {
-            "in": "query",
-            "name": "action",
-            "type": "string",
-            "required": False,
-            "description": "Фильтр по действию. Опционально.",
+            "required": True,
+            "description": "Идентификатор категории (UUID), для которой нужен журнал аудита.",
         },
         {
             "in": "query",
@@ -75,9 +67,9 @@ async def list_audit(request: web.Request, parsed: Audit_list) -> web.Response:
     try:
         limit = parsed.limit or 50
         items = await audit_fns.list_audit(
-            parsed.entity_type,
-            parsed.entity_id,
-            parsed.action,
+            entity_type="category",
+            entity_id=parsed.category_id,
+            action=None,
             limit,
         )
         return web.json_response({"items": items, "total": len(items)}, status=200)

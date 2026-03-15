@@ -17,8 +17,10 @@ def row_to_category(item: dict) -> dict:
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
+        "icon_path": item.get("icon_path"),
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
+        "status": item.get("status") or "running",
         "rule": _rule_from_row(item),
         "history": [],
     }
@@ -29,8 +31,10 @@ def row_to_category_list_item(item: dict) -> dict:
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
+        "icon_path": item.get("icon_path"),
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
+        "status": item.get("status") or "running",
     }
 
 
@@ -38,10 +42,12 @@ _CATEGORY_SELECT_FIELDS = """
     c.category_id,
     c.name,
     c.subtitle,
+    c.icon_path,
     c.budget_amount,
     c.rate_min,
     c.rate_max,
     c.rule_id,
+    c.status,
     r.min_age,
     r.max_age,
     r.gender,
@@ -70,6 +76,7 @@ async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
 async def create_category(
     name: str,
     subtitle: str,
+    icon_path: str | None,
     budget_amount: int,
     rate_min: int,
     rate_max: int,
@@ -77,14 +84,14 @@ async def create_category(
     async with Database() as db:
         sql = """
             INSERT INTO categories (
-                name, subtitle,
+                name, subtitle, icon_path,
                 budget_amount, rate_min, rate_max
             )
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING category_id
         """
         category_id = await db.fetchval(
-            sql, (name, subtitle, budget_amount, rate_min, rate_max),
+            sql, (name, subtitle, icon_path, budget_amount, rate_min, rate_max),
         )
         return await _get_category(db, category_id)
 
@@ -111,6 +118,7 @@ async def update_category(
     *,
     name: str | None = None,
     subtitle: str | None = None,
+    icon_path: str | None = None,
     budget_amount: int | None = None,
     rate_min: int | None = None,
     rate_max: int | None = None,
@@ -126,6 +134,7 @@ async def update_category(
 
     add("name", name)
     add("subtitle", subtitle)
+    add("icon_path", icon_path)
     add("budget_amount", budget_amount)
     add("rate_min", rate_min)
     add("rate_max", rate_max)
@@ -139,4 +148,19 @@ async def update_category(
         params.append(category_id)
         sql_update = f"UPDATE categories SET {', '.join(fields)} WHERE category_id = ${len(params)}"
         await db.execute(sql_update, tuple(params))
+        return await _get_category(db, category_id)
+
+
+async def update_category_status(category_id: str, status: str) -> dict | None:
+    """
+    Обновляет только статус категории.
+    Возможные значения: running, paused, archived.
+    """
+    async with Database() as db:
+        sql_update = """
+            UPDATE categories
+            SET status = $1, updated_at = NOW()
+            WHERE category_id = $2
+        """
+        await db.execute(sql_update, (status, category_id))
         return await _get_category(db, category_id)

@@ -236,16 +236,36 @@ class CategoryListItemSchema(Schema):
     id = fields.Str(required=True, description="UUID категории. Используется в path и в запросах выбора. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории для отображения (до 500 символов). Обязательное поле.")
     subtitle = fields.Str(required=True, description="Краткий подзаголовок/описание категории для карточки (до 500 символов). Обязательное поле.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'); склеивать с base URL статики.",
+    )
     budget = fields.Nested(CategoryBudgetSchema, required=True, description="Бюджет по категории: amount — сумма на одного пользователя за период (руб).")
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка: min и max в процентах для отображения пользователю.")
+    status = fields.Str(
+        required=True,
+        validate=validate.OneOf(["running", "paused", "archived"]),
+        description="Статус категории в системе: running — активна и участвует в расчёте; paused — временно выключена; archived — в архиве (скрыта для клиентов). Обязательное поле.",
+    )
 
 
 class CategoryDetailSchema(Schema):
     id = fields.Str(required=True, description="UUID категории. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'); склеивать с base URL статики.",
+    )
     budget = fields.Nested(CategoryBudgetSchema, required=True, description="Бюджет: amount — бюджет на одного пользователя за период (руб).")
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка: min, max в процентах.")
+    status = fields.Str(
+        required=True,
+        validate=validate.OneOf(["running", "paused", "archived"]),
+        description="Текущий статус категории: running — запущена, paused — на паузе, archived — в архиве (аналог мягкого удаления). Обязательное поле.",
+    )
     rule = fields.Nested(CategoryRuleSchema, required=True, description="Правило отбора: rule_id, min_age, max_age, gender, income — условия показа категории пользователю.")
     history = fields.List(
         fields.Nested(CategoryHistoryItemSchema),
@@ -271,6 +291,12 @@ class CategoryCreateSchema(Schema):
     )
     name = fields.Str(required=True, validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX), description="Название категории для отображения пользователю (1–500 символов). Обязательное поле.")
     subtitle = fields.Str(required=True, validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX), description="Подзаголовок/краткое описание категории (1–500 символов). Обязательное поле.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        validate=validate.Length(max=NAME_SUBTITLE_MAX),
+        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'). Опционально.",
+    )
     budget_amount = fields.Float(
         required=True,
         description="Бюджет на одного пользователя по категории за период, в рублях. Не может быть отрицательным. Обязательное поле.",
@@ -283,6 +309,12 @@ class CategoryCreateSchema(Schema):
 class CategoryUpdateSchema(Schema):
     name = fields.Str(required=False, validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX), description="Новое название категории (1–500 символов). Опционально.")
     subtitle = fields.Str(required=False, validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX), description="Новый подзаголовок категории (1–500 символов). Опционально.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        validate=validate.Length(max=NAME_SUBTITLE_MAX),
+        description="Новый относительный путь к иконке категории на сервере (например, 'icons/food.svg'). Опционально.",
+    )
     budget_amount = fields.Float(
         required=False,
         description="Новый бюджет на одного пользователя за период (руб). Не может быть отрицательным. Опционально.",
@@ -471,6 +503,11 @@ class CalculateCategoryItemSchema(Schema):
     category_id = fields.Str(required=True, description="UUID категории. Используется при отправке выбора (category_ids) и в эндпоинтах выбора. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории для отображения. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории для карточки. Обязательное поле.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Относительный путь к иконке категории (например, 'icons/food.svg'); склеивать с base URL статики.",
+    )
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка (min, max в %).")
     expected_benefit_amount = fields.Float(
         required=False,
@@ -511,6 +548,11 @@ class SelectionDetailSchema(Schema):
     category_id = fields.Str(required=True, description="UUID выбранной категории. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории для отображения. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
+    icon_path = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Относительный путь к иконке категории (например, 'icons/food.svg'); склеивать с base URL статики.",
+    )
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка (min, max в %).")
     expected_benefit_amount = fields.Float(
         required=True,

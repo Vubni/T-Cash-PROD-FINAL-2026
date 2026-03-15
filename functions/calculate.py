@@ -14,11 +14,13 @@ async def get_calculate_items(user_id: int) -> dict:
                 s.category_id,
                 c.name,
                 c.subtitle,
+                c.icon_path,
                 c.rate_min,
                 c.rate_max
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
             WHERE s.user_id = $1::bigint
+              AND c.status = 'running'
         """
         rows = await db.execute_all(sql, (user_id,)) or []
 
@@ -28,20 +30,34 @@ async def get_calculate_items(user_id: int) -> dict:
     async with Database() as db:
         sql = """
             SELECT
-                category_id,
-                name,
-                subtitle,
-                rate_min,
-                rate_max
-            FROM categories LIMIT $1
+                c.category_id,
+                c.name,
+                c.subtitle,
+                c.icon_path,
+                c.rate_min,
+                c.rate_max
+            FROM categories c
+            LEFT JOIN rules r ON r.rule_id = c.rule_id
+            LEFT JOIN users u ON u.user_id = $1::bigint
+            WHERE c.status = 'running'
+              AND (
+                c.rule_id IS NULL
+                OR (
+                  (r.min_age IS NULL OR u.age >= r.min_age)
+                  AND (r.max_age IS NULL OR u.age <= r.max_age)
+                  AND (r.gender IS NULL OR u.gender = r.gender)
+                  AND (r.income IS NULL OR u.income >= r.income)
+                )
+              )
+            LIMIT $2
         """
-        categories = await db.execute_all(sql, (get_all_categories(),)) or []
+        categories = await db.execute_all(sql, (user_id, get_all_categories())) or []
         category_names = [c["name"] for c in categories]
         if not category_names:
             category_names = ML_CATEGORY_NAMES
 
         payload = {
-            "categories": ML_CATEGORY_NAMES,
+            "categories": category_names,
             "client_id": str(user_id),
             "top_n": max(1, get_all_categories() + 1),
         }
