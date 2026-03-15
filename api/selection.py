@@ -39,6 +39,12 @@ class Selection_submit_body(BaseModel):
         return self
 
 
+class Admin_selection_settings_empty(BaseModel):
+    """Пустая модель для GET настроек (без тела запроса)."""
+
+    model_config = {"extra": "forbid"}
+
+
 class Admin_selection_settings(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -107,6 +113,34 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
         return web.json_response({"category_ids": parsed.category_ids}, status=200)
     except Exception:
         logger.exception("confirm_selection handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Admin"],
+    summary="Получить настройки выбора категорий",
+    description="Возвращает текущие глобальные настройки выбора категорий: all_categories и max_selection_count. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {
+            "description": "Текущие настройки",
+            "schema": sh.CategorySelectionSettingsResponseSchema,
+        },
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@validate.validate(Admin_selection_settings_empty, require_admin=True)
+async def get_selection_settings(request: web.Request, parsed: Admin_selection_settings_empty) -> web.Response:
+    try:
+        return web.json_response(
+            {
+                "all_categories": get_all_categories(),
+                "max_selection_count": get_max_selection_count(),
+            },
+            status=200,
+        )
+    except Exception:
+        logger.exception("get_selection_settings handler failed")
         return validate.format_500_error(request)
 
 

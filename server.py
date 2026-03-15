@@ -99,14 +99,19 @@ def create_app() -> web.Application:
         web.post(prefix + "/admin/categories/{category_id}/pause", categories.pause_category),
         web.delete(prefix + "/admin/categories/{category_id}/archive", categories.archive_category),
         web.get(prefix + "/admin/categories/{category_id}/audit", audit.list_audit),
+    
+        web.get(prefix + "/admin/categories/settings", selection.get_selection_settings),
         web.post(prefix + "/admin/categories/settings", selection.update_selection_settings),
+
         web.get(prefix + "/users/{user_id}/auth", users.user_auth),
         web.post(prefix + "/admin/auth/register", admin_auth.register_admin),
         web.post(prefix + "/admin/auth/login", admin_auth.login_admin),
         web.get(prefix + "/admin/auth/pending", admin_auth.list_pending),
         web.post(prefix + "/admin/auth/approve", admin_auth.approve_admin),
         web.post(prefix + "/admin/auth/decline", admin_auth.decline_admin),
+
         web.post(prefix + "/offers/run", calculate.calculate),
+        
         web.post(prefix + "/client/selection", selection.confirm_selection),
     ]
     for route in api_routes:
