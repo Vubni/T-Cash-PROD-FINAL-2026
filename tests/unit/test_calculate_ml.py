@@ -85,7 +85,6 @@ async def test_get_calculate_items_calls_ml_with_correct_body_when_no_cache():
 
     with patch("functions.calculate.Database") as MockDb, \
          patch("functions.calculate.get_all_categories", return_value=1), \
-         patch("functions.calculate.get_max_selection_count", return_value=5), \
          patch("functions.calculate.ML_SERVICE_URL", "http://ml:8008"), \
          patch("aiohttp.ClientSession", return_value=mock_session):
         mock_db_instance = AsyncMock()
@@ -99,7 +98,7 @@ async def test_get_calculate_items_calls_ml_with_correct_body_when_no_cache():
     assert len(result["items"]) == 1
     assert result["items"][0]["name"] == "Аптеки"
     assert result["items"][0]["cashback"] == 10  # 100_000*100/50_000=200, clamped to rate_max 10
-    # Проверяем, что в ML ушёл запрос с ожидаемыми полями
+    # Проверяем, что в ML ушёл запрос с ожидаемыми полями (top_n = max(1, get_all_categories()))
     mock_session.post.assert_called_once()
     call_args = mock_session.post.call_args
     assert call_args[0][0].endswith("/predict")
@@ -107,7 +106,7 @@ async def test_get_calculate_items_calls_ml_with_correct_body_when_no_cache():
     assert "categories" in body
     assert body["categories"] == ["Аптеки"]
     assert body["client_id"] == "99999"
-    assert body["top_n"] == 5
+    assert body["top_n"] == 1
 
 
 @pytest.mark.asyncio
@@ -141,7 +140,6 @@ async def test_get_calculate_items_uses_ml_category_names_fallback_when_db_retur
 
     with patch("functions.calculate.Database") as MockDb, \
          patch("functions.calculate.get_all_categories", return_value=0), \
-         patch("functions.calculate.get_max_selection_count", return_value=5), \
          patch("functions.calculate.ML_SERVICE_URL", "http://ml:8008"), \
          patch("aiohttp.ClientSession", return_value=mock_session):
         mock_db_instance = AsyncMock()
@@ -157,7 +155,7 @@ async def test_get_calculate_items_uses_ml_category_names_fallback_when_db_retur
     body = call_args[1]["json"]
     assert body["categories"] == ML_CATEGORY_NAMES
     assert body["client_id"] == "1"
-    assert body["top_n"] == 5
+    assert body["top_n"] == 1  # max(1, get_all_categories()) при 0
 
 
 @pytest.mark.asyncio
@@ -186,7 +184,6 @@ async def test_get_calculate_items_raises_on_ml_non_200():
 
     with patch("functions.calculate.Database") as MockDb, \
          patch("functions.calculate.get_all_categories", return_value=1), \
-         patch("functions.calculate.get_max_selection_count", return_value=5), \
          patch("functions.calculate.ML_SERVICE_URL", "http://ml:8008"), \
          patch("aiohttp.ClientSession", return_value=mock_session):
         mock_db_instance = AsyncMock()
