@@ -126,7 +126,8 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
         logger.warning("Файл с категориями не найден: %s", csv_path)
         return
 
-    rows: list[tuple[str, str]] = []
+    # CSV: category_id, name, subtitle, icon_key, budget_amount, audience_segments, rule_id, status, ...
+    rows: list[tuple[str, str, str, int, str]] = []
 
     try:
         with open(csv_path, newline="", encoding="utf-8") as f:
@@ -144,7 +145,15 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                 name = row[1].strip()
                 if not category_id or not name:
                     continue
-                rows.append((category_id, name))
+                subtitle = row[2].strip() if len(row) > 2 else name
+                budget_amount = 0
+                if len(row) > 4 and row[4].strip():
+                    try:
+                        budget_amount = max(0, int(float(row[4].strip())))
+                    except (ValueError, TypeError):
+                        pass
+                rule_id = row[6].strip() if len(row) > 6 and row[6].strip() else "a0000000-0000-0000-0000-000000000001"
+                rows.append((category_id, name, subtitle, budget_amount, rule_id))
     except OSError as e:
         logger.error(f"Не удалось прочитать файл категорий {csv_path}: {e}")
         return
@@ -153,19 +162,17 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
         logger.info(f"В файле {csv_path} не найдено валидных категорий для импорта.")
         return
 
-    DEFAULT_RULE_ID = "a0000000-0000-0000-0000-000000000001"
-
     params: list[tuple] = []
-    for category_id, name in rows:
+    for category_id, name, subtitle, budget_amount, rule_id in rows:
         params.append(
             (
                 category_id,
                 name,
-                name,
-                0,
+                subtitle,
+                budget_amount,
                 5,
                 15,
-                DEFAULT_RULE_ID,
+                rule_id,
             )
         )
 
@@ -184,8 +191,12 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7
             )
-            ON CONFLICT (category_id) DO NOTHING
+            ON CONFLICT (category_id) DO UPDATE SET
+                name = EXCLUDED.name,
+                subtitle = EXCLUDED.subtitle,
+                budget_amount = EXCLUDED.budget_amount,
+                rule_id = EXCLUDED.rule_id
             """,
             params,
         )
-    logger.info(f"Импортировано категорий из CSV: {len(params)}")
+    logger.info(f"Импортировано/обновлено категорий из CSV: {len(params)}")
