@@ -542,7 +542,6 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
         rule_id = (category.get("rule") or {}).get("rule_id")
         if not rule_id:
             return validate.format_404_error(request, message="У категории нет правила")
-        await cat_fns.update_category(parsed.category_id, _rule_id_set_null=True)
         await rules_fns.delete_rule(rule_id)
         return web.Response(status=204)
     except Exception:

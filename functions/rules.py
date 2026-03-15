@@ -85,8 +85,11 @@ async def update_rule(
 
 
 async def delete_rule(rule_id: str) -> bool:
-    """Удаляет правило по rule_id. Возвращает True если удалено."""
+    """Удаляет правило по rule_id. Сначала обнуляет rule_id во всех категориях, затем удаляет правило. Возвращает True если удалено."""
     async with Database() as db:
-        sql = "DELETE FROM rules WHERE rule_id = $1"
-        await db.execute(sql, (rule_id,))
+        await db.execute(
+            "UPDATE categories SET rule_id = NULL, updated_at = NOW() WHERE rule_id = $1",
+            (rule_id,),
+        )
+        await db.execute("DELETE FROM rules WHERE rule_id = $1", (rule_id,))
         return True
