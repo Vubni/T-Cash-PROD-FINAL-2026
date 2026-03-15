@@ -29,9 +29,14 @@ class Client_calculate(BaseModel):
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
-async def calculate(request: web.Request) -> web.Response:
+@validate.validate(Client_calculate, require_auth=True)
+async def calculate(request: web.Request, _: Client_calculate) -> web.Response:
     try:
-        user_id = (await check_authorization(request))["user_id"]
+        payload = request.get("user_payload")
+        if not isinstance(payload, dict):
+            return validate.format_401_error(request, "Токен пользователя отсутствует или невалиден")
+
+        user_id = payload.get("user_id")
         if not user_id or not isinstance(user_id, int):
             return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
 
