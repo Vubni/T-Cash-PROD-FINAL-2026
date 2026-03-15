@@ -3,6 +3,28 @@ from database.database import Database
 from config import ML_SERVICE_URL, logger
 from core import serialize_json, ML_CATEGORY_NAMES, get_all_categories
 
+# Кэш после offers/run: по user_id храним список {category_id, cashback, estimated_spend, name, subtitle}
+_offers_run_cache: dict[int, list[dict]] = {}
+
+
+def get_offers_run_cache(user_id: int) -> list[dict] | None:
+    """Возвращает закэшированный результат offers/run для user_id или None."""
+    return _offers_run_cache.get(user_id)
+
+
+def _set_offers_run_cache(user_id: int, items: list[dict]) -> None:
+    """Сохраняет в кэш по user_id только поля category_id, cashback, estimated_spend, name, subtitle."""
+    _offers_run_cache[user_id] = [
+        {
+            "category_id": it.get("category_id"),
+            "cashback": it.get("cashback"),
+            "estimated_spend": it.get("estimated_spend"),
+            "name": it.get("name"),
+            "subtitle": it.get("subtitle"),
+        }
+        for it in items
+    ]
+
 
 async def get_calculate_items(user_id: int) -> dict:
     items = []
@@ -24,7 +46,22 @@ async def get_calculate_items(user_id: int) -> dict:
         rows = await db.execute_all(sql, (user_id,)) or []
 
     if rows:
-        return {"items": serialize_json(rows), "already_selected_categories": True}
+        items_serialized = serialize_json(rows)
+        # Кэш: для уже выбранных категорий cashback берём из rate_min, estimated_spend отсутствует
+        _set_offers_run_cache(
+            user_id,
+            [
+                {
+                    "category_id": r["category_id"],
+                    "cashback": r.get("rate_min"),
+                    "estimated_spend": None,
+                    "name": r["name"],
+                    "subtitle": r.get("subtitle"),
+                }
+                for r in rows
+            ],
+        )
+        return {"items": items_serialized, "already_selected_categories": True}
 
     async with Database() as db:
         sql = """
@@ -106,4 +143,5 @@ async def get_calculate_items(user_id: int) -> dict:
                 }
             )
 
+    _set_offers_run_cache(user_id, items)
     return {"items": serialize_json(items), "already_selected_categories": False}

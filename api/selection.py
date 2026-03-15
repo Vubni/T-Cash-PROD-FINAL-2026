@@ -13,6 +13,7 @@ from core import (
     save_categories_config,
 )
 from docs import schems as sh
+from functions import calculate as calc_fns
 from functions import selection as sel_fns
 from functions import users as users_fns
 
@@ -37,6 +38,26 @@ class Selection_submit_body(BaseModel):
         if len(set(self.category_ids)) != required:
             raise ValueError("Категории не должны повторяться")
         return self
+
+
+def _selection_items_from_cache(user_id: int, category_ids: list[str]) -> list[dict]:
+    """Возвращает из кэша offers/run элементы по выбранным category_ids в порядке category_ids."""
+    cached = calc_fns.get_offers_run_cache(user_id)
+    if not cached:
+        return []
+    id_to_item = {str(it["category_id"]): it for it in cached}
+    result = []
+    for cid in category_ids:
+        it = id_to_item.get(cid)
+        if it is not None:
+            result.append({
+                "category_id": str(it["category_id"]),
+                "cashback": it.get("cashback"),
+                "estimated_spend": it.get("estimated_spend"),
+                "name": it.get("name"),
+                "subtitle": it.get("subtitle"),
+            })
+    return result
 
 
 class Admin_selection_settings_empty(BaseModel):
@@ -102,15 +123,16 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
             )
 
         current = await sel_fns.get_current_category_ids(user_id)
+        items = _selection_items_from_cache(user_id, parsed.category_ids)
         if (
             current is not None
             and len(current) == len(parsed.category_ids)
             and set(current) == set(parsed.category_ids)
         ):
-            return web.json_response({"category_ids": parsed.category_ids}, status=200)
+            return web.json_response({"category_ids": parsed.category_ids, "items": items}, status=200)
 
         await sel_fns.save_selection_batch(user_id, parsed.category_ids)
-        return web.json_response({"category_ids": parsed.category_ids}, status=200)
+        return web.json_response({"category_ids": parsed.category_ids, "items": items}, status=200)
     except Exception:
         logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)

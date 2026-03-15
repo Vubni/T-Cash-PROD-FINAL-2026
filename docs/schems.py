@@ -827,6 +827,16 @@ class SelectionSubmitBodySchema(Schema):
     )
 
 
+class SelectionCacheItemSchema(Schema):
+    """Элемент кэша offers/run по выбранной категории (возвращается в selection)."""
+
+    category_id = fields.Str(description="UUID категории.")
+    cashback = fields.Raw(allow_none=True, description="Процент кэшбэка.")
+    estimated_spend = fields.Raw(allow_none=True, description="Оценка трат.")
+    name = fields.Str(allow_none=True, description="Название категории.")
+    subtitle = fields.Str(allow_none=True, description="Подзаголовок категории.")
+
+
 class SelectionSubmitResponseSchema(Schema):
     user_id = fields.Int(
         required=True, description="BIGINT идентификатор пользователя, для которого сохранён выбор. Обязательное поле."
@@ -835,6 +845,11 @@ class SelectionSubmitResponseSchema(Schema):
         fields.Str(),
         required=True,
         description="Сохранённый список UUID выбранных категорий (только id, в том же порядке что в запросе).",
+    )
+    items = fields.List(
+        fields.Nested(SelectionCacheItemSchema),
+        required=False,
+        description="Данные из кэша offers/run по выбранным категориям (category_id, cashback, estimated_spend, name, subtitle). Пусто, если кэша нет.",
     )
 
 
