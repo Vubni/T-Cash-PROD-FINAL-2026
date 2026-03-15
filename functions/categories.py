@@ -76,7 +76,6 @@ async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
 async def create_category(
     name: str,
     subtitle: str,
-    icon_path: str | None,
     budget_amount: int,
     rate_min: int,
     rate_max: int,
@@ -84,15 +83,15 @@ async def create_category(
     async with Database() as db:
         sql = """
             INSERT INTO categories (
-                name, subtitle, icon_path,
+                name, subtitle,
                 budget_amount, rate_min, rate_max
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING category_id
         """
         category_id = await db.fetchval(
             sql,
-            (name, subtitle, icon_path, budget_amount, rate_min, rate_max),
+            (name, subtitle, budget_amount, rate_min, rate_max),
         )
         return await _get_category(db, category_id)
 

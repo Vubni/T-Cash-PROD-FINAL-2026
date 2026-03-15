@@ -437,12 +437,6 @@ class CategoryCreateSchema(Schema):
         validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX),
         description="Подзаголовок/краткое описание категории (1–500 символов). Обязательное поле.",
     )
-    icon_path = fields.Str(
-        required=False,
-        allow_none=True,
-        validate=validate.Length(max=NAME_SUBTITLE_MAX),
-        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'). Опционально.",
-    )
     budget_amount = fields.Float(
         required=True,
         description="Бюджет на одного пользователя по категории за период, в рублях. Не может быть отрицательным. Обязательное поле.",

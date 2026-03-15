@@ -50,7 +50,6 @@ class Admin_category_create(BaseModel):
 
     name: str
     subtitle: str
-    icon_path: Optional[str] = None
     budget_amount: float
     rate_min: int
     rate_max: int
@@ -271,7 +270,6 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
         response = await cat_fns.create_category(
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_path=parsed.icon_path,
             budget_amount=int(parsed.budget_amount),
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
