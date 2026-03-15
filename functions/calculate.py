@@ -48,9 +48,8 @@ async def get_calculate_items(user_id: int) -> dict:
                   AND (r.income IS NULL OR u.income >= r.income)
                 )
               )
-            LIMIT $2
         """
-        categories = await db.execute_all(sql, (user_id, get_all_categories())) or []
+        categories = await db.execute_all(sql, (user_id,)) or []
         category_names = [c["name"] for c in categories]
         if not category_names:
             category_names = ML_CATEGORY_NAMES
