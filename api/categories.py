@@ -8,8 +8,15 @@ from pydantic import BaseModel, field_validator, model_validator
 from api import validate
 from config import logger
 from docs import schems as sh
+from functions import audit as audit_fns
 from functions import categories as cat_fns
 from functions import rules as rules_fns
+
+
+def _admin_actor(request: web.Request) -> str:
+    """Идентификатор админа для audit_log"""
+    payload = request.get("admin_payload") or {}
+    return f"admin:{payload.get('admin_id', '')}"
 
 
 LIMIT_MAX = 500
@@ -268,6 +275,15 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
         )
         if response is None:
             return validate.format_500_error(request)
+        entity_id = response.get("id") or response.get("category_id")
+        if entity_id:
+            await audit_fns.write_audit(
+                "category",
+                str(entity_id),
+                "create",
+                _admin_actor(request),
+                details={"name": parsed.name},
+            )
         return web.json_response(response, status=201)
     except Exception:
         logger.exception("create_category handler failed")
@@ -363,7 +379,13 @@ async def upload_category_icon(request: web.Request, parsed: Category_id_path) -
         updated = await cat_fns.update_category(parsed.category_id, icon_path=icon_rel_path)
         if updated is None:
             return validate.format_404_error(request, message="Категория не найдена")
-
+        await audit_fns.write_audit(
+            "category",
+            parsed.category_id,
+            "icon_upload",
+            _admin_actor(request),
+            details={"icon_path": icon_rel_path},
+        )
         return web.json_response(updated, status=200)
     except Exception:
         logger.exception("upload_category_icon handler failed")
@@ -475,6 +497,13 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         updated = await cat_fns.update_category(parsed.category_id, rule_id=rule["rule_id"])
         if updated is None:
             return validate.format_500_error(request)
+        await audit_fns.write_audit(
+            "category",
+            parsed.category_id,
+            "rule_attached",
+            _admin_actor(request),
+            details={"rule_id": str(rule["rule_id"])},
+        )
         return web.json_response(rule, status=201)
     except Exception:
         logger.exception("create_category_rule handler failed")
@@ -584,6 +613,17 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
         )
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        details = {
+            k: v for k, v in parsed.model_dump().items()
+            if k != "category_id" and v is not None
+        }
+        await audit_fns.write_audit(
+            "category",
+            parsed.category_id,
+            "update",
+            _admin_actor(request),
+            details=details if details else None,
+        )
         return web.json_response(response, status=200)
     except Exception:
         logger.exception("update_category handler failed")
@@ -610,6 +650,13 @@ async def _change_category_status(
         response = await cat_fns.update_category_status(parsed.category_id, new_status)
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        await audit_fns.write_audit(
+            "category",
+            parsed.category_id,
+            new_status,
+            _admin_actor(request),
+            details={"status": new_status},
+        )
         return web.json_response(response, status=200)
     except Exception:
         logger.exception("category status change handler failed")
