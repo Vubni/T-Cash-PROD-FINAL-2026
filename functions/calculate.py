@@ -40,14 +40,22 @@ async def get_calculate_items(user_id: int) -> dict:
         if not category_names:
             category_names = ML_CATEGORY_NAMES
 
+        payload = {
+            "categories": ML_CATEGORY_NAMES,
+            "client_id": str(user_id),
+            "top_n": max(1, get_all_categories()),
+        }
+        logger.info(
+            "ML predict request: url=%s categories_count=%s client_id=%s top_n=%s",
+            f"{ML_SERVICE_URL.rstrip('/')}/predict",
+            len(category_names),
+            user_id,
+            payload["top_n"],
+        )
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{ML_SERVICE_URL.rstrip('/')}/predict",
-                json={
-                    "categories": category_names,
-                    "client_id": str(user_id),
-                    "top_n": max(1, get_all_categories()),
-                },
+                json=payload,
             ) as response:
                 if response.status != 200:
                     text = await response.text()
@@ -55,7 +63,7 @@ async def get_calculate_items(user_id: int) -> dict:
                         "ML predict failed: status=%s url=%s body=%s",
                         response.status,
                         response.url,
-                        text[:2000] if text else "",
+                        text[:2000] if text else "(empty)",
                     )
                     raise Exception(f"Failed to calculate: {response.status} {text}")
                 data = await response.json()
