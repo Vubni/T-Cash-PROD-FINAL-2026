@@ -58,3 +58,16 @@ Authorization: Bearer <token>
 | Любой статус | **PATCH** | `/api/v1/admin/categories/{{ category_id }}` | `{"status": "running"}` или `"paused"`, или `"archived"` |
 
 В ответе 200 приходит объект категории с полем **`status`**.
+
+---
+
+## Проверка состояния сервиса (health)
+
+Для оркестраторов (Docker, Kubernetes) и мониторинга доступны эндпоинты без префикса `/api/v1`:
+
+| Эндпоинт | Назначение | Ответ |
+|----------|------------|--------|
+| **GET /health** | Liveness — процесс жив | 200 `{"status": "ok"}` |
+| **GET /health/ready** | Readiness — готов принимать трафик (проверка БД) | 200 `{"status": "ok", "database": "connected"}` или 503 при недоступной БД |
+
+Пример в `docker-compose`: `healthcheck: test: ["CMD", "curl", "-f", "http://localhost:8080/health"]`.
