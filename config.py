@@ -2,6 +2,7 @@ import os
 
 from logging_setup import logger  # noqa: F401
 
+
 DATE_BASE_CONNECT = {
     "host": os.getenv("DB_IP"),
     "user": os.getenv("DB_USER"),

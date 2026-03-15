@@ -128,20 +128,24 @@ async def test_get_audit_database_error(aiohttp_client, app):
 
 
 async def test_run_category_writes_audit(aiohttp_client, app):
-    """При смене статуса категории (run) в audit_log пишется запись."""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
+    """При смене статуса категории (run) в audit_log пишется запись с old/new."""
+    with (
+        patch("functions.categories.get_category") as mock_get,
+        patch("functions.categories.update_category_status") as mock_update,
+        patch("functions.audit.write_audit") as mock_write,
+    ):
+        mock_get.return_value = {"category_id": _CATEGORY_ID, "status": "paused"}
         mock_update.return_value = {"id": _CATEGORY_ID, "status": "running"}
-        with patch("functions.audit.write_audit", new_callable=AsyncMock) as mock_write:
-            async with aiohttp_client(app) as client:
-                resp = await client.post(
-                    f"/api/v1/admin/categories/{_CATEGORY_ID}/run",
-                    headers=_admin_headers(),
-                )
-            assert resp.status == 200
-            mock_write.assert_called_once()
-            args, kwargs = mock_write.call_args
-            assert args[0] == "category"
-            assert args[1] == _CATEGORY_ID
-            assert args[2] == "running"
-            assert args[3].startswith("admin:")
-            assert kwargs.get("details") == {"status": "running"}
+        async with aiohttp_client(app) as client:
+            resp = await client.post(
+                f"/api/v1/admin/categories/{_CATEGORY_ID}/run",
+                headers=_admin_headers(),
+            )
+        assert resp.status == 200
+        mock_write.assert_called_once()
+        args, kwargs = mock_write.call_args
+        assert args[0] == "category"
+        assert args[1] == _CATEGORY_ID
+        assert args[2] == "running"
+        assert args[3].startswith("admin:")
+        assert kwargs.get("details") == {"status": {"old": "paused", "new": "running"}}

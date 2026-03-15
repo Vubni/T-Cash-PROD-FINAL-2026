@@ -477,6 +477,7 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         category = await cat_fns.get_category(parsed.category_id)
         if category is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        previous_rule_id = (category.get("rule") or {}).get("rule_id")
         rule = await rules_fns.create_rule(
             min_age=parsed.min_age,
             max_age=parsed.max_age,
@@ -488,12 +489,17 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         updated = await cat_fns.update_category(parsed.category_id, rule_id=rule["rule_id"])
         if updated is None:
             return validate.format_500_error(request)
+        details = {
+            "rule_id": str(rule["rule_id"]),
+            "previous_rule_id": str(previous_rule_id) if previous_rule_id else None,
+            "rule_params": {k: v for k, v in (rule or {}).items() if k != "rule_id" and v is not None},
+        }
         await audit_fns.write_audit(
             "category",
             parsed.category_id,
             "rule_attached",
             _admin_actor(request),
-            details={"rule_id": str(rule["rule_id"])},
+            details=details,
         )
         return web.json_response(rule, status=201)
     except Exception:
@@ -525,6 +531,7 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
         rule_id = (category.get("rule") or {}).get("rule_id")
         if not rule_id:
             return validate.format_404_error(request, message="У категории нет правила")
+        old_rule = category.get("rule") or {}
         response = await rules_fns.update_rule(
             rule_id,
             min_age=parsed.min_age,
@@ -534,6 +541,22 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
         )
         if response is None:
             return validate.format_404_error(request, message="Правило не найдено")
+        changes = {}
+        if parsed.min_age is not None and old_rule.get("min_age") != response.get("min_age"):
+            changes["min_age"] = {"old": old_rule.get("min_age"), "new": response.get("min_age")}
+        if parsed.max_age is not None and old_rule.get("max_age") != response.get("max_age"):
+            changes["max_age"] = {"old": old_rule.get("max_age"), "new": response.get("max_age")}
+        if parsed.gender is not None and old_rule.get("gender") != response.get("gender"):
+            changes["gender"] = {"old": old_rule.get("gender"), "new": response.get("gender")}
+        if parsed.income is not None and old_rule.get("income") != response.get("income"):
+            changes["income"] = {"old": old_rule.get("income"), "new": response.get("income")}
+        await audit_fns.write_audit(
+            "category",
+            category_id,
+            "rule_updated",
+            _admin_actor(request),
+            details={"rule_id": str(rule_id), "changes": changes} if changes else {"rule_id": str(rule_id)},
+        )
         return web.json_response(response, status=200)
     except Exception:
         logger.exception("update_category_rule handler failed")
@@ -562,7 +585,15 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
         rule_id = (category.get("rule") or {}).get("rule_id")
         if not rule_id:
             return validate.format_404_error(request, message="У категории нет правила")
+        rule_snapshot = dict(category.get("rule") or {})
         await rules_fns.delete_rule(rule_id)
+        await audit_fns.write_audit(
+            "category",
+            parsed.category_id,
+            "rule_deleted",
+            _admin_actor(request),
+            details={"rule_id": str(rule_id), "deleted_rule": rule_snapshot},
+        )
         return web.Response(status=204)
     except Exception:
         logger.exception("delete_category_rule handler failed")
@@ -592,6 +623,9 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
 @validate.validate(Admin_category_update, require_admin=True)
 async def update_category(request: web.Request, parsed: Admin_category_update) -> web.Response:
     try:
+        before = await cat_fns.get_category(parsed.category_id)
+        if before is None:
+            return validate.format_404_error(request, message="Категория не найдена")
         response = await cat_fns.update_category(
             parsed.category_id,
             name=parsed.name,
@@ -604,16 +638,34 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
         )
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
-        details = {
-            k: v for k, v in parsed.model_dump().items()
-            if k != "category_id" and v is not None
-        }
+        changes = {}
+        if parsed.name is not None and before.get("name") != parsed.name:
+            changes["name"] = {"old": before.get("name"), "new": parsed.name}
+        if parsed.subtitle is not None and before.get("subtitle") != parsed.subtitle:
+            changes["subtitle"] = {"old": before.get("subtitle"), "new": parsed.subtitle}
+        if parsed.icon_path is not None and before.get("icon_path") != parsed.icon_path:
+            changes["icon_path"] = {"old": before.get("icon_path"), "new": parsed.icon_path}
+        if parsed.budget_amount is not None:
+            old_budget = (before.get("budget") or {}).get("amount")
+            new_budget = int(parsed.budget_amount)
+            if old_budget != new_budget:
+                changes["budget_amount"] = {"old": old_budget, "new": new_budget}
+        if parsed.rate_min is not None:
+            old_min = (before.get("rate") or {}).get("min")
+            if old_min != parsed.rate_min:
+                changes["rate_min"] = {"old": old_min, "new": parsed.rate_min}
+        if parsed.rate_max is not None:
+            old_max = (before.get("rate") or {}).get("max")
+            if old_max != parsed.rate_max:
+                changes["rate_max"] = {"old": old_max, "new": parsed.rate_max}
+        if parsed.status is not None and before.get("status") != parsed.status:
+            changes["status"] = {"old": before.get("status"), "new": parsed.status}
         await audit_fns.write_audit(
             "category",
             parsed.category_id,
             "update",
             _admin_actor(request),
-            details=details if details else None,
+            details={"changes": changes} if changes else None,
         )
         return web.json_response(response, status=200)
     except Exception:
@@ -638,16 +690,21 @@ async def _change_category_status(
     new_status: str,
 ) -> web.Response:
     try:
+        before = await cat_fns.get_category(parsed.category_id)
+        if before is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        previous_status = before.get("status") or "running"
         response = await cat_fns.update_category_status(parsed.category_id, new_status)
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
-        await audit_fns.write_audit(
-            "category",
-            parsed.category_id,
-            new_status,
-            _admin_actor(request),
-            details={"status": new_status},
-        )
+        if previous_status != new_status:
+            await audit_fns.write_audit(
+                "category",
+                parsed.category_id,
+                new_status,
+                _admin_actor(request),
+                details={"status": {"old": previous_status, "new": new_status}},
+            )
         return web.json_response(response, status=200)
     except ValueError as e:
         return validate.format_409_error(request, message=str(e))
