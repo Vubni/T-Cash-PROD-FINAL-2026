@@ -107,7 +107,9 @@ async def register_admin(request: web.Request, parsed: AdminRegisterBody) -> web
                 "admin_id": created["admin_id"],
                 "login": created["login"],
                 "approved": created["approved"],
-            }, status=201)
+            },
+            status=201,
+        )
     except web.HTTPError:
         raise
     except Exception:

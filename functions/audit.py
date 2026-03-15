@@ -1,4 +1,5 @@
 """Журнал аудита: чтение и запись записей в БД."""
+
 import json
 from config import logger
 from database.database import Database
@@ -67,10 +68,13 @@ async def list_audit(
             ORDER BY created_at DESC, id DESC
             LIMIT $4
         """
-        rows = await db.execute_all(
-            sql,
-            (entity_type, entity_id, action, limit),
-        ) or []
+        rows = (
+            await db.execute_all(
+                sql,
+                (entity_type, entity_id, action, limit),
+            )
+            or []
+        )
     return [
         {
             "id": row["id"],

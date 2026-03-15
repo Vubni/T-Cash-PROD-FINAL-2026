@@ -20,7 +20,7 @@ async def user_exists(user_id: int) -> bool:
         return row is not None
     except Exception as e:
         msg = str(e)
-        if "UndefinedTableError" in msg or 'relation \"users\" does not exist' in msg:
+        if "UndefinedTableError" in msg or 'relation "users" does not exist' in msg:
             logger.warning("Таблица users отсутствует, user_exists(%s) -> True: %s", user_id, e)
             return True
         raise

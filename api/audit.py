@@ -65,12 +65,11 @@ class Audit_list(BaseModel):
 @validate.validate(Audit_list, require_admin=True)
 async def list_audit(request: web.Request, parsed: Audit_list) -> web.Response:
     try:
-        limit = parsed.limit or 50
         items = await audit_fns.list_audit(
             entity_type="category",
             entity_id=parsed.category_id,
             action=None,
-            limit,
+            limit=parsed.limit,
         )
         return web.json_response({"items": items, "total": len(items)}, status=200)
     except Exception:

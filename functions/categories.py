@@ -91,7 +91,8 @@ async def create_category(
             RETURNING category_id
         """
         category_id = await db.fetchval(
-            sql, (name, subtitle, icon_path, budget_amount, rate_min, rate_max),
+            sql,
+            (name, subtitle, icon_path, budget_amount, rate_min, rate_max),
         )
         return await _get_category(db, category_id)
 

@@ -1,13 +1,10 @@
 import os
 from aiohttp import web
-from aiohttp_apispec import (
-    setup_aiohttp_apispec,
-    validation_middleware
-)
+from aiohttp_apispec import setup_aiohttp_apispec, validation_middleware
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, selection, users, admin_auth, calculate)
+from api import categories, audit, selection, users, admin_auth, calculate
 
 from database.functions import (
     init_db,
@@ -50,27 +47,27 @@ async def request_logging_middleware(request: web.Request, handler):
 
 async def handle_get_file(request: web.Request) -> web.Response:
     static_dir = "static"
-    path = request.match_info['path']
-    
-    safe_path = os.path.normpath(path).lstrip('/')
+    path = request.match_info["path"]
+
+    safe_path = os.path.normpath(path).lstrip("/")
     full_path = os.path.join(static_dir, safe_path)
     abs_static = os.path.abspath(static_dir)
     abs_target = os.path.abspath(full_path)
-    
+
     if not abs_target.startswith(abs_static):
         return web.HTTPNotFound()
-    
+
     if os.path.isfile(abs_target):
         return web.FileResponse(abs_target)
-    
-    last_part = safe_path.split('/')[-1] if safe_path else ""
-    if '.' in last_part:
+
+    last_part = safe_path.split("/")[-1] if safe_path else ""
+    if "." in last_part:
         return web.HTTPNotFound()
-    
+
     index_path = os.path.join(static_dir, "index.html")
     if os.path.isfile(index_path):
         return web.FileResponse(index_path)
-    
+
     return web.HTTPNotFound()
 
 
@@ -78,38 +75,38 @@ def create_app() -> web.Application:
     """Создаёт и возвращает aiohttp Application (для запуска и для тестов)."""
     app = web.Application()
 
-    cors = aiohttp_cors.setup(app, defaults={
-        "*": aiohttp_cors.ResourceOptions(
-            allow_credentials=True,
-            expose_headers="*",
-            allow_headers="*",
-            allow_methods=["GET", "POST", "OPTIONS", "PATCH", "DELETE"]
-        )
-    })
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+                allow_methods=["GET", "POST", "OPTIONS", "PATCH", "DELETE"],
+            )
+        },
+    )
 
     prefix = "/api/v1"
     api_routes = [
-        web.get(prefix + '/admin/categories', categories.list_categories),
-        web.post(prefix + '/admin/categories', categories.create_category),
-        web.get(prefix + '/admin/categories/{category_id}', categories.get_category),
-        web.post(prefix + '/admin/categories/{category_id}/rule', categories.create_category_rule),
-        web.patch(prefix + '/admin/categories/{category_id}', categories.update_category),
-        web.post(prefix + '/admin/categories/{category_id}/run', categories.run_category),
-        web.post(prefix + '/admin/categories/{category_id}/pause', categories.pause_category),
-        web.delete(prefix + '/admin/categories/{category_id}/archive', categories.archive_category),
-        web.get(prefix + '/admin/categories/{category_id}/audit', audit.list_audit),
-        web.post(prefix + '/admin/categories/settings', selection.update_selection_settings),
-
-        web.get(prefix + '/users/{user_id}/auth', users.user_auth),
-
-        web.post(prefix + '/admin/auth/register', admin_auth.register_admin),
-        web.post(prefix + '/admin/auth/login', admin_auth.login_admin),
-        web.get(prefix + '/admin/auth/pending', admin_auth.list_pending),
-        web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
-        web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
-
-        web.post(prefix + '/offers/run', calculate.calculate),
-        web.post(prefix + '/client/selection', selection.confirm_selection),
+        web.get(prefix + "/admin/categories", categories.list_categories),
+        web.post(prefix + "/admin/categories", categories.create_category),
+        web.get(prefix + "/admin/categories/{category_id}", categories.get_category),
+        web.post(prefix + "/admin/categories/{category_id}/rule", categories.create_category_rule),
+        web.patch(prefix + "/admin/categories/{category_id}", categories.update_category),
+        web.post(prefix + "/admin/categories/{category_id}/run", categories.run_category),
+        web.post(prefix + "/admin/categories/{category_id}/pause", categories.pause_category),
+        web.delete(prefix + "/admin/categories/{category_id}/archive", categories.archive_category),
+        web.get(prefix + "/admin/categories/{category_id}/audit", audit.list_audit),
+        web.post(prefix + "/admin/categories/settings", selection.update_selection_settings),
+        web.get(prefix + "/users/{user_id}/auth", users.user_auth),
+        web.post(prefix + "/admin/auth/register", admin_auth.register_admin),
+        web.post(prefix + "/admin/auth/login", admin_auth.login_admin),
+        web.get(prefix + "/admin/auth/pending", admin_auth.list_pending),
+        web.post(prefix + "/admin/auth/approve", admin_auth.approve_admin),
+        web.post(prefix + "/admin/auth/decline", admin_auth.decline_admin),
+        web.post(prefix + "/offers/run", calculate.calculate),
+        web.post(prefix + "/client/selection", selection.confirm_selection),
     ]
     for route in api_routes:
         cors.add(app.router.add_route(route.method, route.path, route.handler))
@@ -157,6 +154,7 @@ def create_app() -> web.Application:
 
 
 if __name__ == "__main__":
+
     async def startup():
         await init_db()
         main_login = os.environ.get("MAIN_ADMIN_LOGIN", "admin")
@@ -173,8 +171,4 @@ if __name__ == "__main__":
 
     app = create_app()
     logger.info("Запуск сервера. . .")
-    web.run_app(
-        app,
-        host=os.environ.get('INSTANCE_HOST', '0.0.0.0'),
-        port=int(os.environ.get('PORT', 8080))
-    )
+    web.run_app(app, host=os.environ.get("INSTANCE_HOST", "0.0.0.0"), port=int(os.environ.get("PORT", 8080)))

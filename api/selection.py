@@ -33,9 +33,7 @@ class Selection_submit_body(BaseModel):
     def exactly_five_categories(self) -> "Selection_submit_body":
         required = get_max_selection_count()
         if len(self.category_ids) != required:
-            raise ValueError(
-                f"Нужно выбрать ровно {required} категорий, передано {len(self.category_ids)}"
-            )
+            raise ValueError(f"Нужно выбрать ровно {required} категорий, передано {len(self.category_ids)}")
         if len(set(self.category_ids)) != required:
             raise ValueError("Категории не должны повторяться")
         return self
@@ -98,7 +96,11 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
             )
 
         current = await sel_fns.get_current_category_ids(user_id)
-        if current is not None and len(current) == len(parsed.category_ids) and set(current) == set(parsed.category_ids):
+        if (
+            current is not None
+            and len(current) == len(parsed.category_ids)
+            and set(current) == set(parsed.category_ids)
+        ):
             return web.json_response({"category_ids": parsed.category_ids}, status=200)
 
         await sel_fns.save_selection_batch(user_id, parsed.category_ids)
@@ -123,9 +125,7 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
 )
 @request_schema(sh.CategorySelectionSettingsSchema)
 @validate.validate(Admin_selection_settings, require_admin=True)
-async def update_selection_settings(
-    request: web.Request, parsed: Admin_selection_settings
-) -> web.Response:
+async def update_selection_settings(request: web.Request, parsed: Admin_selection_settings) -> web.Response:
     try:
         cfg = load_categories_config()
 

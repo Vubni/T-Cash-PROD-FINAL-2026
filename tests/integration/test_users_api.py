@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 
 async def test_user_auth_success(aiohttp_client, app):
-    with patch('functions.users.user_exists') as mock_user_exists:
+    with patch("functions.users.user_exists") as mock_user_exists:
         mock_user_exists.return_value = True
 
         client = await aiohttp_client(app)
@@ -20,7 +20,7 @@ async def test_user_auth_success(aiohttp_client, app):
 
 
 async def test_user_auth_not_found(aiohttp_client, app):
-    with patch('functions.users.user_exists') as mock_user_exists:
+    with patch("functions.users.user_exists") as mock_user_exists:
         mock_user_exists.return_value = False
 
         client = await aiohttp_client(app)
@@ -56,7 +56,7 @@ async def test_user_auth_zero_id(aiohttp_client, app):
 
 
 async def test_user_auth_database_error(aiohttp_client, app):
-    with patch('functions.users.user_exists') as mock_user_exists:
+    with patch("functions.users.user_exists") as mock_user_exists:
         mock_user_exists.side_effect = Exception("Database connection failed")
 
         client = await aiohttp_client(app)

@@ -15,7 +15,9 @@ _SELECTION_CATEGORY_IDS = [
 _TEST_USER_ID = 12345
 
 
-def _auth_headers(user_id: int = _TEST_USER_ID, *, payload_extra: dict | None = None, raw_token: str | None = None) -> dict:
+def _auth_headers(
+    user_id: int = _TEST_USER_ID, *, payload_extra: dict | None = None, raw_token: str | None = None
+) -> dict:
     """Формирует заголовки с JWT пользователя для client API."""
     if raw_token is not None:
         token = raw_token
@@ -34,10 +36,12 @@ async def test_selection_success(aiohttp_client, app):
     """Тест: успешное сохранение выбора категорий"""
     selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
 
-    with patch('functions.users.user_exists', new_callable=AsyncMock) as mock_user_exists, \
-         patch('functions.selection.check_categories_exist', new_callable=AsyncMock) as mock_check, \
-         patch('functions.selection.get_current_category_ids', new_callable=AsyncMock) as mock_get_current, \
-         patch('functions.selection.save_selection_batch', new_callable=AsyncMock) as mock_save:
+    with (
+        patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists,
+        patch("functions.selection.check_categories_exist", new_callable=AsyncMock) as mock_check,
+        patch("functions.selection.get_current_category_ids", new_callable=AsyncMock) as mock_get_current,
+        patch("functions.selection.save_selection_batch", new_callable=AsyncMock) as mock_save,
+    ):
         mock_user_exists.return_value = True
         mock_check.return_value = True
         mock_get_current.return_value = None  # нет текущего выбора — сохраняем новый
@@ -60,7 +64,7 @@ async def test_selection_user_not_found(aiohttp_client, app):
     """Тест: пользователь не найден"""
     selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
 
-    with patch('functions.users.user_exists', new_callable=AsyncMock) as mock_user_exists:
+    with patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists:
         mock_user_exists.return_value = False
 
         client = await aiohttp_client(app)

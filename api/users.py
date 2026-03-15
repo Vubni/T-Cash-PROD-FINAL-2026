@@ -71,4 +71,3 @@ async def user_auth(request: web.Request, parsed: UserAuthPath) -> web.Response:
     except Exception:
         logger.exception("user_auth handler failed")
         return validate.format_500_error(request)
-

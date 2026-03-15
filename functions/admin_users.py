@@ -46,6 +46,7 @@ async def ensure_main_admin(login: str, password: str) -> None:
         msg = str(e)
         if "UndefinedTableError" in msg or 'relation "admin_users" does not exist' in msg:
             from config import logger
+
             logger.warning("Таблица admin_users отсутствует, пропускаю ensure_main_admin: %s", e)
             return
         raise
@@ -114,7 +115,9 @@ async def approve_admin(main_login: str, main_password: str, admin_id: int) -> d
 async def set_admin_approved(admin_id: int) -> dict | None:
     async with Database() as db:
         await db.execute(
-            "UPDATE admin_users SET approved = TRUE WHERE admin_id = $1", (admin_id,),)
+            "UPDATE admin_users SET approved = TRUE WHERE admin_id = $1",
+            (admin_id,),
+        )
     return await get_admin_by_id(admin_id)
 
 
@@ -139,5 +142,6 @@ async def delete_pending_admin(admin_id: int) -> bool:
             """
             DELETE FROM admin_users
             WHERE admin_id = $1 AND main_admin = FALSE AND approved = FALSE
-            """,(admin_id,))
-    
+            """,
+            (admin_id,),
+        )

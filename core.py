@@ -24,6 +24,7 @@ from datetime import time as time_type
 ADMIN_SCOPE = "admin"
 USER_SCOPE = "user"
 
+
 def serialize_json(obj):
     if hasattr(obj, "model_dump"):
         obj = obj.model_dump()
@@ -125,9 +126,9 @@ def check_token(token):
         return None
     except jwt.InvalidTokenError:
         return None
-    
 
-def generate_unique_code(length:int=32):
+
+def generate_unique_code(length: int = 32):
     """Генерация рандомного кода из символов латиницы, цифры и _
 
     Args:
@@ -136,35 +137,36 @@ def generate_unique_code(length:int=32):
     Returns:
         str: Сгенерированный код
     """
-    characters = string.ascii_letters + string.digits + '_'
-    return ''.join(secrets.choice(characters) for _ in range(length))
+    characters = string.ascii_letters + string.digits + "_"
+    return "".join(secrets.choice(characters) for _ in range(length))
 
 
 def is_domain_valid(domain):
     """Проверяет, соответствует ли домен стандартам (RFC 1035)."""
-    segments = domain.split('.')
+    segments = domain.split(".")
     for segment in segments:
         if not segment:
             return False
-        if segment[0] == '-' or segment[-1] == '-':
+        if segment[0] == "-" or segment[-1] == "-":
             return False
-        if not re.match(r'^[a-zA-Z0-9-]+$', segment):
+        if not re.match(r"^[a-zA-Z0-9-]+$", segment):
             return False
     return True
 
-def is_valid_email(email:str) -> bool:
+
+def is_valid_email(email: str) -> bool:
     """Проверка реальности почты"""
-    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if not re.match(regex, email):
         return False
 
-    local_part, domain_part = email.split('@')
+    local_part, domain_part = email.split("@")
 
     if len(local_part) > 64:
         return False
-    if local_part.startswith('.') or local_part.endswith('.'):
+    if local_part.startswith(".") or local_part.endswith("."):
         return False
-    if '..' in local_part:
+    if ".." in local_part:
         return False
 
     if not is_domain_valid(domain_part):
@@ -173,7 +175,7 @@ def is_valid_email(email:str) -> bool:
         return False
 
     return True
-    
+
 
 def is_hashable(obj):
     """Проверяет, является ли объект хешируемым."""
@@ -182,6 +184,7 @@ def is_hashable(obj):
         return True
     except TypeError:
         return False
+
 
 def cache_with_expiration(expiration_seconds: int):
     def decorator(func):

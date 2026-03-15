@@ -11,7 +11,7 @@ async def test_get_audit_success(aiohttp_client, app):
             "entity_id": "cat123",
             "action": "create",
             "actor": "admin",
-            "created_at": "2024-01-01T10:00:00Z"
+            "created_at": "2024-01-01T10:00:00Z",
         },
         {
             "id": 2,
@@ -19,19 +19,15 @@ async def test_get_audit_success(aiohttp_client, app):
             "entity_id": "cat456",
             "action": "update",
             "actor": "admin",
-            "created_at": "2024-01-01T11:00:00Z"
-        }
+            "created_at": "2024-01-01T11:00:00Z",
+        },
     ]
 
-    with patch('functions.audit.list_audit') as mock_audit:
+    with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = test_records
 
         client = await aiohttp_client(app)
-        resp = await client.request(
-            "GET",
-            "/api/v1/admin/audit",
-            headers={"Authorization": "Bearer admin_token"}
-        )
+        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
 
         assert resp.status == 200
         data = await resp.json()
@@ -50,18 +46,16 @@ async def test_get_audit_with_filters(aiohttp_client, app):
             "entity_id": "cat123",
             "action": "create",
             "actor": "admin",
-            "created_at": "2024-01-01T10:00:00Z"
+            "created_at": "2024-01-01T10:00:00Z",
         }
     ]
 
-    with patch('functions.audit.list_audit') as mock_audit:
+    with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = test_records
 
         client = await aiohttp_client(app)
         resp = await client.request(
-            "GET",
-            "/api/v1/admin/audit?entity_type=category&limit=5",
-            headers={"Authorization": "Bearer admin_token"}
+            "GET", "/api/v1/admin/audit?entity_type=category&limit=5", headers={"Authorization": "Bearer admin_token"}
         )
 
         assert resp.status == 200
@@ -75,15 +69,11 @@ async def test_get_audit_with_filters(aiohttp_client, app):
 
 async def test_get_audit_empty(aiohttp_client, app):
     """✅ ПОЗИТИВНЫЙ: пустой список аудита"""
-    with patch('functions.audit.list_audit') as mock_audit:
+    with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = []
 
         client = await aiohttp_client(app)
-        resp = await client.request(
-            "GET",
-            "/api/v1/admin/audit",
-            headers={"Authorization": "Bearer admin_token"}
-        )
+        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
 
         assert resp.status == 200
         data = await resp.json()
@@ -104,11 +94,7 @@ async def test_get_audit_unauthorized(aiohttp_client, app):
 async def test_get_audit_invalid_token(aiohttp_client, app):
     """❌ НЕГАТИВНЫЙ: невалидный токен"""
     client = await aiohttp_client(app)
-    resp = await client.request(
-        "GET",
-        "/api/v1/admin/audit",
-        headers={"Authorization": "Bearer invalid_token"}
-    )
+    resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer invalid_token"})
 
     assert resp.status == 401
     data = await resp.json()
@@ -118,11 +104,7 @@ async def test_get_audit_invalid_token(aiohttp_client, app):
 async def test_get_audit_invalid_limit(aiohttp_client, app):
     """❌ НЕГАТИВНЫЙ: невалидный параметр limit"""
     client = await aiohttp_client(app)
-    resp = await client.request(
-        "GET",
-        "/api/v1/admin/audit?limit=501",
-        headers={"Authorization": "Bearer admin_token"}
-    )
+    resp = await client.request("GET", "/api/v1/admin/audit?limit=501", headers={"Authorization": "Bearer admin_token"})
 
     assert resp.status == 422
     data = await resp.json()
@@ -132,11 +114,7 @@ async def test_get_audit_invalid_limit(aiohttp_client, app):
 async def test_get_audit_negative_offset(aiohttp_client, app):
     """❌ НЕГАТИВНЫЙ: отрицательный offset — в API нет offset, проверяем что limit проверяется"""
     client = await aiohttp_client(app)
-    resp = await client.request(
-        "GET",
-        "/api/v1/admin/audit?limit=0",
-        headers={"Authorization": "Bearer admin_token"}
-    )
+    resp = await client.request("GET", "/api/v1/admin/audit?limit=0", headers={"Authorization": "Bearer admin_token"})
 
     assert resp.status == 422
     data = await resp.json()
@@ -145,27 +123,20 @@ async def test_get_audit_negative_offset(aiohttp_client, app):
 
 async def test_get_audit_database_error(aiohttp_client, app):
     """❌ НЕГАТИВНЫЙ: ошибка базы данных"""
-    with patch('functions.audit.list_audit') as mock_audit:
+    with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.side_effect = Exception("Database connection failed")
 
         client = await aiohttp_client(app)
-        resp = await client.request(
-            "GET",
-            "/api/v1/admin/audit",
-            headers={"Authorization": "Bearer admin_token"}
-        )
+        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
 
         assert resp.status == 500
 
 
 async def test_audit_pagination_edge_cases(aiohttp_client, app):
     """⚠️ ГРАНИЧНЫЙ: пагинация edge cases"""
-    with patch('functions.audit.list_audit') as mock_audit:
+    with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.return_value = []
 
         client = await aiohttp_client(app)
-        resp = await client.get(
-            "/api/v1/admin/audit?limit=0",
-            headers={"Authorization": "Bearer admin_token"}
-        )
+        resp = await client.get("/api/v1/admin/audit?limit=0", headers={"Authorization": "Bearer admin_token"})
         assert resp.status == 422

@@ -1,11 +1,14 @@
 """Фикстуры для интеграционных тестов: мок авторизации админа."""
+
 import pytest
 from unittest.mock import patch
+
 
 # Патчим до импорта app, чтобы все эндпоинты с require_admin/require_super_admin получали подмену
 async def _pass_ordinary(request):
     request["admin_payload"] = {"admin_id": 1, "main_admin": False, "approved": True}
     return None
+
 
 async def _pass_super(request):
     request["admin_payload"] = {"admin_id": 1, "main_admin": True, "approved": True}

@@ -8,12 +8,35 @@ from functions import categories as categories_fns
 
 
 class TestListCategories:
-
     @pytest.mark.asyncio
     async def test_list_categories_success(self):
         test_rows = [
-            {"category_id": "cat1", "name": "Category 1", "subtitle": "s1", "budget_amount": 100000, "rate_min": 0, "rate_max": 100, "rule_id": None, "min_age": None, "max_age": None, "gender": None, "income": None},
-            {"category_id": "cat2", "name": "Category 2", "subtitle": "s2", "budget_amount": 200000, "rate_min": 0, "rate_max": 100, "rule_id": None, "min_age": None, "max_age": None, "gender": None, "income": None},
+            {
+                "category_id": "cat1",
+                "name": "Category 1",
+                "subtitle": "s1",
+                "budget_amount": 100000,
+                "rate_min": 0,
+                "rate_max": 100,
+                "rule_id": None,
+                "min_age": None,
+                "max_age": None,
+                "gender": None,
+                "income": None,
+            },
+            {
+                "category_id": "cat2",
+                "name": "Category 2",
+                "subtitle": "s2",
+                "budget_amount": 200000,
+                "rate_min": 0,
+                "rate_max": 100,
+                "rule_id": None,
+                "min_age": None,
+                "max_age": None,
+                "gender": None,
+                "income": None,
+            },
         ]
         with patch("functions.categories.Database") as MockDB:
             mock_conn = AsyncMock()
@@ -40,10 +63,21 @@ class TestListCategories:
 
 
 class TestCreateCategory:
-
     @pytest.mark.asyncio
     async def test_create_category_success(self):
-        row = {"category_id": "cat123", "name": "Test Category", "subtitle": "Test subtitle", "budget_amount": 100000, "rate_min": 0, "rate_max": 100, "rule_id": None, "min_age": None, "max_age": None, "gender": None, "income": None}
+        row = {
+            "category_id": "cat123",
+            "name": "Test Category",
+            "subtitle": "Test subtitle",
+            "budget_amount": 100000,
+            "rate_min": 0,
+            "rate_max": 100,
+            "rule_id": None,
+            "min_age": None,
+            "max_age": None,
+            "gender": None,
+            "income": None,
+        }
         with patch("functions.categories.Database") as MockDB:
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(return_value="cat123")
@@ -63,10 +97,21 @@ class TestCreateCategory:
 
 
 class TestGetCategory:
-
     @pytest.mark.asyncio
     async def test_get_category_success(self):
-        test_row = {"category_id": "cat1", "name": "Category 1", "subtitle": "s", "budget_amount": 100000, "rate_min": 0, "rate_max": 100, "rule_id": None, "min_age": None, "max_age": None, "gender": None, "income": None}
+        test_row = {
+            "category_id": "cat1",
+            "name": "Category 1",
+            "subtitle": "s",
+            "budget_amount": 100000,
+            "rate_min": 0,
+            "rate_max": 100,
+            "rule_id": None,
+            "min_age": None,
+            "max_age": None,
+            "gender": None,
+            "income": None,
+        }
         with patch("functions.categories.Database") as MockDB:
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value=test_row)
@@ -90,10 +135,21 @@ class TestGetCategory:
 
 
 class TestUpdateCategory:
-
     @pytest.mark.asyncio
     async def test_update_category_success(self):
-        test_row = {"category_id": "cat1", "name": "Updated", "subtitle": "s", "budget_amount": 150000, "rate_min": 0, "rate_max": 100, "rule_id": None, "min_age": None, "max_age": None, "gender": None, "income": None}
+        test_row = {
+            "category_id": "cat1",
+            "name": "Updated",
+            "subtitle": "s",
+            "budget_amount": 150000,
+            "rate_min": 0,
+            "rate_max": 100,
+            "rule_id": None,
+            "min_age": None,
+            "max_age": None,
+            "gender": None,
+            "income": None,
+        }
         with patch("functions.categories.Database") as MockDB:
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(side_effect=[None, test_row])

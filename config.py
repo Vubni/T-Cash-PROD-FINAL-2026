@@ -1,10 +1,12 @@
 import os
 import json
 
-DATE_BASE_CONNECT = {"host": os.getenv("DB_IP"), 
-             "user": os.getenv("DB_USER"), 
-             "password": os.getenv("DB_PASSWORD"), 
-             "database": os.getenv("DB_DB")}
+DATE_BASE_CONNECT = {
+    "host": os.getenv("DB_IP"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_DB"),
+}
 
 SECRET = os.getenv("RANDOM_SECRET", "AJd27GqoS#gvxp@V")
 
@@ -35,6 +37,7 @@ logger = logging.getLogger("backend")
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
+
 def _utc_iso_timestamp(record: logging.LogRecord) -> str:
     from time import gmtime
 
@@ -58,13 +61,12 @@ class StructuredJsonFormatter(logging.Formatter):
             log_obj["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_obj, ensure_ascii=False)
 
+
 _formatter = StructuredJsonFormatter()
 
 
 def _file_handler(path: str, level: int = logging.NOTSET) -> RotatingFileHandler:
-    handler = RotatingFileHandler(
-        path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding="utf-8"
-    )
+    handler = RotatingFileHandler(path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding="utf-8")
     handler.setLevel(level)
     handler.setFormatter(_formatter)
     return handler

@@ -8,7 +8,6 @@ from functions import users as users_fns
 
 
 class TestUserExists:
-
     @pytest.mark.asyncio
     async def test_user_exists_true(self):
         with patch("functions.users.Database") as MockDB:
@@ -36,9 +35,7 @@ class TestUserExists:
         """При ошибке «таблица не существует» возвращаем True, чтобы не блокировать клиентские ручки."""
         with patch("functions.users.Database") as MockDB:
             mock_conn = AsyncMock()
-            mock_conn.execute = AsyncMock(
-                side_effect=Exception('relation "users" does not exist')
-            )
+            mock_conn.execute = AsyncMock(side_effect=Exception('relation "users" does not exist'))
             MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
             MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 

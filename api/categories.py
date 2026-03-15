@@ -139,11 +139,7 @@ class Admin_category_update(BaseModel):
 
     @model_validator(mode="after")
     def check_payload(self) -> "Admin_category_update":
-        has_any_value = any(
-            value is not None
-            for k, value in self.model_dump().items()
-            if k != "category_id"
-        )
+        has_any_value = any(value is not None for k, value in self.model_dump().items() if k != "category_id")
         if not has_any_value:
             raise ValueError("At least one field must be provided")
         if self.budget_amount is not None and self.budget_amount < 0:

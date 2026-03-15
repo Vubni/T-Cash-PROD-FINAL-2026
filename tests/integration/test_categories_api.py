@@ -14,26 +14,22 @@ async def test_get_categories_success(aiohttp_client, app):
             "name": "Category 1",
             "subtitle": "Subtitle 1",
             "budget_amount": 100000,
-            "status": "active"
+            "status": "active",
         },
         {
             "category_id": "cat2",
             "name": "Category 2",
             "subtitle": "Subtitle 2",
             "budget_amount": 200000,
-            "status": "active"
-        }
+            "status": "active",
+        },
     ]
 
-    with patch('functions.categories.list_categories') as mock_get:
+    with patch("functions.categories.list_categories") as mock_get:
         mock_get.return_value = (test_categories, 2)
 
         client = await aiohttp_client(app)
-        resp = await client.request(
-            "GET",
-            "/api/v1/admin/categories",
-            headers={"Authorization": "Bearer admin_token"}
-        )
+        resp = await client.request("GET", "/api/v1/admin/categories", headers={"Authorization": "Bearer admin_token"})
 
         assert resp.status == 200
         data = await resp.json()
@@ -43,14 +39,12 @@ async def test_get_categories_success(aiohttp_client, app):
 
 async def test_get_categories_with_pagination(aiohttp_client, app):
     """Тест: получение категорий с пагинацией"""
-    with patch('functions.categories.list_categories') as mock_get:
+    with patch("functions.categories.list_categories") as mock_get:
         mock_get.return_value = ([], 0)
 
         client = await aiohttp_client(app)
         resp = await client.request(
-            "GET",
-            "/api/v1/admin/categories?limit=5&offset=10",
-            headers={"Authorization": "Bearer admin_token"}
+            "GET", "/api/v1/admin/categories?limit=5&offset=10", headers={"Authorization": "Bearer admin_token"}
         )
 
         assert resp.status == 200
@@ -61,9 +55,7 @@ async def test_get_categories_invalid_limit(aiohttp_client, app):
     """Тест: невалидный параметр limit"""
     client = await aiohttp_client(app)
     resp = await client.request(
-        "GET",
-        "/api/v1/admin/categories?limit=501",
-        headers={"Authorization": "Bearer admin_token"}
+        "GET", "/api/v1/admin/categories?limit=501", headers={"Authorization": "Bearer admin_token"}
     )
 
     assert resp.status == 422
@@ -75,9 +67,7 @@ async def test_get_categories_negative_offset(aiohttp_client, app):
     """Тест: отрицательный offset"""
     client = await aiohttp_client(app)
     resp = await client.request(
-        "GET",
-        "/api/v1/admin/categories?offset=-1",
-        headers={"Authorization": "Bearer admin_token"}
+        "GET", "/api/v1/admin/categories?offset=-1", headers={"Authorization": "Bearer admin_token"}
     )
 
     assert resp.status == 422
@@ -92,10 +82,10 @@ async def test_create_category_success(aiohttp_client, app):
         "subtitle": "Test subtitle",
         "budget_amount": 100000,
         "rate_min": 0,
-        "rate_max": 100
+        "rate_max": 100,
     }
 
-    with patch('functions.categories.create_category') as mock_create:
+    with patch("functions.categories.create_category") as mock_create:
         mock_create.return_value = {"category_id": "cat123", "name": "Test Category"}
 
         client = await aiohttp_client(app)
@@ -103,7 +93,7 @@ async def test_create_category_success(aiohttp_client, app):
             "POST",
             "/api/v1/admin/categories",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
-            data=json.dumps(category_data)
+            data=json.dumps(category_data),
         )
 
         assert resp.status == 201
@@ -117,10 +107,7 @@ async def test_create_category_missing_fields(aiohttp_client, app):
 
     client = await aiohttp_client(app)
     resp = await client.request(
-        "POST",
-        "/api/v1/admin/categories",
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(category_data)
+        "POST", "/api/v1/admin/categories", headers={"Content-Type": "application/json"}, data=json.dumps(category_data)
     )
 
     assert resp.status == 422
@@ -135,15 +122,12 @@ async def test_create_category_negative_budget(aiohttp_client, app):
         "subtitle": "Test subtitle",
         "budget_amount": -1000,
         "rate_min": 0,
-        "rate_max": 100
+        "rate_max": 100,
     }
 
     client = await aiohttp_client(app)
     resp = await client.request(
-        "POST",
-        "/api/v1/admin/categories",
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(category_data)
+        "POST", "/api/v1/admin/categories", headers={"Content-Type": "application/json"}, data=json.dumps(category_data)
     )
 
     assert resp.status == 422
@@ -156,17 +140,15 @@ async def test_get_category_success(aiohttp_client, app):
         "name": "Category 1",
         "subtitle": "Subtitle 1",
         "budget_amount": 100000,
-        "status": "active"
+        "status": "active",
     }
 
-    with patch('functions.categories.get_category') as mock_get:
+    with patch("functions.categories.get_category") as mock_get:
         mock_get.return_value = test_category
 
         client = await aiohttp_client(app)
         resp = await client.request(
-            "GET",
-            f"/api/v1/admin/categories/{CAT_ID}",
-            headers={"Authorization": "Bearer admin_token"}
+            "GET", f"/api/v1/admin/categories/{CAT_ID}", headers={"Authorization": "Bearer admin_token"}
         )
 
         assert resp.status == 200
@@ -177,14 +159,12 @@ async def test_get_category_success(aiohttp_client, app):
 
 async def test_get_category_not_found(aiohttp_client, app):
     """Тест: категория не найдена"""
-    with patch('functions.categories.get_category') as mock_get:
+    with patch("functions.categories.get_category") as mock_get:
         mock_get.return_value = None
 
         client = await aiohttp_client(app)
         resp = await client.request(
-            "GET",
-            f"/api/v1/admin/categories/{NOT_FOUND_CAT_ID}",
-            headers={"Authorization": "Bearer admin_token"}
+            "GET", f"/api/v1/admin/categories/{NOT_FOUND_CAT_ID}", headers={"Authorization": "Bearer admin_token"}
         )
 
         assert resp.status == 404
@@ -196,9 +176,7 @@ async def test_get_category_invalid_uuid(aiohttp_client, app):
     """Тест: невалидный UUID категории"""
     client = await aiohttp_client(app)
     resp = await client.request(
-        "GET",
-        "/api/v1/admin/categories/invalid-uuid",
-        headers={"Authorization": "Bearer admin_token"}
+        "GET", "/api/v1/admin/categories/invalid-uuid", headers={"Authorization": "Bearer admin_token"}
     )
 
     assert resp.status == 422
@@ -208,13 +186,9 @@ async def test_get_category_invalid_uuid(aiohttp_client, app):
 
 async def test_update_category_success(aiohttp_client, app):
     """Тест: успешное обновление категории"""
-    update_data = {
-        "category_id": CAT_ID,
-        "name": "Updated Category",
-        "budget_amount": 150000
-    }
+    update_data = {"category_id": CAT_ID, "name": "Updated Category", "budget_amount": 150000}
 
-    with patch('functions.categories.update_category') as mock_update:
+    with patch("functions.categories.update_category") as mock_update:
         mock_update.return_value = {"category_id": CAT_ID, "name": "Updated Category"}
 
         client = await aiohttp_client(app)
@@ -222,7 +196,7 @@ async def test_update_category_success(aiohttp_client, app):
             "PATCH",
             f"/api/v1/admin/categories/{CAT_ID}",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
-            data=json.dumps(update_data)
+            data=json.dumps(update_data),
         )
 
         assert resp.status == 200
@@ -232,7 +206,7 @@ async def test_update_category_not_found(aiohttp_client, app):
     """Тест: категория для обновления не найдена"""
     update_data = {"category_id": NOT_FOUND_CAT_ID, "name": "Updated Category"}
 
-    with patch('functions.categories.update_category') as mock_update:
+    with patch("functions.categories.update_category") as mock_update:
         mock_update.return_value = None  # хендлер возвращает 404 при None
 
         client = await aiohttp_client(app)
@@ -240,7 +214,7 @@ async def test_update_category_not_found(aiohttp_client, app):
             "PATCH",
             f"/api/v1/admin/categories/{NOT_FOUND_CAT_ID}",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
-            data=json.dumps(update_data)
+            data=json.dumps(update_data),
         )
 
         assert resp.status == 404
@@ -248,17 +222,13 @@ async def test_update_category_not_found(aiohttp_client, app):
 
 async def test_create_category_rule_success(aiohttp_client, app):
     """Тест: успешное создание правила для категории"""
-    rule_data = {
-        "category_id": CAT_ID,
-        "min_age": 18,
-        "max_age": 65,
-        "gender": "other",
-        "income": 50000
-    }
+    rule_data = {"category_id": CAT_ID, "min_age": 18, "max_age": 65, "gender": "other", "income": 50000}
 
-    with patch('functions.categories.get_category') as mock_get_cat, \
-         patch('functions.rules.create_rule') as mock_create, \
-         patch('functions.categories.update_category') as mock_update:
+    with (
+        patch("functions.categories.get_category") as mock_get_cat,
+        patch("functions.rules.create_rule") as mock_create,
+        patch("functions.categories.update_category") as mock_update,
+    ):
         mock_get_cat.return_value = {"category_id": CAT_ID}
         mock_create.return_value = {"rule_id": "rule123"}
         mock_update.return_value = {"category_id": CAT_ID, "rule_id": "rule123"}
@@ -268,7 +238,7 @@ async def test_create_category_rule_success(aiohttp_client, app):
             "POST",
             f"/api/v1/admin/categories/{CAT_ID}/rule",
             headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
-            data=json.dumps(rule_data)
+            data=json.dumps(rule_data),
         )
 
         assert resp.status == 201
