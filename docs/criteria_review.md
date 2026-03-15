@@ -285,7 +285,7 @@
 | 100% | Выпуск и миграции организованы предсказуемо и безопасно. |
 
 **Оценка: ~50%.**  
-Схема задаётся в postgres/init.sql; на старте вызываются ensure_* (ADD COLUMN IF NOT EXISTS, ensure_users_from_csv, ensure_categories_from_csv). Это даёт повторяемый подъём и мягкое добавление полей. Нет версионированных миграций (нумерация, откат), порядок ensure_* зашит в startup() и не описан отдельным runbook.
+Схема задаётся в postgres/init.sql; на старте вызываются ensure_* (ADD COLUMN IF NOT EXISTS, ensure_users_from_csv, ensure_categories_from_csv). Это даёт повторяемый подъём и мягкое добавление полей. Нет версионированных миграций (нумерация, откат), порядок ensure_* зашит в startup.run_startup() и не описан отдельным runbook.
 
 ---
 

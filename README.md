@@ -27,28 +27,28 @@ API: **categories** (включая правила отбора), **offers/run**
 backend/
 ├── api/
 │   ├── __init__.py
-│   ├── audit.py              # эндпоинты /api/v1/admin/audit
-│   ├── categories.py         # эндпоинты /api/v1/admin/categories и .../{id}/rule
-│   ├── calculate.py          # эндпоинт /api/v1/offers/run
-│   ├── selection.py          # эндпоинты /api/v1/client/selection/*
-│   └── validate.py           # схемы валидации и формат ошибок
+│   ├── audit.py
+│   ├── categories.py
+│   ├── calculate.py
+│   ├── selection.py
+│   └── validate.py
 ├── database/
 │   ├── __init__.py
-│   ├── database.py           # обёртка над asyncpg и управление транзакциями
-│   └── functions.py          # функции инициализации/миграций БД
+│   ├── database.py
+│   └── functions.py
 ├── docs/
 │   ├── __init__.py
-│   └── schems.py             # marshmallow‑схемы для swagger и API
-├── functions/                # бизнес‑логика (categories, rules, calculate, admin_users)
+│   └── schemas.py
+├── functions/
 ├── postgres/
-│   └── init.sql              # создание схемы БД (rules, categories, selections, audit_log)
-├── static/                   # статика и фронт (index.html и ассеты)
+│   └── init.sql
+├── static/
 ├── .gitignore
-├── docker-compose.yml        # описание сервисов app + db
-├── Dockerfile                # образ backend‑приложения
-├── requirements.txt          # зависимости Python
-├── config.py                 # конфиг и логгер, загрузка .env
-├── server.py                 # точка входа aiohttp‑приложения
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+├── config.py
+├── server.py
 └── README.md
 ```
 
@@ -88,7 +88,7 @@ docker compose down
 - **offers/run**: `POST /api/v1/offers/run` — запуск офферов (расчёт списка категорий для клиента).
 - **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} — получение и подтверждение выбора (`Idempotency-Key`).
 
-Все схемы запросов/ответов описаны через `docs/schems.py` и видны в Swagger.
+Все схемы запросов/ответов описаны через `docs/schemas.py` и видны в Swagger.
 
 ---
 

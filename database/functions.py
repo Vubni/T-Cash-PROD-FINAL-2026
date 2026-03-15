@@ -101,14 +101,12 @@ def _parse_age(age_bucket: str | None) -> int:
     if not s:
         return 30
 
-    # "<=25" -> 25
     if s.startswith("<="):
         try:
             return int(s[2:])
         except ValueError:
             return 25
 
-    # "26-35" -> (26 + 35) // 2
     if "-" in s:
         left, _sep, right = s.partition("-")
         try:
@@ -118,7 +116,6 @@ def _parse_age(age_bucket: str | None) -> int:
         except ValueError:
             return 30
 
-    # "65+" -> 70 (условно типичный возраст для 65+)
     if s.endswith("+"):
         try:
             base = int(s[:-1])
@@ -126,7 +123,6 @@ def _parse_age(age_bucket: str | None) -> int:
         except ValueError:
             return 65
 
-    # На всякий случай пытаемся распарсить просто число
     try:
         return int(s)
     except ValueError:
@@ -162,14 +158,12 @@ def _parse_income(income_bucket: str | None) -> int:
         return 0
     s = s.lower().replace(" ", "")
 
-    # "<=30k" / "≤30k"
     if s.startswith("<=") or s.startswith("≤"):
         num_part = s[2:] if s.startswith("<=") else s[1:]
         num_part = num_part.rstrip("+")
         val = _parse_number_token(num_part)
         return val if val is not None else 0
 
-    # "60-100k" — берём центр диапазона
     if "-" in s:
         left, _sep, right = s.partition("-")
         left_val = _parse_number_token(left)
@@ -182,13 +176,11 @@ def _parse_income(income_bucket: str | None) -> int:
             return right_val
         return 0
 
-    # "250k+" — нижняя граница
     if s.endswith("+"):
         num_part = s[:-1]
         val = _parse_number_token(num_part)
         return val if val is not None else 0
 
-    # Просто число / число с 'k'
     val = _parse_number_token(s)
     return val if val is not None else 0
 
@@ -309,9 +301,6 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                     except (ValueError, TypeError):
                         pass
 
-                # В CSV много дополнительных колонок и вложенных массивов с запятыми,
-                # поэтому позиция rule_id ненадёжна. Чтобы не падать из‑за невалидного UUID,
-                # всегда используем безопасный дефолт.
                 rule_id = "a0000000-0000-0000-0000-000000000001"
                 rows.append((category_id, name, subtitle, budget_amount, rule_id))
     except OSError as e:

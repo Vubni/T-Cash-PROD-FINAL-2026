@@ -1,9 +1,8 @@
 import aiohttp
 from database.database import Database
-from config import ML_SERVICE_URL, logger
-from core import serialize_json, ML_CATEGORY_NAMES, get_all_categories
+from config import CALC_SERVICE_URL, logger
+from core import serialize_json, FALLBACK_CATEGORY_NAMES, get_all_categories
 
-# Кэш после offers/run: по user_id храним список {category_id, cashback, estimated_spend, name, subtitle}
 _offers_run_cache: dict[int, list[dict]] = {}
 
 
@@ -47,7 +46,6 @@ async def get_calculate_items(user_id: int) -> dict:
 
     if rows:
         items_serialized = serialize_json(rows)
-        # Кэш: для уже выбранных категорий cashback берём из rate_min, estimated_spend отсутствует
         _set_offers_run_cache(
             user_id,
             [
@@ -89,7 +87,7 @@ async def get_calculate_items(user_id: int) -> dict:
         categories = await db.execute_all(sql, (user_id,)) or []
         category_names = [c["name"] for c in categories]
         if not category_names:
-            category_names = ML_CATEGORY_NAMES
+            category_names = FALLBACK_CATEGORY_NAMES
 
         logger.info("Calculating categories for user %s: %s", user_id, category_names)
         payload = {
@@ -98,21 +96,21 @@ async def get_calculate_items(user_id: int) -> dict:
             "top_n": max(1, get_all_categories() + 1),
         }
         logger.info(
-            "ML predict request: url=%s categories_count=%s client_id=%s top_n=%s",
-            f"{ML_SERVICE_URL.rstrip('/')}/predict",
+            "Calculate request: url=%s categories_count=%s client_id=%s top_n=%s",
+            f"{CALC_SERVICE_URL.rstrip('/')}/predict",
             len(payload["categories"]),
             user_id,
             payload["top_n"],
         )
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{ML_SERVICE_URL.rstrip('/')}/predict",
+                f"{CALC_SERVICE_URL.rstrip('/')}/predict",
                 json=payload,
             ) as response:
                 if response.status != 200:
                     text = await response.text()
                     logger.error(
-                        "ML predict failed: status=%s url=%s body=%s",
+                        "Calculate failed: status=%s url=%s body=%s",
                         response.status,
                         response.url,
                         text[:2000] if text else "(empty)",

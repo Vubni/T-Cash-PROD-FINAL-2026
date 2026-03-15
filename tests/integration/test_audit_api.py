@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 import core
 
@@ -27,7 +27,7 @@ async def test_get_audit_success(aiohttp_client, app):
         }
     ]
 
-    with patch("functions.audit.list_audit") as mock_audit:
+    with patch("functions.audit.list_audit", new_callable=AsyncMock) as mock_audit:
         mock_audit.return_value = test_records
 
         async with aiohttp_client(app) as client:
@@ -45,14 +45,14 @@ async def test_get_audit_success(aiohttp_client, app):
         _, kwargs = mock_audit.call_args
         assert kwargs["entity_type"] == "category"
         assert kwargs["entity_id"] == _CATEGORY_ID
-        assert kwargs["limit"] == 50  # лимит по умолчанию
+        assert kwargs["limit"] == 50
 
 
 async def test_get_audit_with_limit(aiohttp_client, app):
     """✅ Позитивный: аудит по категории с кастомным limit."""
     test_records = []
 
-    with patch("functions.audit.list_audit") as mock_audit:
+    with patch("functions.audit.list_audit", new_callable=AsyncMock) as mock_audit:
         mock_audit.return_value = test_records
 
         async with aiohttp_client(app) as client:
@@ -67,7 +67,7 @@ async def test_get_audit_with_limit(aiohttp_client, app):
         _, kwargs = mock_audit.call_args
         assert kwargs["entity_type"] == "category"
         assert kwargs["entity_id"] == _CATEGORY_ID
-        assert kwargs["limit"] == 5  # limit передан внутрь функции
+        assert kwargs["limit"] == 5
 
 
 async def test_get_audit_invalid_limit(aiohttp_client, app):
@@ -114,7 +114,7 @@ async def test_get_audit_invalid_token(aiohttp_client, app):
 
 async def test_get_audit_database_error(aiohttp_client, app):
     """❌ Негативный: ошибка базы данных даёт 500 INTERNAL_ERROR."""
-    with patch("functions.audit.list_audit") as mock_audit:
+    with patch("functions.audit.list_audit", new_callable=AsyncMock) as mock_audit:
         mock_audit.side_effect = Exception("Database connection failed")
 
         async with aiohttp_client(app) as client:
@@ -129,9 +129,9 @@ async def test_get_audit_database_error(aiohttp_client, app):
 
 async def test_run_category_writes_audit(aiohttp_client, app):
     """При смене статуса категории (run) в audit_log пишется запись."""
-    with patch("functions.categories.update_category_status") as mock_update:
+    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
         mock_update.return_value = {"id": _CATEGORY_ID, "status": "running"}
-        with patch("functions.audit.write_audit") as mock_write:
+        with patch("functions.audit.write_audit", new_callable=AsyncMock) as mock_write:
             async with aiohttp_client(app) as client:
                 resp = await client.post(
                     f"/api/v1/admin/categories/{_CATEGORY_ID}/run",

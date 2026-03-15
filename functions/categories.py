@@ -1,4 +1,27 @@
+import os
+
 from database.database import Database
+
+_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_STATIC_DIR = os.path.join(_BACKEND_ROOT, "static")
+
+
+def save_category_icon_file(category_id: str, file_content: bytes, file_extension: str = ".png") -> str:
+    """
+    Сохраняет файл иконки в static/icons/{category_id}{ext}.
+    Возвращает относительный путь вида 'icons/...' для записи в icon_path.
+    """
+    os.makedirs(os.path.join(_STATIC_DIR, "icons"), exist_ok=True)
+    ext = (file_extension or ".png").strip().lower()
+    if ext and not ext.startswith("."):
+        ext = "." + ext
+    if not ext:
+        ext = ".png"
+    safe_filename = f"{category_id}{ext}"
+    full_path = os.path.join(_STATIC_DIR, "icons", safe_filename)
+    with open(full_path, "wb") as f:
+        f.write(file_content)
+    return f"icons/{safe_filename}"
 
 
 def _rule_from_row(item: dict) -> dict:
@@ -157,12 +180,39 @@ async def update_category(
         return await _get_category(db, category_id)
 
 
+# Допустимые переходы статуса категории: (текущий, новый). Остальные — невалидны.
+_CATEGORY_STATUS_TRANSITIONS = {
+    ("running", "running"),
+    ("running", "paused"),
+    ("running", "archived"),
+    ("paused", "running"),
+    ("paused", "paused"),
+    ("paused", "archived"),
+    ("archived", "running"),
+    ("archived", "paused"),
+    ("archived", "archived"),
+}
+
+
 async def update_category_status(category_id: str, status: str) -> dict | None:
     """
     Обновляет только статус категории.
-    Возможные значения: running, paused, archived.
+    Допустимые значения: running, paused, archived.
+    Переход разрешён только если пара (текущий_статус, новый_статус) в _CATEGORY_STATUS_TRANSITIONS.
     """
     async with Database() as db:
+        row = await db.execute(
+            "SELECT status FROM categories WHERE category_id = $1",
+            (category_id,),
+        )
+        if row is None:
+            return None
+        current = row["status"]
+        if (current, status) not in _CATEGORY_STATUS_TRANSITIONS:
+            raise ValueError(
+                f"Invalid category status transition: {current!r} -> {status!r}. "
+                "Allowed: running, paused, archived (any to any)."
+            )
         sql_update = """
             UPDATE categories
             SET status = $1, updated_at = NOW()

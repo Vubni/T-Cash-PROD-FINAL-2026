@@ -2,11 +2,11 @@
 Интеграционные тесты для API пользователей
 """
 
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 
 
 async def test_user_auth_success(aiohttp_client, app):
-    with patch("functions.users.user_exists") as mock_user_exists:
+    with patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists:
         mock_user_exists.return_value = True
 
         async with aiohttp_client(app) as client:
@@ -19,7 +19,7 @@ async def test_user_auth_success(aiohttp_client, app):
 
 
 async def test_user_auth_not_found(aiohttp_client, app):
-    with patch("functions.users.user_exists") as mock_user_exists:
+    with patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists:
         mock_user_exists.return_value = False
 
         async with aiohttp_client(app) as client:
@@ -54,7 +54,7 @@ async def test_user_auth_zero_id(aiohttp_client, app):
 
 
 async def test_user_auth_database_error(aiohttp_client, app):
-    with patch("functions.users.user_exists") as mock_user_exists:
+    with patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists:
         mock_user_exists.side_effect = Exception("Database connection failed")
 
         async with aiohttp_client(app) as client:

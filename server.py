@@ -1,21 +1,13 @@
 import os
+import asyncio
 from aiohttp import web
 from aiohttp_apispec import docs, setup_aiohttp_apispec, validation_middleware
 import aiohttp_cors
-from config import logger
-import asyncio
-from api import categories, audit, selection, users, admin_auth, calculate
-from docs import schems as sh
 
-from database.functions import (
-    init_db,
-    ensure_users_from_csv,
-    ensure_selections_user_id_column,
-    ensure_categories_from_csv,
-    ensure_categories_status_column,
-    ensure_categories_icon_column,
-)
-from functions import admin_users as admin_users_fns
+from api import categories, audit, selection, users, admin_auth, calculate
+from config import logger
+from docs import schemas as sh
+from startup import run_startup
 
 
 @docs(
@@ -188,20 +180,7 @@ def create_app() -> web.Application:
 
 
 if __name__ == "__main__":
-
-    async def startup():
-        await init_db()
-        main_login = os.environ.get("MAIN_ADMIN_LOGIN", "admin")
-        main_password = os.environ.get("MAIN_ADMIN_PASSWORD", "admin")
-        await admin_users_fns.ensure_main_admin(main_login, main_password)
-        logger.info("Главный админ создан.")
-        await ensure_users_from_csv()
-        await ensure_categories_from_csv()
-        await ensure_selections_user_id_column()
-        await ensure_categories_status_column()
-        await ensure_categories_icon_column()
-
-    asyncio.run(startup())
+    asyncio.run(run_startup())
 
     app = create_app()
     logger.info("Запуск сервера. . .")

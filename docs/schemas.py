@@ -448,7 +448,6 @@ class CategoryCreateSchema(Schema):
     )
     rate_min = fields.Int(required=True, description="Минимальный кэшбек в процентах (0–100). Обязательное поле.")
     rate_max = fields.Int(required=True, description="Максимальный кэшбек в процентах (0–100). Обязательное поле.")
-    # rule_id не передаётся при создании — правило создаётся отдельно и привязывается к категории через PATCH категории или эндпоинт правил.
 
 
 class CategoryUpdateSchema(Schema):
@@ -757,7 +756,7 @@ class CalculateResponseSchema(Schema):
     )
     already_selected_categories = fields.Bool(
         required=True,
-        description="true — данные взяты из кэша (уже выбранные пользователем категории из selections); false — категории рассчитаны заново (через ML).",
+        description="true — данные взяты из кэша (уже выбранные пользователем категории из selections); false — категории рассчитаны заново.",
     )
 
 

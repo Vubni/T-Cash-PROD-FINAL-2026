@@ -51,7 +51,6 @@ async def check_authorization(request: web.Request) -> dict[str, Any] | None:
 
         result = check_token(token)
         if isinstance(result, dict) and result.get("scope") == ADMIN_SCOPE:
-            # Клиентский эндпоинт, админский токен здесь не подходит
             return None
         return result
     except Exception as e:

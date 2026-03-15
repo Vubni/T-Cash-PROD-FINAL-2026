@@ -33,11 +33,10 @@ CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         BIGINT      NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
-    expected_benefit_amount INT NULL CHECK (expected_benefit_amount IS NULL OR expected_benefit_amount >= 0),
-    availability_status VARCHAR(50)  NULL CHECK (availability_status IS NULL OR availability_status IN ('available', 'budget_limited', 'unavailable')),
-    availability_reason VARCHAR(500) NULL,
+    idempotency_key VARCHAR(128) NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, category_id)
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (

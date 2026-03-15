@@ -152,7 +152,6 @@ def validate_uuid(value: str, field_name: str = "id") -> str:
     return s
 
 
-# Границы PostgreSQL BIGINT
 BIGINT_MIN = -(2**63)
 BIGINT_MAX = 2**63 - 1
 
@@ -302,7 +301,6 @@ def validate(
                     "Слишком много полей в запросе",
                     details={"max_fields": MAX_REQUEST_FIELDS},
                 )
-            # user_id приводим к int (BIGINT в БД)
             for key, value in all_data.items():
                 if key == "user_id":
                     if isinstance(value, str) and value.strip() and value.lstrip("-").isdigit():

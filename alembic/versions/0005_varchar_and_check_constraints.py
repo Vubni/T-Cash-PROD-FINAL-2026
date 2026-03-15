@@ -10,7 +10,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # rules: gender VARCHAR(20) + CHECK, min_age/max_age/income CHECK
     op.alter_column(
         "rules",
         "gender",
@@ -39,7 +38,6 @@ def upgrade() -> None:
         "income IS NULL OR income >= 0",
     )
 
-    # categories: name, subtitle VARCHAR(500) + CHECK; budget_amount, rate_min, rate_max CHECK
     op.alter_column(
         "categories",
         "name",
@@ -80,7 +78,6 @@ def upgrade() -> None:
         "rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min",
     )
 
-    # selections: availability_status, availability_reason, idempotency_key
     op.alter_column(
         "selections",
         "availability_status",
@@ -113,7 +110,6 @@ def upgrade() -> None:
         "expected_benefit_amount IS NULL OR expected_benefit_amount >= 0",
     )
 
-    # audit_log
     op.alter_column(
         "audit_log",
         "entity_type",
@@ -163,7 +159,6 @@ def upgrade() -> None:
         "char_length(actor) >= 1 AND char_length(actor) <= 255",
     )
 
-    # admin_users
     op.alter_column(
         "admin_users",
         "login",
@@ -191,7 +186,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # admin_users
     op.drop_constraint("admin_users_password_check", "admin_users", type_="check")
     op.drop_constraint("admin_users_login_check", "admin_users", type_="check")
     op.alter_column(
@@ -209,7 +203,6 @@ def downgrade() -> None:
         existing_nullable=False,
     )
 
-    # audit_log
     for name in ("audit_log_actor_check", "audit_log_action_check", "audit_log_entity_id_check", "audit_log_entity_type_check"):
         op.drop_constraint(name, "audit_log", type_="check")
     op.alter_column("audit_log", "actor", existing_type=sa.String(255), type_=sa.TEXT(), existing_nullable=False)
@@ -217,14 +210,12 @@ def downgrade() -> None:
     op.alter_column("audit_log", "entity_id", existing_type=sa.String(64), type_=sa.TEXT(), existing_nullable=False)
     op.alter_column("audit_log", "entity_type", existing_type=sa.String(50), type_=sa.TEXT(), existing_nullable=False)
 
-    # selections
     op.drop_constraint("selections_expected_benefit_amount_check", "selections", type_="check")
     op.drop_constraint("selections_availability_status_check", "selections", type_="check")
     op.alter_column("selections", "idempotency_key", existing_type=sa.String(128), type_=sa.TEXT(), existing_nullable=True)
     op.alter_column("selections", "availability_reason", existing_type=sa.String(500), type_=sa.TEXT(), existing_nullable=True)
     op.alter_column("selections", "availability_status", existing_type=sa.String(50), type_=sa.TEXT(), existing_nullable=True)
 
-    # categories
     for name in (
         "categories_rate_max_check",
         "categories_rate_min_check",
@@ -236,7 +227,6 @@ def downgrade() -> None:
     op.alter_column("categories", "subtitle", existing_type=sa.String(500), type_=sa.TEXT(), existing_nullable=False)
     op.alter_column("categories", "name", existing_type=sa.String(500), type_=sa.TEXT(), existing_nullable=False)
 
-    # rules
     op.drop_constraint("rules_income_check", "rules", type_="check")
     op.drop_constraint("rules_max_age_check", "rules", type_="check")
     op.drop_constraint("rules_min_age_check", "rules", type_="check")

@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from api import validate
 from config import logger
-from docs import schems as sh
+from docs import schemas as sh
 from functions import audit as audit_fns
 from functions import categories as cat_fns
 from functions import rules as rules_fns
@@ -21,10 +21,6 @@ def _admin_actor(request: web.Request) -> str:
 
 LIMIT_MAX = 500
 STRING_FIELD_MAX_LENGTH = 500
-
-
-_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_STATIC_DIR = os.path.join(_BACKEND_ROOT, "static")
 
 
 class Admin_categories_list(BaseModel):
@@ -362,20 +358,15 @@ async def upload_category_icon(request: web.Request, parsed: Category_id_path) -
             ext = ".png"
         ext = ext.lower()
 
-        os.makedirs(os.path.join(_STATIC_DIR, "icons"), exist_ok=True)
+        chunks = []
+        while True:
+            chunk = await field.read_chunk()
+            if not chunk:
+                break
+            chunks.append(chunk)
+        file_content = b"".join(chunks)
 
-        safe_filename = f"{parsed.category_id}{ext}"
-        full_path = os.path.join(_STATIC_DIR, "icons", safe_filename)
-
-        # Читаем и сохраняем файл чанками, чтобы не держать весь файл в памяти
-        with open(full_path, "wb") as f:
-            while True:
-                chunk = await field.read_chunk()
-                if not chunk:
-                    break
-                f.write(chunk)
-
-        icon_rel_path = f"icons/{safe_filename}"
+        icon_rel_path = cat_fns.save_category_icon_file(parsed.category_id, file_content, ext)
         updated = await cat_fns.update_category(parsed.category_id, icon_path=icon_rel_path)
         if updated is None:
             return validate.format_404_error(request, message="Категория не найдена")
@@ -658,6 +649,8 @@ async def _change_category_status(
             details={"status": new_status},
         )
         return web.json_response(response, status=200)
+    except ValueError as e:
+        return validate.format_409_error(request, message=str(e))
     except Exception:
         logger.exception("category status change handler failed")
         return validate.format_500_error(request)

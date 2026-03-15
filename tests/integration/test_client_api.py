@@ -3,7 +3,6 @@ import json
 
 import core
 
-# Валидные UUID для тестов selection (ровно 5 категорий по настройкам)
 _SELECTION_CATEGORY_IDS = [
     "00000000-0000-0000-0000-000000000001",
     "00000000-0000-0000-0000-000000000002",
@@ -44,7 +43,7 @@ async def test_selection_success(aiohttp_client, app):
     ):
         mock_user_exists.return_value = True
         mock_check.return_value = True
-        mock_get_current.return_value = None  # нет текущего выбора — сохраняем новый
+        mock_get_current.return_value = None
         mock_save.return_value = []
 
         async with aiohttp_client(app) as client:
@@ -168,7 +167,6 @@ async def test_selection_missing_user_id(aiohttp_client, app):
     """Тест: в токене нет user_id -> 401"""
     selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
 
-    # Токен без user_id
     token_without_user = core.create_token({})
 
     async with aiohttp_client(app) as client:
@@ -204,5 +202,4 @@ async def test_selection_missing_category_ids(aiohttp_client, app):
 
 def test_user_id_integer_in_client_api():
     """user_id в client API — целое число (BIGINT); тесты используют int (например 12345)."""
-    # Все тесты выше уже передают user_id как int в selection_data.
     assert isinstance(12345, int)

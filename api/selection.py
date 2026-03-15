@@ -6,14 +6,7 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from api import validate
 from config import logger
-from core import (
-    get_all_categories,
-    get_max_selection_count,
-    load_categories_config,
-    save_categories_config,
-)
-from docs import schems as sh
-from functions import calculate as calc_fns
+from docs import schemas as sh
 from functions import selection as sel_fns
 from functions import users as users_fns
 
@@ -32,32 +25,12 @@ class Selection_submit_body(BaseModel):
 
     @model_validator(mode="after")
     def exactly_five_categories(self) -> "Selection_submit_body":
-        required = get_max_selection_count()
+        required = sel_fns.get_max_selection_count()
         if len(self.category_ids) != required:
             raise ValueError(f"Нужно выбрать ровно {required} категорий, передано {len(self.category_ids)}")
         if len(set(self.category_ids)) != required:
             raise ValueError("Категории не должны повторяться")
         return self
-
-
-def _selection_items_from_cache(user_id: int, category_ids: list[str]) -> list[dict]:
-    """Возвращает из кэша offers/run элементы по выбранным category_ids в порядке category_ids."""
-    cached = calc_fns.get_offers_run_cache(user_id)
-    if not cached:
-        return []
-    id_to_item = {str(it["category_id"]): it for it in cached}
-    result = []
-    for cid in category_ids:
-        it = id_to_item.get(cid)
-        if it is not None:
-            result.append({
-                "category_id": str(it["category_id"]),
-                "cashback": it.get("cashback"),
-                "estimated_spend": it.get("estimated_spend"),
-                "name": it.get("name"),
-                "subtitle": it.get("subtitle"),
-            })
-    return result
 
 
 class Admin_selection_settings_empty(BaseModel):
@@ -123,7 +96,7 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
             )
 
         current = await sel_fns.get_current_category_ids(user_id)
-        items = _selection_items_from_cache(user_id, parsed.category_ids)
+        items = sel_fns.get_selection_submit_items(user_id, parsed.category_ids)
         if (
             current is not None
             and len(current) == len(parsed.category_ids)
@@ -154,13 +127,8 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
 @validate.validate(Admin_selection_settings_empty, require_admin=True)
 async def get_selection_settings(request: web.Request, parsed: Admin_selection_settings_empty) -> web.Response:
     try:
-        return web.json_response(
-            {
-                "all_categories": get_all_categories(),
-                "max_selection_count": get_max_selection_count(),
-            },
-            status=200,
-        )
+        settings = sel_fns.get_selection_settings()
+        return web.json_response(settings, status=200)
     except Exception:
         logger.exception("get_selection_settings handler failed")
         return validate.format_500_error(request)
@@ -183,22 +151,11 @@ async def get_selection_settings(request: web.Request, parsed: Admin_selection_s
 @validate.validate(Admin_selection_settings, require_admin=True)
 async def update_selection_settings(request: web.Request, parsed: Admin_selection_settings) -> web.Response:
     try:
-        cfg = load_categories_config()
-
-        if parsed.all_categories is not None:
-            cfg["all_categories"] = int(parsed.all_categories)
-        if parsed.max_selection_count is not None:
-            cfg["max_selection_count"] = parsed.max_selection_count
-
-        save_categories_config(cfg)
-
-        return web.json_response(
-            {
-                "all_categories": get_all_categories(),
-                "max_selection_count": get_max_selection_count(),
-            },
-            status=200,
+        settings = sel_fns.update_selection_settings(
+            all_categories=parsed.all_categories,
+            max_selection_count=parsed.max_selection_count,
         )
+        return web.json_response(settings, status=200)
     except Exception:
         logger.exception("update_selection_settings handler failed")
         return validate.format_500_error(request)

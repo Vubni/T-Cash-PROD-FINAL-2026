@@ -150,7 +150,7 @@ def cache_with_expiration(expiration_seconds: int) -> Callable[[Callable[..., T]
     return decorator
 
 
-ML_CATEGORY_NAMES = [
+FALLBACK_CATEGORY_NAMES = [
     "Автоуслуги",
     "Аптеки",
     "Ж/д билеты",

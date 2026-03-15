@@ -4,7 +4,6 @@ import pytest
 from unittest.mock import patch
 
 
-# Патчим до импорта app, чтобы все эндпоинты с require_admin/require_super_admin получали подмену
 async def _pass_ordinary(request):
     request["admin_payload"] = {"admin_id": 1, "main_admin": False, "approved": True}
     return None
@@ -15,7 +14,6 @@ async def _pass_super(request):
     return None
 
 
-# Тесты, которые проверяют 401 без токена/с невалидным токеном — мок не применяем
 _AUDIT_NO_AUTH_TEST_NAMES = {"test_get_audit_unauthorized", "test_get_audit_invalid_token"}
 
 

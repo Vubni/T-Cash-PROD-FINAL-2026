@@ -21,7 +21,7 @@ class TestAdminAuthFunctions:
             with patch.object(auth_fns, "Database") as MockDB:
                 mock_conn = AsyncMock()
                 mock_conn.execute = AsyncMock(return_value=None)
-                MockDB.return_value.__aenter__.return_value = mock_conn
+                MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
                 MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
                 result = await auth_fns.create_admin(test_admin["login"], test_admin["password"])
@@ -40,7 +40,7 @@ class TestAdminAuthFunctions:
                     "main_admin": False,
                 }
             )
-            MockDB.return_value.__aenter__.return_value = mock_conn
+            MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
             MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
             result = await auth_fns.authenticate_admin("admin", "password123")
@@ -63,7 +63,7 @@ class TestAdminAuthFunctions:
             with patch.object(auth_fns, "Database") as MockDB:
                 mock_conn = AsyncMock()
                 mock_conn.execute = AsyncMock(return_value=None)
-                MockDB.return_value.__aenter__.return_value = mock_conn
+                MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
                 MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
                 result = await auth_fns.set_admin_approved(2)
@@ -77,7 +77,7 @@ class TestAuditFunctions:
         with patch.object(audit_fns, "Database") as MockDB:
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value=None)
-            MockDB.return_value.__aenter__.return_value = mock_conn
+            MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
             MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
             await audit_fns.write_audit(
@@ -105,7 +105,7 @@ class TestAuditFunctions:
         with patch.object(audit_fns, "Database") as MockDB:
             mock_conn = AsyncMock()
             mock_conn.execute_all = AsyncMock(return_value=test_rows)
-            MockDB.return_value.__aenter__.return_value = mock_conn
+            MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
             MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
             result = await audit_fns.list_audit(

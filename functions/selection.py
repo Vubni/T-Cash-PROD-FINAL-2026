@@ -1,7 +1,67 @@
 import uuid
+
+from core import (
+    get_all_categories,
+    get_max_selection_count as _get_max_selection_count,
+    load_categories_config,
+    save_categories_config,
+)
 from database.database import Database
 
+from functions import calculate as calc_fns
+
 REQUIRED_SELECTION_COUNT = 5
+
+
+def get_max_selection_count() -> int:
+    """Текущий лимит количества категорий в выборе (из настроек)."""
+    return _get_max_selection_count()
+
+
+def get_selection_settings() -> dict:
+    """Возвращает текущие настройки выбора категорий."""
+    return {
+        "all_categories": get_all_categories(),
+        "max_selection_count": get_max_selection_count(),
+    }
+
+
+def update_selection_settings(
+    *,
+    all_categories: int | None = None,
+    max_selection_count: int | None = None,
+) -> dict:
+    """Обновляет настройки выбора и возвращает актуальные значения."""
+    cfg = load_categories_config()
+    if all_categories is not None:
+        cfg["all_categories"] = int(all_categories)
+    if max_selection_count is not None:
+        cfg["max_selection_count"] = max_selection_count
+    save_categories_config(cfg)
+    return get_selection_settings()
+
+
+def get_selection_submit_items(user_id: int, category_ids: list[str]) -> list[dict]:
+    """
+    Возвращает элементы для ответа подтверждения выбора по выбранным category_ids.
+    Берёт данные из кэша offers/run в порядке category_ids.
+    """
+    cached = calc_fns.get_offers_run_cache(user_id)
+    if not cached:
+        return []
+    id_to_item = {str(it["category_id"]): it for it in cached}
+    result = []
+    for cid in category_ids:
+        it = id_to_item.get(cid)
+        if it is not None:
+            result.append({
+                "category_id": str(it["category_id"]),
+                "cashback": it.get("cashback"),
+                "estimated_spend": it.get("estimated_spend"),
+                "name": it.get("name"),
+                "subtitle": it.get("subtitle"),
+            })
+    return result
 
 
 async def get_current_category_ids(user_id: int) -> list[str] | None:

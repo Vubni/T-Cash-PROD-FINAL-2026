@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from api import validate
 from config import logger
-from docs import schems as sh
+from docs import schemas as sh
 from functions import calculate as calc_fns
 
 class Client_calculate(BaseModel):
