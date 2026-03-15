@@ -53,6 +53,60 @@ def _parse_user_id(raw: str) -> int | None:
     return None
 
 
+def _parse_age(age_bucket: str | None) -> int:
+    s = (age_bucket or "").strip()
+    if not s:
+        return 30
+    if s.startswith("<="):
+        try:
+            return int(s[2:].replace("+", "").replace(" ", "").replace("k", ""))
+        except ValueError:
+            return 25
+    if "-" in s:
+        left, _sep, _right = s.partition("-")
+        try:
+            return int(left)
+        except ValueError:
+            return 30
+    if s.endswith("+"):
+        try:
+            return int(s[:-1])
+        except ValueError:
+            return 65
+    return 30
+
+
+def _parse_income(income_bucket: str | None) -> int:
+    s = (income_bucket or "").strip()
+    if not s:
+        return 0
+    s = s.lower().replace(" ", "")
+    if "k" in s:
+        s = s.replace("k", "000")
+    if s.startswith("<="):
+        num = s[2:].rstrip("+")
+        try:
+            return int(num)
+        except ValueError:
+            return 0
+    if "-" in s:
+        left, _sep, _right = s.partition("-")
+        try:
+            return int(left)
+        except ValueError:
+            return 0
+    if s.endswith("+"):
+        num = s[:-1]
+        try:
+            return int(num)
+        except ValueError:
+            return 0
+    try:
+        return int(s)
+    except ValueError:
+        return 0
+
+
 async def ensure_users_from_csv(csv_path: str | None = None) -> None:
     if csv_path is None:
         csv_path = _data_path("users.csv")
@@ -60,24 +114,22 @@ async def ensure_users_from_csv(csv_path: str | None = None) -> None:
         logger.warning("Файл с пользователями не найден: %s", csv_path)
         return
 
-    to_insert: list[tuple[int]] = []
+    to_insert: list[tuple[int, int, str, int]] = []
     skipped = 0
 
     try:
         with open(csv_path, newline="", encoding="utf-8-sig") as f:
-            reader = csv.reader(f)
-            header_skipped = False
+            reader = csv.DictReader(f)
             for row in reader:
-                if not row:
-                    continue
-                if not header_skipped:
-                    header_skipped = True
-                    continue
-                user_id = _parse_user_id(row[0])
+                raw_id = row.get("client_id") or row.get("user_id") or ""
+                user_id = _parse_user_id(raw_id)
                 if user_id is None:
                     skipped += 1
                     continue
-                to_insert.append((user_id,))
+                age = _parse_age(row.get("soc_dem___age_bucket"))
+                gender = "other"
+                income = _parse_income(row.get("soc_dem___income_bucket"))
+                to_insert.append((user_id, age, gender, income))
     except OSError as e:
         logger.error("Не удалось прочитать файл пользователей %s: %s", csv_path, e)
         return
@@ -99,7 +151,9 @@ async def ensure_users_from_csv(csv_path: str | None = None) -> None:
             for i in range(0, len(to_insert), batch_size):
                 batch = to_insert[i : i + batch_size]
                 await db.executemany(
-                    "INSERT INTO users (user_id) VALUES ($1::bigint) ON CONFLICT (user_id) DO NOTHING",
+                    "INSERT INTO users (user_id, age, gender, income) "
+                    "VALUES ($1::bigint, $2::int, $3::varchar, $4::int) "
+                    "ON CONFLICT (user_id) DO NOTHING",
                     batch,
                 )
             logger.info("Импортировано пользователей из CSV: %d", len(to_insert))

@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    user_id BIGINT PRIMARY KEY
+    user_id BIGINT PRIMARY KEY,
+    age INT NOT NULL CHECK (age >= 0 AND age <= 100),
+    gender VARCHAR(20) NOT NULL CHECK (gender IN ('male', 'female', 'other')),
+    income INT NOT NULL CHECK (income >= 0)
 );
 
 -- Таблица только для хранения выбранных категорий (user_id + category_id).
