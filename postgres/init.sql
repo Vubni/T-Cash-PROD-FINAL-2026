@@ -21,14 +21,14 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    user_id INT PRIMARY KEY
+    user_id BIGINT PRIMARY KEY
 );
 
 -- Таблица только для хранения выбранных категорий (user_id + category_id).
 -- idempotency_key оставлен для совместимости со старыми миграциями, не используется.
 CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         INT         NULL REFERENCES users(user_id),
+    user_id         BIGINT      NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
     expected_benefit_amount INT NULL CHECK (expected_benefit_amount IS NULL OR expected_benefit_amount >= 0),
     availability_status VARCHAR(50)  NULL CHECK (availability_status IS NULL OR availability_status IN ('available', 'budget_limited', 'unavailable')),

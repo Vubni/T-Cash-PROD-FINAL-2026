@@ -16,7 +16,7 @@ async def user_exists(user_id: int) -> bool:
     try:
         async with Database() as db:
             row = await db.execute(
-                "SELECT 1 FROM users WHERE user_id = $1",
+                "SELECT 1 FROM users WHERE user_id = $1::bigint",
                 (user_id,),
             )
         return row is not None

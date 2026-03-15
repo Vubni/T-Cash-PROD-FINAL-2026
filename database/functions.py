@@ -20,7 +20,7 @@ async def ensure_selections_user_id_column() -> None:
     try:
         async with Database() as db:
             await db.execute(
-                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS user_id INT NULL REFERENCES users(user_id)",
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS user_id BIGINT NULL REFERENCES users(user_id)",
                 (),
             )
     except Exception as e:
@@ -64,7 +64,7 @@ async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
                 return
 
             await db.executemany(
-                "INSERT INTO users (user_id) VALUES ($1::int) ON CONFLICT (user_id) DO NOTHING",
+                "INSERT INTO users (user_id) VALUES ($1::bigint) ON CONFLICT (user_id) DO NOTHING",
                 to_insert,
             )
             logger.info(f"Импортировано пользователей из CSV: {len(to_insert)}")
