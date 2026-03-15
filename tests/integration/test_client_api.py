@@ -1,8 +1,3 @@
-"""
-Интеграционные тесты для Client API
-"""
-
-import pytest
 from unittest.mock import patch, AsyncMock
 import json
 

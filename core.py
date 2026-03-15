@@ -1,11 +1,12 @@
 import json
 import os
 import secrets
-import string, asyncio
-import re, threading
+import string
+import asyncio
+import re
+import threading
 import time
 from aiohttp import web
-from database import functions as func_db
 from functools import wraps
 import jwt
 import uuid

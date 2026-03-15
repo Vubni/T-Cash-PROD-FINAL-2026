@@ -1,8 +1,3 @@
-"""
-Интеграционные тесты для Audit API
-"""
-
-import pytest
 from unittest.mock import patch
 
 

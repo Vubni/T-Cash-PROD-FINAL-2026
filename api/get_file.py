@@ -1,5 +1,6 @@
 from aiohttp import web
-import os, mimetypes
+import os
+import mimetypes
 
 async def handle_get_file(request):
     path = request.match_info.get('path', '')
