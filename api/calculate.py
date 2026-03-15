@@ -7,7 +7,6 @@ from api import validate
 from config import logger
 from docs import schems as sh
 from functions import calculate as calc_fns
-from core import check_authorization
 
 class Client_calculate(BaseModel):
     model_config = {"extra": "forbid"}
