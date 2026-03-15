@@ -7,11 +7,12 @@ from aiohttp_apispec import (
 import aiohttp_cors
 from config import logger
 import asyncio
-from api import (categories, audit, selection, rules, offers, users, admin_auth)
+from api import (categories, audit, selection, rules, offers, users, admin_auth, calculate)
 
 from database.functions import (
     init_db,
     ensure_users_from_csv,
+    ensure_selections_user_id_column,
     ensure_categories_from_csv,
 )
 from functions import admin_users as admin_users_fns
@@ -102,9 +103,7 @@ def create_app() -> web.Application:
         web.post(prefix + '/admin/auth/approve', admin_auth.approve_admin),
         web.post(prefix + '/admin/auth/decline', admin_auth.decline_admin),
 
-        web.post(prefix + '/offers/run', offers.run_offers),
-
-        web.get(prefix + '/client/users/{user_id}/selection', selection.get_current_selection),
+        web.post(prefix + '/client/calculate', calculate.calculate),
         web.post(prefix + '/client/selection', selection.confirm_selection),
     ]
     for route in api_routes:
@@ -152,6 +151,7 @@ if __name__ == "__main__":
         logger.info("Главный админ создан.")
         await ensure_users_from_csv()
         await ensure_categories_from_csv()
+        await ensure_selections_user_id_column()
 
     asyncio.run(startup())
 

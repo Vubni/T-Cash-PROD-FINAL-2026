@@ -1,7 +1,7 @@
 import aiohttp
 from database.database import Database
-from core import serialize_json
-from core import get_all_categories, get_max_selection_count, logger
+from core import serialize_json, ML_CATEGORY_NAMES, logger
+from core import get_all_categories, get_max_selection_count
 from config import ML_SERVICE_URL
 
 
@@ -40,6 +40,8 @@ async def get_calculate_items(user_id: int) -> dict:
         """
         categories = await db.execute_all(sql, (get_all_categories(),)) or []
         category_names = [c["name"] for c in categories]
+        if not category_names:
+            category_names = ML_CATEGORY_NAMES
 
         async with aiohttp.ClientSession() as session:
             async with session.post(

@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS rules (
     min_age         INT         NULL CHECK (min_age IS NULL OR min_age >= 0),
     max_age         INT         NULL CHECK (max_age IS NULL OR max_age >= 0),
     gender          VARCHAR(20) NULL CHECK (gender IS NULL OR gender IN ('male', 'female', 'other')),
-    income          BIGINT      NULL CHECK (income IS NULL OR income >= 0),
+    income          INT         NULL CHECK (income IS NULL OR income >= 0),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -21,22 +21,25 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    user_id BIGINT PRIMARY KEY
+    user_id INT PRIMARY KEY
 );
 
 -- Таблица только для хранения выбранных категорий (user_id + category_id).
 -- idempotency_key оставлен для совместимости со старыми миграциями, не используется.
 CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         BIGINT      NULL REFERENCES users(user_id),
+    user_id         INT         NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
+    expected_benefit_amount INT NULL CHECK (expected_benefit_amount IS NULL OR expected_benefit_amount >= 0),
+    availability_status VARCHAR(50)  NULL CHECK (availability_status IS NULL OR availability_status IN ('available', 'budget_limited', 'unavailable')),
+    availability_reason VARCHAR(500) NULL,
     idempotency_key VARCHAR(128) NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
-    id           BIGSERIAL   PRIMARY KEY,
+    id           SERIAL      PRIMARY KEY,
     entity_type  VARCHAR(50) NOT NULL CHECK (char_length(entity_type) >= 1 AND char_length(entity_type) <= 50),
     entity_id    VARCHAR(64) NOT NULL CHECK (char_length(entity_id) >= 1 AND char_length(entity_id) <= 64),
     action       VARCHAR(50) NOT NULL CHECK (char_length(action) >= 1 AND char_length(action) <= 50),
@@ -46,7 +49,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 CREATE TABLE IF NOT EXISTS admin_users (
-    admin_id   BIGSERIAL PRIMARY KEY,
+    admin_id   SERIAL PRIMARY KEY,
     main_admin BOOLEAN   NOT NULL DEFAULT FALSE,
     login      VARCHAR(255) NOT NULL UNIQUE CHECK (char_length(login) >= 1 AND char_length(login) <= 255),
     password   VARCHAR(255) NOT NULL CHECK (char_length(password) >= 1),
