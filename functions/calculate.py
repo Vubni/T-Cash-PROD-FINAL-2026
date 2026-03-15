@@ -102,6 +102,7 @@ async def get_calculate_items(user_id: int) -> dict:
                     "subtitle": category["subtitle"],
                     "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
                     "reasons": predict.get("reasons", []),
+                    "estimated_spend": predict.get("estimated_spend")
                 }
             )
 
