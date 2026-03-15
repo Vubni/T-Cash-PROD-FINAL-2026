@@ -1,6 +1,5 @@
 import os
 
-from logging_setup import logger
 
 DATE_BASE_CONNECT = {
     "host": os.getenv("DB_IP"),
