@@ -1,8 +1,7 @@
 import aiohttp
 from database.database import Database
-from core import serialize_json, ML_CATEGORY_NAMES, logger
-from core import get_all_categories
-from config import ML_SERVICE_URL
+from config import ML_SERVICE_URL, logger
+from core import serialize_json, ML_CATEGORY_NAMES, get_all_categories
 
 
 async def get_calculate_items(user_id: int) -> dict:

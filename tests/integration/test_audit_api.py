@@ -1,49 +1,26 @@
 from unittest.mock import patch
 
+import core
+
+
+_CATEGORY_ID = "00000000-0000-0000-0000-000000000001"
+
+
+def _admin_headers(token: str | None = None) -> dict[str, str]:
+    """Заголовок Authorization с JWT админа (или переданным токеном)."""
+    if token is None:
+        payload = {"admin_id": 1, "scope": core.ADMIN_SCOPE}
+        token = core.create_token(payload)
+    return {"Authorization": f"Bearer {token}"}
+
 
 async def test_get_audit_success(aiohttp_client, app):
-    """✅ ПОЗИТИВНЫЙ: успешное получение аудита"""
-    test_records = [
-        {
-            "id": 1,
-            "admin_id": 1,
-            "entity_type": "category",
-            "entity_id": "cat123",
-            "action": "create",
-            "actor": "admin",
-            "created_at": "2024-01-01T10:00:00Z",
-        },
-        {
-            "id": 2,
-            "entity_type": "category",
-            "entity_id": "cat456",
-            "action": "update",
-            "actor": "admin",
-            "created_at": "2024-01-01T11:00:00Z",
-        },
-    ]
-
-    with patch("functions.audit.list_audit") as mock_audit:
-        mock_audit.return_value = test_records
-
-        client = await aiohttp_client(app)
-        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
-
-        assert resp.status == 200
-        data = await resp.json()
-        assert len(data["items"]) == 2
-        assert data["total"] == 2
-        assert data["items"][0]["action"] == "create"
-        assert data["items"][1]["action"] == "update"
-
-
-async def test_get_audit_with_filters(aiohttp_client, app):
-    """✅ ПОЗИТИВНЫЙ: получение аудита с фильтрами"""
+    """✅ Позитивный: успешное получение аудита по категории."""
     test_records = [
         {
             "id": 1,
             "entity_type": "category",
-            "entity_id": "cat123",
+            "entity_id": _CATEGORY_ID,
             "action": "create",
             "actor": "admin",
             "created_at": "2024-01-01T10:00:00Z",
@@ -54,89 +31,101 @@ async def test_get_audit_with_filters(aiohttp_client, app):
         mock_audit.return_value = test_records
 
         client = await aiohttp_client(app)
-        resp = await client.request(
-            "GET", "/api/v1/admin/audit?entity_type=category&limit=5", headers={"Authorization": "Bearer admin_token"}
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+            headers=_admin_headers(),
         )
 
         assert resp.status == 200
         data = await resp.json()
+        assert data["total"] == 1
         assert len(data["items"]) == 1
+        assert data["items"][0]["action"] == "create"
+
         mock_audit.assert_called_once()
-        call_args = mock_audit.call_args[0]
-        assert call_args[0] == "category"  # entity_type
-        assert call_args[3] == 5  # limit
+        _, kwargs = mock_audit.call_args
+        assert kwargs["entity_type"] == "category"
+        assert kwargs["entity_id"] == _CATEGORY_ID
+        assert kwargs["limit"] == 50  # лимит по умолчанию
 
 
-async def test_get_audit_empty(aiohttp_client, app):
-    """✅ ПОЗИТИВНЫЙ: пустой список аудита"""
+async def test_get_audit_with_limit(aiohttp_client, app):
+    """✅ Позитивный: аудит по категории с кастомным limit."""
+    test_records = []
+
     with patch("functions.audit.list_audit") as mock_audit:
-        mock_audit.return_value = []
+        mock_audit.return_value = test_records
 
         client = await aiohttp_client(app)
-        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=5",
+            headers=_admin_headers(),
+        )
 
         assert resp.status == 200
         data = await resp.json()
-        assert len(data["items"]) == 0
         assert data["total"] == 0
-
-
-async def test_get_audit_unauthorized(aiohttp_client, app):
-    """❌ НЕГАТИВНЫЙ: нет токена авторизации"""
-    client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/admin/audit")
-
-    assert resp.status == 401
-    data = await resp.json()
-    assert data["code"] == "UNAUTHORIZED"
-
-
-async def test_get_audit_invalid_token(aiohttp_client, app):
-    """❌ НЕГАТИВНЫЙ: невалидный токен"""
-    client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer invalid_token"})
-
-    assert resp.status == 401
-    data = await resp.json()
-    assert data["code"] == "UNAUTHORIZED"
+        mock_audit.assert_called_once()
+        _, kwargs = mock_audit.call_args
+        assert kwargs["entity_type"] == "category"
+        assert kwargs["entity_id"] == _CATEGORY_ID
+        assert kwargs["limit"] == 5  # limit передан внутрь функции
 
 
 async def test_get_audit_invalid_limit(aiohttp_client, app):
-    """❌ НЕГАТИВНЫЙ: невалидный параметр limit"""
+    """❌ Негативный: limit=0 и limit>MAX дают 422 VALIDATION_FAILED."""
     client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/admin/audit?limit=501", headers={"Authorization": "Bearer admin_token"})
 
+    resp = await client.get(
+        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=0",
+        headers=_admin_headers(),
+    )
     assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+    body = await resp.json()
+    assert body["code"] == "VALIDATION_FAILED"
+
+    resp = await client.get(
+        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit?limit=501",
+        headers=_admin_headers(),
+    )
+    assert resp.status == 422
+    body = await resp.json()
+    assert body["code"] == "VALIDATION_FAILED"
 
 
-async def test_get_audit_negative_offset(aiohttp_client, app):
-    """❌ НЕГАТИВНЫЙ: отрицательный offset — в API нет offset, проверяем что limit проверяется"""
+async def test_get_audit_unauthorized(aiohttp_client, app):
+    """❌ Негативный: без токена возвращается 401 UNAUTHORIZED."""
     client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/admin/audit?limit=0", headers={"Authorization": "Bearer admin_token"})
+    resp = await client.get(f"/api/v1/admin/categories/{_CATEGORY_ID}/audit")
+    assert resp.status == 401
+    body = await resp.json()
+    assert body["code"] == "UNAUTHORIZED"
 
-    assert resp.status == 422
-    data = await resp.json()
-    assert data["code"] == "VALIDATION_FAILED"
+
+async def test_get_audit_invalid_token(aiohttp_client, app):
+    """❌ Негативный: невалидный токен возвращает 401 UNAUTHORIZED."""
+    client = await aiohttp_client(app)
+    resp = await client.get(
+        f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+        headers=_admin_headers(token="invalid_token"),
+    )
+    assert resp.status == 401
+    body = await resp.json()
+    assert body["code"] == "UNAUTHORIZED"
 
 
 async def test_get_audit_database_error(aiohttp_client, app):
-    """❌ НЕГАТИВНЫЙ: ошибка базы данных"""
+    """❌ Негативный: ошибка базы данных даёт 500 INTERNAL_ERROR."""
     with patch("functions.audit.list_audit") as mock_audit:
         mock_audit.side_effect = Exception("Database connection failed")
 
         client = await aiohttp_client(app)
-        resp = await client.request("GET", "/api/v1/admin/audit", headers={"Authorization": "Bearer admin_token"})
+        resp = await client.get(
+            f"/api/v1/admin/categories/{_CATEGORY_ID}/audit",
+            headers=_admin_headers(),
+        )
 
         assert resp.status == 500
+        body = await resp.json()
+        assert body["code"] == "INTERNAL_ERROR"
 
-
-async def test_audit_pagination_edge_cases(aiohttp_client, app):
-    """⚠️ ГРАНИЧНЫЙ: пагинация edge cases"""
-    with patch("functions.audit.list_audit") as mock_audit:
-        mock_audit.return_value = []
-
-        client = await aiohttp_client(app)
-        resp = await client.get("/api/v1/admin/audit?limit=0", headers={"Authorization": "Bearer admin_token"})
-        assert resp.status == 422
