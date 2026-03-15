@@ -34,12 +34,12 @@ async def test_calculate_success(aiohttp_client, app):
     with patch('functions.users.user_exists') as mock_user_exists, \
          patch('functions.calculate.get_calculate_items') as mock_calculate:
         mock_user_exists.return_value = True
-        mock_calculate.return_value = test_categories
+        mock_calculate.return_value = {"items": test_categories, "already_selected_categories": False}
 
         client = await aiohttp_client(app)
         resp = await client.request(
             "POST",
-            "/api/v1/client/calculate",
+            "/api/v1/offers/run",
             headers={"Content-Type": "application/json"},
             data=json.dumps({"user_id": test_user_id})
         )
@@ -48,6 +48,7 @@ async def test_calculate_success(aiohttp_client, app):
         data = await resp.json()
         assert len(data["items"]) == 1
         assert data["items"][0]["category_id"] == "cat1"
+        assert data.get("already_selected_categories") is False
 
 
 async def test_calculate_user_not_found(aiohttp_client, app):
@@ -60,7 +61,7 @@ async def test_calculate_user_not_found(aiohttp_client, app):
         client = await aiohttp_client(app)
         resp = await client.request(
             "POST",
-            "/api/v1/client/calculate",
+            "/api/v1/offers/run",
             headers={"Content-Type": "application/json"},
             data=json.dumps({"user_id": test_user_id})
         )
@@ -75,7 +76,7 @@ async def test_calculate_invalid_uuid(aiohttp_client, app):
     client = await aiohttp_client(app)
     resp = await client.request(
         "POST",
-        "/api/v1/client/calculate",
+        "/api/v1/offers/run",
         headers={"Content-Type": "application/json"},
         data=json.dumps({"user_id": "invalid-uuid"})
     )
@@ -90,7 +91,7 @@ async def test_calculate_missing_user_id(aiohttp_client, app):
     client = await aiohttp_client(app)
     resp = await client.request(
         "POST",
-        "/api/v1/client/calculate",
+        "/api/v1/offers/run",
         headers={"Content-Type": "application/json"},
         data=json.dumps({})
     )

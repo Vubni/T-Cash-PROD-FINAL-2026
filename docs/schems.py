@@ -497,6 +497,10 @@ class CalculateResponseSchema(Schema):
         required=True,
         description="Список категорий с расчётом выгоды и доступности для данного пользователя. Отображать как карточки выбора. Обязательное поле.",
     )
+    already_selected_categories = fields.Bool(
+        required=True,
+        description="true — данные взяты из кэша (уже выбранные пользователем категории из selections); false — категории рассчитаны заново (через ML).",
+    )
 
 
 class SelectionDetailSchema(Schema):

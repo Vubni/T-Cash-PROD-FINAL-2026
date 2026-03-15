@@ -1,5 +1,5 @@
 """
-Интеграционные тесты для Offers/Progress API (минимальный набор)
+Интеграционные тесты для Offers API (offers/run), минимальный набор.
 """
 
 from unittest.mock import patch
@@ -20,7 +20,7 @@ async def test_run_offers_success(aiohttp_client, app):
     with patch('functions.calculate.get_calculate_items') as mock_calc, \
          patch('functions.users.user_exists') as mock_exists:
         mock_exists.return_value = True
-        mock_calc.return_value = test_offers
+        mock_calc.return_value = {"items": test_offers, "already_selected_categories": False}
 
         client = await aiohttp_client(app)
         resp = await client.request(
@@ -34,15 +34,5 @@ async def test_run_offers_success(aiohttp_client, app):
         data = await resp.json()
         assert "items" in data
         assert len(data["items"]) == 1
-
-
-async def test_get_progress_success(aiohttp_client, app):
-    client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/progress")
-
-    assert resp.status == 200
-    data = await resp.json()
-    assert "items" in data
-    assert "total" in data
-    assert data["total"] == 0
-    assert len(data["items"]) == 0
+        assert "already_selected_categories" in data
+        assert data["already_selected_categories"] is False

@@ -97,11 +97,11 @@ flowchart LR
 
 Связанный маршрут:
 
-- `POST /api/v1/client/calculate`
+- `POST /api/v1/offers/run`
 
 Реализация:
 
-- [api/calculate.py](/Users/egor/Проекты/backend/api/calculate.py)
+- [api/offers.py](/Users/egor/Проекты/backend/api/offers.py)
 
 Что получает клиент:
 
@@ -163,10 +163,8 @@ flowchart LR
 
 В текущем backend это можно показать через:
 
-- повторный расчёт `POST /api/v1/client/calculate`;
+- повторный запуск офферов `POST /api/v1/offers/run`;
 - повторное чтение `GET /api/v1/client/selection/{selection_id}`.
-
-Полноценный отдельный `progress` endpoint в коде пока не реализован, но уже предусмотрен целевой моделью API.
 
 Источник целевой модели:
 
@@ -191,7 +189,7 @@ sequenceDiagram
     Admin->>API: GET /api/v1/admin/audit
     API-->>Admin: История изменений
 
-    Client->>API: POST /api/v1/client/calculate
+    Client->>API: POST /api/v1/offers/run
     API-->>Client: Список персональных категорий
     Note over Client,API: Часть категорий может быть budget_limited
 
@@ -223,7 +221,6 @@ sequenceDiagram
 - отдельные endpoints для `rules`;
 - отдельные endpoints для `budgets` и `ledger`;
 - батчевый запуск `offers/run`;
-- полноценный `progress` endpoint;
 - реальное резервирование и списание бюджетов в транзакции;
 - формальный движок budget control;
 - полноценное хранение сущностей в БД.

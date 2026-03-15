@@ -40,8 +40,15 @@ async def calculate(request: web.Request, parsed: Client_calculate) -> web.Respo
         if not await users_fns.user_exists(user_id):
             return validate.format_404_error(request, message="Пользователь не найден")
 
-        items = await calc_fns.get_calculate_items(user_id)
-        return web.json_response({"items": items}, status=200)
+        result = await calc_fns.get_calculate_items(user_id)
+        return web.json_response(
+            {
+                "user_id": user_id,
+                "items": result["items"],
+                "already_selected_categories": result["already_selected_categories"],
+            },
+            status=200,
+        )
     except (ClientConnectorError, ConnectionRefusedError, OSError) as e:
         logger.warning("calculate: external service unreachable: %s", e)
         return validate.format_500_error(request)

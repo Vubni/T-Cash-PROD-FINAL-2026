@@ -4,14 +4,14 @@
 
 **Backend**
 
-API: **categories**, **rules**, **offers/run**, **selection**, **progress**, **audit**.
+API: **categories**, **rules**, **offers/run**, **selection**, **audit**.
 
 Сервер гарантирует:
 - диапазоны ставок и лимиты;
 - идемпотентность и защиту от повторных действий (в т.ч. заголовок `Idempotency-Key` при подтверждении выбора);
 - проверку всех бюджетных инвариантов на сервере, а не только в интерфейсе.
 
-Реализует админские ручки (категории, правила, аудит) и клиентские (запуск офферов, выбор, подтверждение, прогресс).
+Реализует админские ручки (категории, правила, аудит) и клиентские (запуск офферов, выбор, подтверждение).
 
 Стек:
 - Python + aiohttp
@@ -28,10 +28,8 @@ backend/
 ├── api/
 │   ├── __init__.py
 │   ├── audit.py              # эндпоинты /api/v1/admin/audit
-│   ├── calculate.py          # эндпоинты /api/v1/client/calculate
 │   ├── categories.py         # эндпоинты /api/v1/admin/categories
-│   ├── offers.py             # эндпоинт /api/v1/client/offers/run
-│   ├── progress.py           # эндпоинт /api/v1/client/progress
+│   ├── offers.py             # эндпоинт /api/v1/offers/run
 │   ├── rules.py              # эндпоинты /api/v1/admin/rules
 │   ├── selection.py          # эндпоинты /api/v1/client/selection/*
 │   └── validate.py           # схемы валидации и формат ошибок
@@ -89,10 +87,8 @@ docker compose down
 - **audit**: `GET /api/v1/admin/audit` — журнал аудита.
 
 Клиентские эндпоинты:
-- **offers/run**: `POST /api/v1/client/offers/run` — запуск офферов (расчёт списка категорий для клиента).
-- `POST /api/v1/client/calculate` — расчёт списка категорий (альтернатива offers/run).
+- **offers/run**: `POST /api/v1/offers/run` — запуск офферов (расчёт списка категорий для клиента).
 - **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} — получение и подтверждение выбора (`Idempotency-Key`).
-- **progress**: `GET /api/v1/client/progress` — прогресс клиента по офферам.
 
 Все схемы запросов/ответов описаны через `docs/schems.py` и видны в Swagger.
 
@@ -105,17 +101,15 @@ docker compose down
   - создаёт aiohttp‑приложение;
   - подключает CORS и middleware валидации (`validation_middleware`);
   - настраивает Swagger (`/doc`, `/swagger.json`);
-  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.calculate`, `api.offers`, `api.selection`, `api.progress`;
+  - регистрирует роуты из модулей `api.categories`, `api.rules`, `api.audit`, `api.offers`, `api.selection`;
   - проксирует все остальные запросы на статику через `handle_get_file`.
 
 **Модули API**
 - `api/categories.py` — CRUD категорий кэшбэка (с привязкой к правилу `rule_id`).
 - `api/rules.py` — CRUD правил отбора (возраст мин/макс, пол, заработок).
 - `api/audit.py` — чтение журнала аудита.
-- `api/calculate.py` — расчёт списка категорий для клиента.
-- `api/offers.py` — запуск офферов (`offers/run`).
+- `api/offers.py` — запуск офферов (`POST /api/v1/offers/run`).
 - `api/selection.py` — получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
-- `api/progress.py` — прогресс клиента.
 - `api/validate.py` — схемы валидации и формат ошибок.
 
 **База данных**

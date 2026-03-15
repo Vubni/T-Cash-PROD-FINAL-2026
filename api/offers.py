@@ -37,8 +37,15 @@ async def run_offers(request: web.Request, parsed: OffersRunBody) -> web.Respons
         user_id = parsed.user_id
         if not await users_fns.user_exists(user_id):
             return validate.format_404_error(request, message="Пользователь не найден")
-        items = await calc_fns.get_calculate_items(user_id)
-        return web.json_response({"items": items}, status=200)
+        result = await calc_fns.get_calculate_items(user_id)
+        return web.json_response(
+            {
+                "user_id": user_id,
+                "items": result["items"],
+                "already_selected_categories": result["already_selected_categories"],
+            },
+            status=200,
+        )
     except Exception:
         logger.exception("run_offers handler failed")
         return validate.format_500_error(request)

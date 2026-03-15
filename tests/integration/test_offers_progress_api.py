@@ -1,5 +1,5 @@
 """
-Интеграционные тесты для Offers/Progress API
+Интеграционные тесты для Offers API (offers/run).
 """
 
 import pytest
@@ -24,7 +24,7 @@ async def test_run_offers_success(aiohttp_client, app):
     with patch('functions.calculate.get_calculate_items') as mock_calc, \
          patch('functions.users.user_exists') as mock_exists:
         mock_exists.return_value = True
-        mock_calc.return_value = test_offers
+        mock_calc.return_value = {"items": test_offers, "already_selected_categories": False}
 
         client = await aiohttp_client(app)
         resp = await client.request(
@@ -38,6 +38,8 @@ async def test_run_offers_success(aiohttp_client, app):
         data = await resp.json()
         assert len(data["items"]) == 2
         assert data["items"][0]["category_id"] == "cat1"
+        assert data["user_id"] == test_user_id
+        assert data["already_selected_categories"] is False
 
 
 async def test_run_offers_user_not_found(aiohttp_client, app):
@@ -88,19 +90,6 @@ async def test_run_offers_invalid_user_id(aiohttp_client, app):
     assert resp.status == 422
     data = await resp.json()
     assert data["code"] == "VALIDATION_FAILED"
-
-
-async def test_get_progress_success(aiohttp_client, app):
-    """✅ ПОЗИТИВНЫЙ: успешное получение прогресса (текущий API возвращает пустой список)"""
-    client = await aiohttp_client(app)
-    resp = await client.request("GET", "/api/v1/progress")
-
-    assert resp.status == 200
-    data = await resp.json()
-    assert "items" in data
-    assert "total" in data
-    assert data["total"] == 0
-    assert len(data["items"]) == 0
 
 
 async def test_offers_progress_database_error(aiohttp_client, app):

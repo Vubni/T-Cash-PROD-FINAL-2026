@@ -5,7 +5,10 @@ from core import get_all_categories, get_max_selection_count, logger
 from config import ML_SERVICE_URL
 
 
-async def get_calculate_items(user_id: int) -> list[dict]:
+async def get_calculate_items(user_id: int) -> dict:
+    """Возвращает {"items": [...], "already_selected_categories": bool}.
+    already_selected_categories=True — данные из кэша (уже выбранные категории из selections).
+    """
     items = []
     async with Database() as db:
         sql = """
@@ -23,7 +26,7 @@ async def get_calculate_items(user_id: int) -> list[dict]:
         rows = await db.execute_all(sql, (user_id,)) or []
 
     if rows:
-        return serialize_json(rows)
+        return {"items": serialize_json(rows), "already_selected_categories": True}
 
     async with Database() as db:
         sql = """
@@ -77,4 +80,4 @@ async def get_calculate_items(user_id: int) -> list[dict]:
                 }
             )
 
-    return serialize_json(items)
+    return {"items": serialize_json(items), "already_selected_categories": False}
