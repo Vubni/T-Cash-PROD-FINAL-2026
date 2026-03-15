@@ -123,6 +123,7 @@ async def update_category(
     rate_min: int | None = None,
     rate_max: int | None = None,
     rule_id: str | None = None,
+    status: str | None = None,
 ) -> dict | None:
     fields = []
     params = []
@@ -139,6 +140,7 @@ async def update_category(
     add("rate_min", rate_min)
     add("rate_max", rate_max)
     add("rule_id", rule_id)
+    add("status", status)
 
     if not fields:
         return await get_category(category_id)
