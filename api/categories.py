@@ -425,34 +425,6 @@ class Category_rule_update(BaseModel):
 
 @docs(
     tags=["Admin"],
-    summary="Получить правило категории",
-    description="Возвращает правило отбора (возраст, пол, заработок), привязанное к категории. Требуется JWT админа. 404, если у категории нет правила.",
-    security=validate.SECURITY_ADMIN_BEARER,
-    responses={
-        200: {"description": "Правило получено", "schema": sh.RuleDetailSchema},
-        **sh.RESPONSES_HTTP_ERROR,
-    },
-    parameters=[
-        {"in": "path", "name": "category_id", "type": "string", "required": True, "description": "Идентификатор категории (UUID)."},
-    ],
-)
-@validate.validate(Category_id_path, require_admin=True)
-async def get_category_rule(request: web.Request, parsed: Category_id_path) -> web.Response:
-    try:
-        category = await cat_fns.get_category(parsed.category_id)
-        if category is None:
-            return validate.format_404_error(request, message="Категория не найдена")
-        rule = category.get("rule")
-        if not rule or not rule.get("rule_id"):
-            return validate.format_404_error(request, message="У категории нет правила")
-        return web.json_response(rule, status=200)
-    except Exception:
-        logger.exception("get_category_rule handler failed")
-        return validate.format_500_error(request)
-
-
-@docs(
-    tags=["Admin"],
     summary="Создать правило и привязать к категории",
     description="Создаёт правило отбора (возраст мин/макс, пол, заработок) и привязывает его к указанной категории. Требуется JWT админа. Категория должна существовать. Все поля тела **опциональны** (rule_id при отсутствии сгенерируется; min_age, max_age, gender, income можно не передавать).",
     security=validate.SECURITY_ADMIN_BEARER,
