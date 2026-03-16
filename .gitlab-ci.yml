@@ -11,7 +11,6 @@ test:
   variables:
     PIP_NO_CACHE_DIR: "1"
   before_script:
-    - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
     - |
@@ -32,6 +31,7 @@ test:
     expire_in: 1 week
   only:
     - master
+    - experiment
 
 deploy_prod:
   stage: deploy
