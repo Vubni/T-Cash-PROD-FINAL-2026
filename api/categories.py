@@ -70,6 +70,7 @@ class Admin_category_create(BaseModel):
     name: str
     subtitle: str
     budget_amount: float
+    icon_url: Optional[str] = None
     rate_min: int
     rate_max: int
 
@@ -82,6 +83,18 @@ class Admin_category_create(BaseModel):
         if len(value) > STRING_FIELD_MAX_LENGTH:
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return value
+
+    @field_validator("icon_url")
+    @classmethod
+    def icon_url_length(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) > STRING_FIELD_MAX_LENGTH:
+            raise ValueError(f"icon_url cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
+        return v
 
     @field_validator("rate_min", "rate_max")
     @classmethod
@@ -308,6 +321,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             admin_id=_admin_id(request),
             name=parsed.name,
             subtitle=parsed.subtitle,
+            icon_url=parsed.icon_url,
             budget_amount=int(parsed.budget_amount),
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
@@ -563,7 +577,13 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
         **sh.RESPONSES_HTTP_ERROR,
     },
     parameters=[
-        {"in": "path", "name": "category_id", "type": "string", "required": True, "description": "Идентификатор категории (UUID)."},
+        {
+            "in": "path",
+            "name": "category_id",
+            "type": "string",
+            "required": True,
+            "description": "Идентификатор категории (UUID).",
+        },
     ],
 )
 @validate.validate(Category_id_path, require_admin=True)
