@@ -133,14 +133,37 @@ async def get_calculate_items(user_id: int) -> dict:
             percent = int(category["budget_amount"] * 100 / estimated)
             logger.info("Category: %s, Estimated: %s, Percent: %s", category["budget_amount"], estimated, percent)
             ITEMS_REASONS = {
+                # Базовые причины
                 "У клиента уже была недавняя активность в этой категории за последние 3 месяца": "RecentCategoryActivity_3M",
                 "Категория находится среди лидеров по внутреннему offer score для этого клиента": "HighOfferScoreCategory",
-                "Категория исторически сильнее работает в сегменте пола и возраста клиента": "CustomerAboveCategoryAvg",
-                "Категория занимает заметную долю в недавнем обороте клиента": "StrongInDemographicSegment",
-                "Для части признаков использован последний доступный исторический срез по клиенту": "HighShareInRecentTurnover",
+                "История клиента по этой категории лучше среднего по категории": "CustomerAboveCategoryAvg",
+                "Категория исторически сильнее работает в сегменте пола и возраста клиента": "StrongInDemographicSegment",
+                "Категория занимает заметную долю в недавнем обороте клиента": "HighShareInRecentTurnover",
+                "Для части признаков использован последний доступный исторический срез по клиенту": "UsedLatestAvailableSnapshot",
                 "Категория выбрана по совокупности исторических паттернов клиента и глобального спроса": "SelectedByPatternsAndDemand",
-
-                
+                # Если категория mapped
+                "Категория сопоставлена с модельной категорией '...'": "MappedToModelCategory",
+                "Источник нормализации категории: alias": "CategorySourceAlias",
+                "Источник нормализации категории: llm": "CategorySourceLLM",
+                "Источник нормализации категории: embedding": "CategorySourceEmbedding",
+                "Источник нормализации категории: heuristic": "CategorySourceHeuristic",
+                "Для сопоставления была использована локальная LLM для подбора ближайшей канонической категории": "LocalLLMForMapping",
+                # Если категория novel
+                "Категория новая для основной модели и оценена через low-level novel-category логику": "NovelCategoryLowLevelLogic",
+                "Для оценки использованы история клиента и ближайшая каноническая категория в embedding-пространстве": "NovelCategoryWithNearestEmbedding",
+                "Ближайшая каноническая категория: '...' (similarity=...)": "NearestCanonicalCategoryInfo",
+                # Если категория fallback
+                "Категория отсутствует в тренировочном словаре модели и оценена через консервативную fallback-логику": "FallbackLogicUsed",
+                "Во fallback использованы общая склонность клиента к активации и слабый embedding-сосед": "FallbackWithWeakNeighbor",
+                "Слабый ближайший сосед в embedding-пространстве: '...' (similarity=...)": "WeakNearestNeighborInfo",
+                # Если категория совсем непонятная и идёт отказ
+                "Категория слишком непонятная для надежного сопоставления и поэтому получила score=0": "RejectedCategoryScoreZero",
+                "Ни alias, ни LLM, ни embedding similarity не дали достаточно уверенного соответствия": "RejectedNoConfidentMatch",
+                "Backend может безопасно обработать категорию '...' как отказ ML-слоя": "BackendSafeReject",
+                # Если сервис ушёл в резервный режим
+                "Основная модель временно недоступна, поэтому сервис перешел в резервный режим с популярными категориями": "ReserveModeEnabled",
+                "Категория выбрана из популярного fallback-каталога (global_category_history)": "FromPopularFallbackCatalog",
+                "Причина деградации: ...": "DegradationReasonInfo",
             }
             items.append(
                 {
