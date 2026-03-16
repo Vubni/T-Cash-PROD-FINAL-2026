@@ -132,13 +132,23 @@ async def get_calculate_items(user_id: int) -> dict:
                 continue
             percent = int(category["budget_amount"] * 100 / estimated)
             logger.info("Category: %s, Estimated: %s, Percent: %s", category["budget_amount"], estimated, percent)
+            ITEMS_REASONS = {
+                "У клиента уже была недавняя активность в этой категории за последние 3 месяца": "RecentCategoryActivity_3M",
+                "Категория находится среди лидеров по внутреннему offer score для этого клиента": "HighOfferScoreCategory",
+                "Категория исторически сильнее работает в сегменте пола и возраста клиента": "CustomerAboveCategoryAvg",
+                "Категория занимает заметную долю в недавнем обороте клиента": "StrongInDemographicSegment",
+                "Для части признаков использован последний доступный исторический срез по клиенту": "HighShareInRecentTurnover",
+                "Категория выбрана по совокупности исторических паттернов клиента и глобального спроса": "SelectedByPatternsAndDemand",
+
+
+            }
             items.append(
                 {
                     "category_id": category["category_id"],
                     "name": category["name"],
                     "subtitle": category["subtitle"],
                     "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
-                    "reasons": predict.get("reasons", []),
+                    "reasons": [ITEMS_REASONS.get(reason) for reason in predict.get("reasons", [])],
                     "estimated_spend": predict.get("estimated_spend")
                 }
             )

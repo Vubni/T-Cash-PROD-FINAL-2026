@@ -10,8 +10,7 @@ services:
       - db-data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
 
-  # Прокси к ML на хосте: из контейнера app идёт запрос на ml-proxy:8008,
-  # nginx проксирует на host.docker.internal:8008 (ML на той же машине).
+
   ml-proxy:
     image: nginx:alpine
     restart: always

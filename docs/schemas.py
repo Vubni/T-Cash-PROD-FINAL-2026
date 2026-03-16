@@ -915,3 +915,117 @@ class ProgressListResponseSchema(Schema):
         description="Список элементов прогресса по выборам/категориям. Обязательное поле.",
     )
     total = fields.Int(required=True, description="Общее количество записей; для пагинации. Обязательное поле.")
+
+
+class WordlyStartResponseSchema(Schema):
+    game_id = fields.Str(
+        required=True,
+        description="Идентификатор игры T-Word. Используется во всех последующих запросах для этой игры.",
+    )
+    word_length = fields.Int(
+        required=True,
+        description="Длина загаданного слова (количество букв). Использовать для валидации длины попытки на фронте.",
+    )
+    max_attempts = fields.Int(
+        required=True,
+        description="Максимальное количество попыток в игре.",
+    )
+    status = fields.Str(
+        required=True,
+        description="Статус игры: in_progress, won или lost.",
+    )
+    attempts_made = fields.Int(
+        required=True,
+        description="Сколько попыток уже сделано (изначально 0).",
+    )
+
+
+class WordlyLetterFeedbackSchema(Schema):
+    letter = fields.Str(
+        required=True,
+        description="Буква из угадываемого слова (в нижнем регистре).",
+    )
+    result = fields.Str(
+        required=True,
+        validate=validate.OneOf(["correct", "present", "absent"]),
+        description=(
+            "Результат по букве: "
+            "correct - буква на своём месте, "
+            "present - буква есть в слове, но в другой позиции, "
+            "absent - буквы нет в слове."
+        ),
+    )
+
+
+class WordlyGuessRequestSchema(Schema):
+    game_id = fields.Str(
+        required=True,
+        description="Идентификатор игры, полученный из ответа /wordly/start.",
+    )
+    guess = fields.Str(
+        required=True,
+        description="Слово, которое пытается угадать игрок. Должно быть той же длины, что и загаданное слово.",
+    )
+
+
+class WordlyGuessResponseSchema(Schema):
+    game_id = fields.Str(required=True, description="Идентификатор игры.")
+    guess = fields.Str(required=True, description="Попытка, нормализованная (в нижнем регистре).")
+    feedback = fields.List(
+        fields.Nested(WordlyLetterFeedbackSchema),
+        required=True,
+        description="Массив результатов по каждой букве угадываемого слова.",
+    )
+    attempt = fields.Int(
+        required=True,
+        description="Номер попытки (начиная с 1).",
+    )
+    remaining_attempts = fields.Int(
+        required=True,
+        description="Сколько попыток осталось после этой.",
+    )
+    status = fields.Str(
+        required=True,
+        description="Текущий статус игры: in_progress, won или lost.",
+    )
+    is_win = fields.Bool(
+        required=True,
+        description="true, если игрок угадал слово на этой попытке.",
+    )
+    is_finished = fields.Bool(
+        required=True,
+        description="true, если игра завершена (победа или поражение).",
+    )
+    target_word_revealed = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Секретное слово, раскрывается только если игра завершена поражением; иначе null.",
+    )
+
+
+class WordlyStateAttemptSchema(Schema):
+    guess = fields.Str(required=True, description="Слово, которое вводил игрок.")
+    feedback = fields.List(
+        fields.Nested(WordlyLetterFeedbackSchema),
+        required=True,
+        description="Результат по буквам для этой попытки.",
+    )
+    attempt = fields.Int(required=True, description="Порядковый номер попытки (начиная с 1).")
+
+
+class WordlyStateResponseSchema(Schema):
+    game_id = fields.Str(required=True, description="Идентификатор игры.")
+    word_length = fields.Int(required=True, description="Длина загаданного слова.")
+    max_attempts = fields.Int(required=True, description="Максимальное количество попыток.")
+    status = fields.Str(required=True, description="Текущий статус игры: in_progress, won или lost.")
+    attempts_made = fields.Int(required=True, description="Сколько попыток уже сделано.")
+    attempts = fields.List(
+        fields.Nested(WordlyStateAttemptSchema),
+        required=True,
+        description="История всех попыток в игре.",
+    )
+    target_word_revealed = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Секретное слово, если игра завершена поражением; иначе null.",
+    )

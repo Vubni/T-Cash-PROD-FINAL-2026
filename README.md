@@ -1,22 +1,28 @@
 ## Cashback Backend MVP
 
-### Описание
+### Что это за сервис
 
-**Backend**
+Backend‑сервис для MVP кешбэк‑программы:
 
-API: **categories** (включая правила отбора), **offers/run**, **selection**, **audit**.
+- **Админские возможности**:
+  - управление категориями кешбэка;
+  - настройка правил отбора (возраст, пол, доход и т.д.);
+  - просмотр журнала аудита изменений;
+  - управление админами.
+- **Клиентские возможности**:
+  - запуск расчёта офферов (`/offers/run`);
+  - получение и подтверждение выбора категории (`/client/selection/...`) с защитой от повторов через `Idempotency-Key`.
 
 Сервер гарантирует:
 - диапазоны ставок и лимиты;
-- идемпотентность и защиту от повторных действий (в т.ч. заголовок `Idempotency-Key` при подтверждении выбора);
-- проверку всех бюджетных инвариантов на сервере, а не только в интерфейсе.
+- идемпотентность при подтверждении выбора;
+- валидацию всех бюджетных инвариантов на стороне backend.
 
-Реализует админские ручки (категории, правила, аудит) и клиентские (запуск офферов, выбор, подтверждение).
-
-Стек:
-- Python + aiohttp
-- asyncpg (PostgreSQL)
-- marshmallow + aiohttp-apispec (валидация и Swagger)
+**Технологический стек**
+- Python 3.12 + `aiohttp`
+- PostgreSQL + `asyncpg`
+- `marshmallow` + `aiohttp-apispec` (валидация и Swagger)
+- Alembic (миграции схемы БД)
 - Docker + docker compose
 
 ---
@@ -25,41 +31,63 @@ API: **categories** (включая правила отбора), **offers/run**
 
 ```text
 backend/
-├── api/
+├── api/                     # HTTP-слой и обработчики роутов
 │   ├── __init__.py
-│   ├── audit.py
-│   ├── categories.py
-│   ├── calculate.py
-│   ├── selection.py
-│   └── validate.py
-├── database/
+│   ├── admin_auth.py        # Регистрация/апрув админов
+│   ├── audit.py             # Админское API журнала аудита
+│   ├── categories.py        # Админское API категорий и правил отбора
+│   ├── calculate.py         # Клиентский запуск офферов (/offers/run)
+│   ├── selection.py         # Клиентский выбор и подтверждение
+│   ├── users.py             # API пользователей
+│   └── validate.py          # Общие схемы валидации и ошибки
+├── core/                    # Базовые сервисы и утилиты
 │   ├── __init__.py
-│   ├── database.py
-│   └── functions.py
+│   ├── auth.py              # JWT / авторизация админов
+│   └── utils.py             # Общие хелперы
+├── functions/               # Бизнес-логика без HTTP
+│   ├── __init__.py
+│   ├── calculate.py         # Алгоритм отбора категорий, причины
+│   └── wordly.py            # Логика игры T-Word
+├── database/                # Доступ к БД (PostgreSQL)
+│   ├── __init__.py
+│   ├── database.py          # Обёртка над asyncpg, транзакции
+│   └── functions.py         # Хелперы и инициализация
+├── alembic/                 # Миграции схемы БД
+│   ├── env.py
+│   ├── alembic.ini
+│   └── versions/            # 0001_... -> 0009_wordly_words.py
 ├── docs/
 │   ├── __init__.py
-│   └── schemas.py
-├── functions/
+│   └── schemas.py           # Описание схем для Swagger
+├── tests/                   # Юнит- и интеграционные тесты
+│   ├── unit/
+│   ├── integration/
+│   ├── README.md
+│   └── ANALYSIS.md
 ├── postgres/
-│   └── init.sql
-├── static/
+│   └── init.sql             # Базовая инициализация БД для docker-compose
+├── config/                  # Статическая конфигурация домена
+│   └── categories_config.json
+├── static/                  # Статика (если нужна для фронта)
 ├── .gitignore
 ├── docker-compose.yml
+├── docker-compose.ci.yml
 ├── Dockerfile
 ├── requirements.txt
-├── config.py
-├── server.py
-└── README.md
+├── config.py                # Конфигурация приложения (env, URLs и т.д.)
+├── logging_setup.py         # Настройка логирования
+├── startup.py               # Инициализация на старте (hook для запуска)
+└── server.py                # Точка входа, создание aiohttp-приложения
 ```
 
 ---
 
 ### RUNBOOK: как запустить локально
 
-**Через Docker (рекомендуется)**
+#### Вариант 1. Через Docker (рекомендуется)
 
 1. Установи Docker / Docker Desktop.
-2. В корне `backend` создай файл `.env` (можно пустой, все нужные переменные уже заданы в `docker-compose.yml` через `environment`).
+2. В корне `backend` создай файл `.env` (можно пустой — базовые переменные заданы в `docker-compose.yml`).
 3. Из директории `backend` выполни:
 
 ```bash
@@ -70,97 +98,150 @@ docker compose up --build
    - API доступен по `http://localhost:8080`
    - Swagger UI: `http://localhost:8080/doc`
 
-**Завершение работы**
+5. Остановка:
 
 ```bash
 docker compose down
 ```
 
----
+#### Вариант 2. Локальный запуск без Docker
 
-### API обзор
+Требуется установленный PostgreSQL.
 
-Админские эндпоинты:
-- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}; правило отбора - `GET` / `POST` / `PATCH` / `DELETE` .../categories/{category_id}/rule.
-- **audit**: `GET /api/v1/admin/audit` - журнал аудита.
+1. Создай БД (по умолчанию: `prod`, пользователь `user`/`password` или свои значения через переменные окружения `DB_*` / `DATABASE_URL`).
+2. Установи зависимости:
 
-Клиентские эндпоинты:
-- **offers/run**: `POST /api/v1/offers/run` - запуск офферов (расчёт списка категорий для клиента).
-- **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} - получение и подтверждение выбора (`Idempotency-Key`).
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
-Все схемы запросов/ответов описаны через `docs/schemas.py` и видны в Swagger.
+3. Прогон миграций Alembic:
 
----
+```bash
+alembic upgrade head
+```
 
-### Архитектура
+4. Запусти приложение:
 
-**Слой HTTP / API**
-- `server.py` - точка входа:
-  - создаёт aiohttp‑приложение;
-  - подключает CORS и middleware валидации (`validation_middleware`);
-  - настраивает Swagger (`/doc`, `/swagger.json`);
-  - регистрирует роуты из модулей `api.categories`, `api.audit`, `api.calculate`, `api.selection`;
-  - проксирует все остальные запросы на статику через `handle_get_file`.
+```bash
+python server.py
+```
 
-**Модули API**
-- `api/categories.py` - CRUD категорий кэшбэка и правил отбора (возраст, пол, заработок) в рамках категории: GET/POST/PATCH/DELETE .../categories/{id}/rule.
-- `api/audit.py` - чтение журнала аудита.
-- `api/calculate.py` - запуск офферов (`POST /api/v1/offers/run`).
-- `api/selection.py` - получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
-- `api/validate.py` - схемы валидации и формат ошибок.
-
-**База данных**
-
-PostgreSQL поднимается из `docker-compose.yml` и инициализируется скриптом `postgres/init.sql`.
-
-Схема:
-- Таблица `rules`
-  - `id` - внутренний автоинкрементный ID.
-  - `rule_id` - бизнес‑ID правила (уникальный).
-  - `min_age`, `max_age` - минимальный и максимальный возраст (nullable).
-  - `gender` - пол (nullable).
-  - `income` - заработок (nullable).
-  - `created_at`, `updated_at` - временные метки.
-
-- Таблица `categories`
-  - `id` - внутренний автоинкрементный ID.
-  - `category_id` - бизнес‑ID категории (уникальный).
-  - `name`, `subtitle` - метаданные категории.
-  - `budget_amount` - бюджет на одного пользователя по категории за период.
-  - `rule_id` - ссылка на `rules.rule_id` (правило отбора: возраст, пол, заработок).
-  - `created_at`, `updated_at` - временные метки.
-
-- Таблица `selections`
-  - `id` - внутренний ID выбора.
-  - `selection_id` - внешний ID выбора (отдаётся клиенту).
-  - `category_id` - ссылка на `categories.category_id` (TEXT).
-  - `expected_benefit_amount` - ожидаемая выгода.
-  - `availability_status`, `availability_reason` - статусы доступности.
-  - `created_at`, `updated_at` - временные метки.
-
-- Таблица `audit_log`
-  - `id` - внутренний ID записи аудита.
-  - `entity_type` - тип сущности (`category`, `selection` и т.д.).
-  - `entity_id` - идентификатор сущности.
-  - `action` - действие (create/update/confirm и т.п.).
-  - `actor` - инициатор изменения.
-  - `details` - JSON с деталями события.
-  - `created_at` - время события.
-
-**Работа с БД**
-- `database/database.py` - обёртка над asyncpg:
-  - управление подключением и транзакцией через контекстный менеджер `Database`;
-  - методы `execute`, `execute_all`, `fetchval`, `executemany`;
-  - сериализация результатов в JSON‑дружелюбный формат.
-- `database/functions.py` - точка для инициализации/миграций на старте (сейчас просто шаблон).
+После запуска:
+- API: `http://localhost:8080`
+- Swagger: `http://localhost:8080/doc`
 
 ---
 
-### Тестирование через Insomnia
+### API обзор (высокоуровнево)
 
-В корне проекта лежит файл `insomnia_cashback_mvp.json` - коллекция запросов для Insomnia:
+**Админские эндпоинты**
+- **categories**  
+  - `GET /api/v1/admin/categories`
+  - `POST /api/v1/admin/categories`
+  - `GET /api/v1/admin/categories/{category_id}`
+  - `PATCH /api/v1/admin/categories/{category_id}`  
+  - Правила отбора:  
+    `GET|POST|PATCH|DELETE /api/v1/admin/categories/{category_id}/rule`
+
+- **audit**  
+  - `GET /api/v1/admin/audit` — журнал аудита изменений.
+
+- **admin_auth / users**  
+  - регистрация/одобрение админов, авторизация, список ожидающих и т.д.
+
+**Клиентские эндпоинты**
+- **offers/run**  
+  - `POST /api/v1/offers/run` — запуск расчёта списка категорий для клиента (внутри — вызов внешнего ML‑сервиса).
+
+- **selection**  
+  - `GET /api/v1/client/selection/{selection_id}` — получение информации по выбору;
+  - `POST /api/v1/client/selection/{selection_id}` — подтверждение выбора.  
+    Идемпотентность обеспечивается заголовком `Idempotency-Key`.
+
+Все схемы запросов/ответов описаны в `docs/schemas.py` и отображаются в Swagger.
+
+---
+
+### Архитектура (слойный монолит)
+
+- **Слой HTTP / API (`api/`, `server.py`)**
+  - Парсинг запросов / параметров;
+  - валидация входных данных;
+  - формирование HTTP‑ответов и ошибок;
+  - подключение middleware (логирование, валидация, обработка ошибок);
+  - Swagger‑документация.
+
+- **Слой бизнес‑логики (`functions/`, частично `core/`)**
+  - Алгоритм расчёта офферов и причин (reasons) по категории;
+  - вызов внешнего ML‑сервиса;
+  - логика игры T-Word;
+  - вспомогательные функции и авторизация (`core/auth.py`, `core/utils.py`).
+
+- **Слой доступа к данным (`database/`, `alembic/`)**
+  - `database/database.py` — обёртка над asyncpg, управление соединениями и транзакциями;
+  - миграции в `alembic/versions/` описывают эволюцию схемы (rules, categories, selections, users, admin_users, audit_log, wordly_words и т.д.).
+
+Архитектурно это **слойный монолит**: API → бизнес‑логика → слой данных, развёртываемый как единый сервис.
+
+---
+
+### Миграции БД
+
+Используется Alembic, конфиг — в `alembic.ini` и `alembic/env.py`.
+
+- Применить все миграции:
+
+```bash
+alembic upgrade head
+```
+
+- Откатить на один шаг назад:
+
+```bash
+alembic downgrade -1
+```
+
+Основные изменения в схемe:
+- `0001_initial_schema` — базовые `categories`, `selections`, `audit_log`;
+- `0002_rules_and_category_rule_id` — таблица `rules` и связь с `categories`;
+- `0002_users_and_selection_user_period` / `0003_drop_users_role` — пользователи и связь `selections.user_id`;
+- `0003_uuid_ids` — переход бизнес‑ID на `UUID`;
+- `0004`–`0007` — очистка ненужных полей, `rate_min`/`rate_max`, CHECK‑ограничения, BIGINT для бюджета;
+- `0008` — `UNIQUE (user_id, category_id)` в `selections`;
+- `0009_wordly_words` — таблица слов для игры T-Word.
+
+---
+
+### Тестирование
+
+#### Юнит‑ и интеграционные тесты (pytest)
+
+Запуск всех тестов:
+
+```bash
+pytest
+```
+
+С покрытием:
+
+```bash
+pytest --cov=. --cov-report=term-missing
+```
+
+Структура тестов:
+- `tests/unit/` — юнит‑тесты бизнес‑логики и вспомогательных функций;
+- `tests/integration/` — интеграционные тесты HTTP‑ручек;
+- `tests/ANALYSIS.md` — подробный разбор покрытия и соответствия ТЗ.
+
+#### Тестирование через Insomnia
+
+В корне проекта лежит файл `insomnia_cashback_mvp.json` — коллекция запросов для Insomnia:
 - окружение `Base Environment` с `baseUrl = http://localhost:8080`;
-- позитивные запросы к каждому endpoint;
-- отдельные [NEGATIVE]‑запросы для проверки валидации и ошибок (не перепутай их с основными).
+- позитивные запросы ко всем основным endpoint;
+- отдельные `[NEGATIVE]`‑запросы для проверки валидации и ошибок.
 
 Импортируй файл в Insomnia и используй `baseUrl` из окружения.

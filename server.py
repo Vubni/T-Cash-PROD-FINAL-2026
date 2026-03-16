@@ -5,7 +5,7 @@ import aiohttp_cors
 from aiohttp import web
 from aiohttp_apispec import docs, setup_aiohttp_apispec, validation_middleware
 
-from api import audit, categories, selection, users, admin_auth, calculate
+from api import audit, categories, selection, users, admin_auth, calculate, wordly
 from config import logger
 from docs import schemas as sh
 from startup import run_startup
@@ -127,6 +127,10 @@ def register_routes(app: web.Application, cors: aiohttp_cors.CorsConfig) -> None
         web.post(prefix + "/offers/run", calculate.calculate),
 
         web.post(prefix + "/client/selection", selection.confirm_selection),
+
+        web.post(prefix + "/wordly/start", wordly.start_game),
+        web.post(prefix + "/wordly/guess", wordly.make_guess),
+        web.get(prefix + "/wordly/state", wordly.get_state),
     ]
 
     for route in api_routes:
