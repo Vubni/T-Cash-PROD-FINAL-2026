@@ -1,11 +1,14 @@
-import secrets, time
-import string, asyncio
-import re, threading
+import asyncio
+import re
+import secrets
+import string
+import threading
+import time
+import uuid
+
 from aiohttp import web
-from database import functions as func_db
 from functools import wraps
 import jwt
-import uuid
 from config import SECRET, logger
 
 ADMIN_SCOPE = "admin"
