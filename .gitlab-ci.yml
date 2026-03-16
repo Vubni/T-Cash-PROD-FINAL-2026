@@ -1,9 +1,24 @@
 stages:
+  - lint
   - test
   - deploy
 
 variables:
   APP_DIR: "/home/ubuntu/backend"
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  variables:
+    PIP_NO_CACHE_DIR: "1"
+  before_script:
+    - pip install --upgrade pip
+    - pip install ruff
+  script:
+    - ruff check .
+  only:
+    - master
+    - experiment
 
 test:
   stage: test
@@ -32,6 +47,7 @@ test:
     expire_in: 1 week
   only:
     - master
+    - experiment
 
 deploy_prod:
   stage: deploy
@@ -75,4 +91,5 @@ deploy_test:
     - chmod 600 ~/.ssh/id_rsa
   script:
     - rsync -az --delete -e "ssh -o StrictHostKeyChecking=no" ./ ubuntu@${DEPLOY_HOST}:${APP_DIR}
-    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build"
+    # На тестовом сервере при каждом деплое пересоздаём БД: down -v удаляет тома, при следующем up init.sql выполнится заново
+    - ssh -o StrictHostKeyChecking=no ubuntu@${DEPLOY_HOST} "cd ${APP_DIR} && sudo docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v && sudo docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build"

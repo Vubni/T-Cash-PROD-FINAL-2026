@@ -7,12 +7,12 @@ from pydantic import BaseModel, field_validator
 import core
 from api import validate
 from config import logger
-from docs import schems as sh
+from docs import schemas as sh
 from functions import admin_users
 
 
-LOGIN_MAX_LENGTH = 256
-PASSWORD_MAX_LENGTH = 512
+LOGIN_MAX_LENGTH = 40
+PASSWORD_MAX_LENGTH = 40
 
 
 class AdminRegisterBody(BaseModel):
@@ -32,6 +32,8 @@ class AdminRegisterBody(BaseModel):
     @field_validator("login")
     @classmethod
     def login_length(cls, v: str) -> str:
+        if len(v) < 4:
+            raise ValueError("login должен быть не короче 4 символов")
         if len(v) > LOGIN_MAX_LENGTH:
             raise ValueError(f"login не может быть длиннее {LOGIN_MAX_LENGTH} символов")
         return v
@@ -39,6 +41,8 @@ class AdminRegisterBody(BaseModel):
     @field_validator("password")
     @classmethod
     def password_length(cls, v: str) -> str:
+        if len(v) < 4:
+            raise ValueError("password должен быть не короче 4 символов")
         if len(v) > PASSWORD_MAX_LENGTH:
             raise ValueError(f"password не может быть длиннее {PASSWORD_MAX_LENGTH} символов")
         return v
@@ -57,13 +61,37 @@ class AdminApproveBody(BaseModel):
         return v
 
 
+class EmptyBody(BaseModel):
+    model_config = {"extra": "ignore"}
+
+
+@docs(
+    tags=["Admin"],
+    summary="Список заявок на админа",
+    description="Возвращает список админов с approved = false (только для супер-админа).",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        200: {"description": "Список заявок", "schema": sh.PendingAdminsResponseSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@validate.validate(EmptyBody, require_super_admin=True)
+async def list_pending(request: web.Request, parsed: EmptyBody) -> web.Response:
+    try:
+        items = await admin_users.list_pending_admins()
+        return web.json_response({"items": items}, status=200)
+    except Exception:
+        logger.exception("list_pending handler failed")
+        return validate.format_500_error(request)
+
+
 @docs(
     tags=["Admin"],
     summary="Регистрация обычного админа (заявка)",
-    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ. В теле запроса: **обязательные** — login, password.",
+    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ. В теле запроса: **обязательные** login, password.",
     responses={
         201: {"description": "Заявка создана"},
-        409: {"description": "Такой login уже занят (в т.ч. логин главного админа по умолчанию — укажите другой)"},
+        409: {"description": "Такой login уже занят (в т.ч. логин главного админа по умолчанию укажите другой)"},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
@@ -79,7 +107,9 @@ async def register_admin(request: web.Request, parsed: AdminRegisterBody) -> web
                 "admin_id": created["admin_id"],
                 "login": created["login"],
                 "approved": created["approved"],
-            }, status=201)
+            },
+            status=201,
+        )
     except web.HTTPError:
         raise
     except Exception:
@@ -90,7 +120,7 @@ async def register_admin(request: web.Request, parsed: AdminRegisterBody) -> web
 @docs(
     tags=["Admin"],
     summary="Логин админа",
-    description="Проверяет логин/пароль. Если admin не approved — 403. В теле запроса: **обязательные** — login, password.",
+    description="Проверяет логин/пароль. Если admin не approved 403. В теле запроса: **обязательные** login, password.",
     responses={
         200: {"description": "Успешный вход", "schema": sh.AdminAuthResponseSchema},
         401: {"description": "Неверный логин или пароль"},
@@ -136,7 +166,7 @@ async def login_admin(request: web.Request, parsed: AdminRegisterBody) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Одобрить обычного админа",
-    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа. В теле: **обязательное** — admin_id.",
+    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа. В теле: **обязательное** admin_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Админ одобрен", "schema": sh.AdminAuthResponseSchema},
@@ -168,3 +198,26 @@ async def approve_admin(request: web.Request, parsed: AdminApproveBody) -> web.R
         logger.exception("approve_admin handler failed")
         return validate.format_500_error(request)
 
+
+@docs(
+    tags=["Admin"],
+    summary="Отклонить заявку обычного админа",
+    description="Супер-админ по Bearer-токену отклоняет заявку admin_id (удаляет не одобренного обычного админа). Доступно только с токеном главного админа. В теле: **обязательное** admin_id.",
+    security=validate.SECURITY_ADMIN_BEARER,
+    responses={
+        204: {"description": "Заявка отклонена, админ удалён"},
+        401: {"description": "Токен отсутствует или невалиден"},
+        403: {"description": "Только супер-админ может отклонять заявки админов"},
+        404: {"description": "Заявка для отклонения не найдена"},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@request_schema(sh.AdminApproveSchema)
+@validate.validate(AdminApproveBody, require_super_admin=True)
+async def decline_admin(request: web.Request, parsed: AdminApproveBody) -> web.Response:
+    try:
+        await admin_users.delete_pending_admin(parsed.admin_id)
+        return web.Response(status=204)
+    except Exception:
+        logger.exception("decline_admin handler failed")
+        return validate.format_500_error(request)

@@ -1,7 +1,5 @@
 """CRUD для правил отбора: возраст (мин/макс), пол, заработок."""
 
-from uuid import uuid4
-
 from database.database import Database
 
 _RULE_SELECT = """
@@ -23,21 +21,6 @@ def row_to_rule(row: dict) -> dict:
     }
 
 
-async def list_rules(offset: int, limit: int) -> tuple[list[dict], int]:
-    async with Database() as db:
-        count_sql = "SELECT COUNT(*) AS n FROM rules"
-        row_count = await db.execute(count_sql, ())
-        total = row_count["n"] if row_count else 0
-        sql = f"""
-            SELECT {_RULE_SELECT}
-            FROM rules
-            ORDER BY created_at DESC, rule_id
-            OFFSET $1 LIMIT $2
-        """
-        rows = await db.execute_all(sql, (offset, limit)) or []
-        return [row_to_rule(r) for r in rows], total
-
-
 async def get_rule(rule_id: str) -> dict | None:
     async with Database() as db:
         sql = f"SELECT {_RULE_SELECT} FROM rules WHERE rule_id = $1"
@@ -48,22 +31,25 @@ async def get_rule(rule_id: str) -> dict | None:
 
 
 async def create_rule(
-    *,
-    rule_id: str | None,
     min_age: int | None = None,
     max_age: int | None = None,
     gender: str | None = None,
     income: int | None = None,
 ) -> dict | None:
-    if not rule_id or not rule_id.strip():
-        rule_id = str(uuid4())
     async with Database() as db:
         sql = """
-            INSERT INTO rules (rule_id, min_age, max_age, gender, income)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO rules (min_age, max_age, gender, income)
+            VALUES ($1, $2, $3, $4)
+            RETURNING rule_id
         """
-        await db.execute(sql, (rule_id, min_age, max_age, gender, income))
-        return await get_rule(rule_id)
+        rule_id = await db.fetchval(sql, (min_age, max_age, gender, income))
+        if rule_id is None:
+            return None
+        rule_id = str(rule_id)
+        row = await db.execute(f"SELECT {_RULE_SELECT} FROM rules WHERE rule_id = $1", (rule_id,))
+        if row is None:
+            return None
+        return row_to_rule(row)
 
 
 async def update_rule(
@@ -96,3 +82,14 @@ async def update_rule(
         sql = f"UPDATE rules SET {', '.join(fields)} WHERE rule_id = ${len(params)}"
         await db.execute(sql, tuple(params))
         return await get_rule(rule_id)
+
+
+async def delete_rule(rule_id: str) -> bool:
+    """Удаляет правило по rule_id. Сначала обнуляет rule_id во всех категориях, затем удаляет правило. Возвращает True если удалено."""
+    async with Database() as db:
+        await db.execute(
+            "UPDATE categories SET rule_id = NULL, updated_at = NOW() WHERE rule_id = $1",
+            (rule_id,),
+        )
+        await db.execute("DELETE FROM rules WHERE rule_id = $1", (rule_id,))
+        return True

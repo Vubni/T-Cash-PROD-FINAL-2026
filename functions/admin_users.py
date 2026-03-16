@@ -34,7 +34,22 @@ async def get_admin_by_login(login: str) -> dict | None:
 
 
 async def ensure_main_admin(login: str, password: str) -> None:
-    await create_main_admin(login, password)
+    """
+    Гарантирует наличие главного админа.
+
+    Если таблицы admin_users ещё нет (например, init.sql не применился),
+    не падаем при старте сервера, а просто логируем предупреждение.
+    """
+    try:
+        await create_main_admin(login, password)
+    except Exception as e:
+        msg = str(e)
+        if "UndefinedTableError" in msg or 'relation "admin_users" does not exist' in msg:
+            from config import logger
+
+            logger.warning("Таблица admin_users отсутствует, пропускаю ensure_main_admin: %s", e)
+            return
+        raise
 
 
 async def create_main_admin(login: str, password: str) -> dict | None:
@@ -62,14 +77,17 @@ async def create_admin(login: str, password: str) -> dict | None:
     password = (password or "").strip()
     if not login or not password:
         return None
-    existing = await get_admin_by_login(login)
-    if existing is not None:
-        return None
     async with Database() as db:
-        await db.execute(
-            """
-            INSERT INTO admin_users (login, password)
-            VALUES ($1, $2)""", (login, password))
+        try:
+            await db.execute(
+                """
+                INSERT INTO admin_users (main_admin, login, password, approved)
+                VALUES (FALSE, $1, $2, FALSE)
+                """,
+                (login, password),
+            )
+        except UniqueViolationError:
+            return None
     return await get_admin_by_login(login)
 
 
@@ -97,6 +115,33 @@ async def approve_admin(main_login: str, main_password: str, admin_id: int) -> d
 async def set_admin_approved(admin_id: int) -> dict | None:
     async with Database() as db:
         await db.execute(
-            "UPDATE admin_users SET approved = TRUE WHERE admin_id = $1", (admin_id,),)
+            "UPDATE admin_users SET approved = TRUE WHERE admin_id = $1",
+            (admin_id,),
+        )
     return await get_admin_by_id(admin_id)
 
+
+async def list_pending_admins() -> list[dict]:
+    """Список заявок на админа (main_admin = FALSE, approved = FALSE). Только для супер-админа."""
+    async with Database() as db:
+        rows = await db.execute_all(
+            """
+            SELECT admin_id, login
+            FROM admin_users
+            WHERE main_admin = FALSE AND approved = FALSE
+            ORDER BY admin_id
+            """,
+            (),
+        )
+    return rows or []
+
+
+async def delete_pending_admin(admin_id: int) -> bool:
+    async with Database() as db:
+        await db.execute(
+            """
+            DELETE FROM admin_users
+            WHERE admin_id = $1 AND main_admin = FALSE AND approved = FALSE
+            """,
+            (admin_id,),
+        )

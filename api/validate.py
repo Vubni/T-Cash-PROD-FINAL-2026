@@ -1,23 +1,26 @@
-from typing import Callable, Optional, TypeVar, Awaitable, Dict, Any
+from typing import Callable, Optional, TypeVar, Awaitable, Any
 from functools import wraps
 from pydantic import BaseModel, ValidationError
 import json
 from aiohttp import web
-from pydantic import field_validator, model_validator
+from pydantic import field_validator
 import core
 from datetime import UTC, datetime
 import uuid
 
 T = TypeVar("T", bound=BaseModel)
 
-# Для Swagger: эндпоинты с этой меткой требуют заголовок Authorization: Bearer <JWT админа>
 SECURITY_ADMIN_BEARER = [{"adminBearer": []}]
+SECURITY_USER_BEARER = [{"userBearer": []}]
+
 
 def generate_trace_id() -> str:
     return str(uuid.uuid4())
 
+
 def get_timestamp() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
 
 def get_nested_value(data: dict[str, Any], path: tuple) -> Any:
     if not path:
@@ -33,6 +36,7 @@ def get_nested_value(data: dict[str, Any], path: tuple) -> Any:
             return None
 
     return current
+
 
 def format_error_response(
     code: str,
@@ -55,6 +59,7 @@ def format_error_response(
         response["fieldErrors"] = field_errors
     return response
 
+
 def format_http_error(
     request: web.Request,
     status: int,
@@ -73,6 +78,7 @@ def format_http_error(
     )
     return web.json_response(body, status=status)
 
+
 def format_400_error(
     request: web.Request,
     message: str = "Некорректный запрос",
@@ -81,15 +87,11 @@ def format_400_error(
     return format_http_error(request, 400, "BAD_REQUEST", message, details=details)
 
 
-def format_401_error(
-    request: web.Request, message: str = "Токен отсутствует, невалиден или истёк"
-) -> web.Response:
+def format_401_error(request: web.Request, message: str = "Токен отсутствует, невалиден или истёк") -> web.Response:
     return format_http_error(request, 401, "UNAUTHORIZED", message)
 
 
-def format_403_error(
-    request: web.Request, message: str = "Недостаточно прав для выполнения операции"
-) -> web.Response:
+def format_403_error(request: web.Request, message: str = "Недостаточно прав для выполнения операции") -> web.Response:
     return format_http_error(request, 403, "FORBIDDEN", message)
 
 
@@ -113,9 +115,7 @@ def format_409_error(
     )
 
 
-def format_409_conflict(
-    request: web.Request, message: str, code: str = "CONFLICT"
-) -> web.Response:
+def format_409_conflict(request: web.Request, message: str, code: str = "CONFLICT") -> web.Response:
     return format_http_error(request, 409, code, message)
 
 
@@ -128,9 +128,7 @@ def format_422_error(
     return format_http_error(request, 422, code, message, field_errors=field_errors)
 
 
-def format_423_error(
-    request: web.Request, message: str = "Пользователь деактивирован"
-) -> web.Response:
+def format_423_error(request: web.Request, message: str = "Пользователь деактивирован") -> web.Response:
     return format_http_error(request, 423, "USER_INACTIVE", message)
 
 
@@ -153,6 +151,26 @@ def validate_uuid(value: str, field_name: str = "id") -> str:
         raise ValueError(f"{field_name} must be a valid UUID")
     return s
 
+
+BIGINT_MIN = -(2**63)
+BIGINT_MAX = 2**63 - 1
+
+
+def validate_user_id(value: int | str, field_name: str = "user_id") -> int:
+    """Проверяет, что значение целое число в диапазоне BIGINT. Возвращает int."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise ValueError(f"{field_name} cannot be empty")
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer")
+    try:
+        n = int(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"{field_name} must be a valid integer")
+    if n < BIGINT_MIN or n > BIGINT_MAX:
+        raise ValueError(f"{field_name} must be within BIGINT range ({BIGINT_MIN}..{BIGINT_MAX})")
+    return n
+
+
 class EmailError(Exception):
     def __init__(self, message="Ошибка проверки email", errors=None):
         self.message = message
@@ -166,14 +184,10 @@ async def _check_ordinary_admin(request: web.Request) -> web.Response | None:
     if not payload:
         return format_401_error(request, "Токен админа отсутствует или невалиден")
     from functions import admin_users
+
     admin = await admin_users.get_admin_by_id(payload.get("admin_id"))
     if not admin or not admin.get("approved"):
         return format_401_error(request, "Админ не найден или не одобрен")
-    if admin.get("main_admin"):
-        return format_403_error(
-            request,
-            "Супер-админ может только одобрять новых админов; управление категориями и правилами недоступно",
-        )
     request["admin_payload"] = payload
     return None
 
@@ -184,6 +198,7 @@ async def _check_super_admin(request: web.Request) -> web.Response | None:
     if not payload:
         return format_401_error(request, "Токен админа отсутствует или невалиден")
     from functions import admin_users
+
     admin = await admin_users.get_admin_by_id(payload.get("admin_id"))
     if not admin or not admin.get("main_admin"):
         return format_403_error(request, "Только супер-админ может одобрять новых админов")
@@ -195,12 +210,14 @@ def require_ordinary_admin(
     handler: Callable[[web.Request], Awaitable[web.Response]],
 ) -> Callable[[web.Request], Awaitable[web.Response]]:
     """Декоратор для эндпоинтов, доступных только обычному (одобренному, не супер) админу."""
+
     @wraps(handler)
     async def wrapper(request: web.Request) -> web.Response:
         err = await _check_ordinary_admin(request)
         if err is not None:
             return err
         return await handler(request)
+
     return wrapper
 
 
@@ -231,19 +248,10 @@ def validate(
                 request["user_payload"] = payload
 
             if request.method in ("POST", "PUT", "PATCH"):
-                content_type = request.headers.get("Content-Type", "")
-                if not content_type.startswith("application/json"):
-                    return format_400_error(
-                        request,
-                        "Неподдерживаемый Content-Type",
-                        details={"hint": "Используйте Content-Type: application/json"},
-                    )
-
-            if request.method == "GET":
-                data = dict(request.query)
-            else:
                 content_length = request.headers.get("Content-Length")
-                if content_length:
+                if not content_length or content_length == "0":
+                    data = {}
+                else:
                     try:
                         size = int(content_length)
                         if size > 10 * 1024 * 1024:
@@ -255,20 +263,32 @@ def validate(
                     except ValueError:
                         pass
 
-                try:
-                    data = await request.json()
-                except json.JSONDecodeError:
-                    return format_400_error(
-                        request,
-                        "Невалидный JSON",
-                        details={"hint": "Проверьте запятые/кавычки"},
-                    )
-                except Exception:
-                    return format_400_error(
-                        request,
-                        "Ошибка обработки запроса",
-                        details={"hint": "Проверьте формат и размер запроса"},
-                    )
+                    content_type = request.headers.get("Content-Type", "")
+                    if not content_type.startswith("application/json"):
+                        return format_400_error(
+                            request,
+                            "Неподдерживаемый Content-Type",
+                            details={"hint": "Используйте Content-Type: application/json"},
+                        )
+
+                    try:
+                        data = await request.json()
+                    except json.JSONDecodeError:
+                        return format_400_error(
+                            request,
+                            "Невалидный JSON",
+                            details={"hint": "Проверьте запятые/кавычки"},
+                        )
+                    except Exception:
+                        return format_400_error(
+                            request,
+                            "Ошибка обработки запроса",
+                            details={"hint": "Проверьте формат и размер запроса"},
+                        )
+            elif request.method == "GET":
+                data = dict(request.query)
+            else:
+                data = {}
 
             all_data = dict(request.match_info)
             all_data.update(dict(request.query))
@@ -281,8 +301,14 @@ def validate(
                     "Слишком много полей в запросе",
                     details={"max_fields": MAX_REQUEST_FIELDS},
                 )
-
             for key, value in all_data.items():
+                if key == "user_id":
+                    if isinstance(value, str) and value.strip() and value.lstrip("-").isdigit():
+                        try:
+                            all_data[key] = int(value)
+                        except (ValueError, TypeError):
+                            pass
+                    continue
                 if isinstance(value, str):
                     if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
                         try:
@@ -304,13 +330,9 @@ def validate(
             except ValidationError as e:
                 field_errors = [
                     {
-                        "field": ".".join(str(loc) for loc in error["loc"])
-                        if error["loc"]
-                        else "general",
+                        "field": ".".join(str(loc) for loc in error["loc"]) if error["loc"] else "general",
                         "issue": error["msg"],
-                        "rejectedValue": get_nested_value(all_data, tuple(error["loc"]))
-                        if error["loc"]
-                        else None,
+                        "rejectedValue": get_nested_value(all_data, tuple(error["loc"])) if error["loc"] else None,
                     }
                     for error in e.errors()
                 ]
@@ -321,9 +343,7 @@ def validate(
                     field_errors=field_errors,
                 )
             except EmailError as e:
-                field_errors = [
-                    {"field": "email", "issue": e.message, "rejectedValue": all_data.get("email")}
-                ]
+                field_errors = [{"field": "email", "issue": e.message, "rejectedValue": all_data.get("email")}]
                 return format_422_error(
                     request,
                     code="VALIDATION_FAILED",
@@ -338,7 +358,6 @@ def validate(
     return decorator
 
 
-    
 class Auth(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -436,7 +455,7 @@ class Club_new(BaseModel):
     class_limit_min: Optional[int] = 1
     class_limit_max: Optional[int] = 11
     telegram_url: Optional[str] = None
-    
+
     @field_validator("class_limit_max")
     @classmethod
     def validate_class_limit_max(cls, v):
@@ -469,20 +488,13 @@ class Club_new(BaseModel):
     def validate_telegram_url(cls, v):
         if v is None:
             return v
-        valid_prefixes = (
-            "https://t.me/", 
-            "http://t.me/",
-            "https://telegram.me/",
-            "http://telegram.me/"
-        )
-        
+        valid_prefixes = ("https://t.me/", "http://t.me/", "https://telegram.me/", "http://telegram.me/")
+
         if not any(v.startswith(prefix) for prefix in valid_prefixes):
             raise ValueError(
-                "Telegram URL must start with: "
-                "https://t.me/, http://t.me/, "
-                "https://telegram.me/ or http://telegram.me/"
+                "Telegram URL must start with: https://t.me/, http://t.me/, https://telegram.me/ or http://telegram.me/"
             )
-        
+
         if len(v) < 15:
             raise ValueError("Telegram URL is too short")
         return v
@@ -565,9 +577,7 @@ class Club_edit(BaseModel):
         )
         if not any(v.startswith(prefix) for prefix in valid_prefixes):
             raise ValueError(
-                "Telegram URL must start with: "
-                "https://t.me/, http://t.me/, "
-                "https://telegram.me/ or http://telegram.me/"
+                "Telegram URL must start with: https://t.me/, http://t.me/, https://telegram.me/ or http://telegram.me/"
             )
         if len(v) < 15:
             raise ValueError("Telegram URL is too short")
@@ -602,5 +612,3 @@ class Email_verify_confirm(BaseModel):
         if not v or not str(v).strip():
             raise ValueError("token cannot be empty")
         return v
-
-

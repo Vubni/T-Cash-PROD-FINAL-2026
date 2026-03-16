@@ -5,13 +5,11 @@ from sqlalchemy import create_engine, pool
 from alembic import context
 
 from sqlalchemy import MetaData, Table, Column, BigInteger
-from sqlalchemy import Text, Integer, Boolean
+from sqlalchemy import Text, Boolean
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP
 
 config = context.config
 
-# В Docker берём URL из DB_IP, DB_USER, DB_PASSWORD, DB_DB (как в docker-compose).
-# Иначе — DATABASE_URL/ALEMBIC_DATABASE_URL или значение из alembic.ini.
 _resolved_url = None
 if os.environ.get("DB_IP"):
     _user = os.environ.get("DB_USER", "user")
@@ -37,7 +35,6 @@ categories = Table(
     Column("category_id", Text, nullable=False, unique=True),
     Column("name", Text, nullable=False),
     Column("subtitle", Text, nullable=False),
-    Column("icon_key", Text, nullable=False),
     Column("budget_amount", BigInteger, nullable=False),
     Column("audience_segments", ARRAY(Text), nullable=False),
     Column("rule_personalized", Boolean, nullable=False),
@@ -53,9 +50,6 @@ selections = Table(
     Column("id", BigInteger, primary_key=True),
     Column("selection_id", Text, nullable=False, unique=True),
     Column("category_id", Text, nullable=False),
-    Column("expected_benefit_amount", BigInteger, nullable=True),
-    Column("availability_status", Text, nullable=True),
-    Column("availability_reason", Text, nullable=True),
     Column("idempotency_key", Text, nullable=True),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), nullable=False),
@@ -97,4 +91,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-

@@ -30,13 +30,11 @@ class Database:
                 return self
             except Exception as e:
                 self._retry_count += 1
-                logger.warning(
-                    f"Попытка подключения {self._retry_count}/{self.MAX_RETRIES} failed: {e}"
-                )
+                logger.warning(f"Попытка подключения {self._retry_count}/{self.MAX_RETRIES} failed: {e}")
                 await asyncio.sleep(self.RETRY_DELAY)
 
         logger.error("Превышено максимальное количество попыток подключения")
-        return None
+        raise RuntimeError("Превышено максимальное количество попыток подключения к БД")
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         try:

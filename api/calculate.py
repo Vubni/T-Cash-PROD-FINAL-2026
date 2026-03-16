@@ -1,55 +1,55 @@
 from aiohttp import web
-from aiohttp_apispec import docs, request_schema
-from pydantic import BaseModel, field_validator
+from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp_apispec import docs
+from pydantic import BaseModel
 
 from api import validate
 from config import logger
-from docs import schems as sh
+from docs import schemas as sh
 from functions import calculate as calc_fns
-from functions import users as users_fns
-
 
 class Client_calculate(BaseModel):
     model_config = {"extra": "forbid"}
 
-    user_id: int
-
-    @field_validator("user_id")
-    @classmethod
-    def user_id_positive(cls, v: int) -> int:
-        if v <= 0:
-            raise ValueError("user_id должен быть положительным целым числом")
-        return v
-
 
 @docs(
-    tags=["Client"],
-    summary="Рассчитать категории для пользователя",
-    description="По переданному в теле запроса user_id (UUID) возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля. В теле: **обязательное** — user_id.",
+    tags=["Offers"],
+    summary="Запуск офферов (расчёт категорий для клиента)",
+    description=(
+        "POST /api/v1/offers/run. Возвращает категории/выборы для текущего авторизованного пользователя. "
+        "user_id берётся из JWT-токена пользователя (заголовок Authorization: Bearer <token>, полученный через "
+        "GET /api/v1/users/{user_id}/auth). Тело запроса пустое."
+    ),
+    security=validate.SECURITY_USER_BEARER,
     responses={
         200: {"description": "Список категорий рассчитан", "schema": sh.CalculateResponseSchema},
         404: {"description": "Пользователь не найден", "schema": sh.HttpErrorSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
-@request_schema(sh.CalculateRequestSchema)
-@validate.validate(Client_calculate)
-async def calculate(request: web.Request, parsed: Client_calculate) -> web.Response:
+@validate.validate(Client_calculate, require_auth=True)
+async def calculate(request: web.Request, _: Client_calculate) -> web.Response:
     try:
-        user_id = parsed.user_id
+        payload = request.get("user_payload")
+        if not isinstance(payload, dict):
+            return validate.format_401_error(request, "Токен пользователя отсутствует или невалиден")
 
-        if not await users_fns.user_exists(user_id):
-            return validate.format_404_error(request, message="Пользователь не найден")
+        user_id = payload.get("user_id")
+        if not user_id or not isinstance(user_id, int):
+            return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
 
-        items = await calc_fns.get_calculate_items(user_id)
-        for it in items:
-            it["category_id"] = str(it["category_id"])
-            if it.get("selection_id") is not None:
-                it["selection_id"] = str(it["selection_id"])
+        result = await calc_fns.get_calculate_items(user_id)
         return web.json_response(
-            {"user_id": user_id, "items": items},
+            {
+                "user_id": user_id,
+                "items": result["items"],
+                "already_selected_categories": result["already_selected_categories"],
+            },
             status=200,
         )
+    except (ClientConnectorError, ConnectionRefusedError, OSError) as e:
+        logger.warning("calculate: external service unreachable: %s", e)
+        return validate.format_500_error(request)
     except Exception:
         logger.exception("calculate handler failed")
         return validate.format_500_error(request)

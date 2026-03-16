@@ -32,7 +32,6 @@ def upgrade() -> None:
         ),
     )
 
-    # Дефолтное правило для существующих категорий
     op.execute(
         "INSERT INTO rules (rule_id, min_age, max_age, gender, income) "
         "VALUES ('default', NULL, NULL, NULL, NULL)"

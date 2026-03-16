@@ -5,52 +5,532 @@ from config import logger
 from database.database import Database
 
 
+_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _data_path(filename: str) -> str:
+    """Путь к файлу в data/ относительно корня backend."""
+    return os.path.join(_BACKEND_ROOT, "data", filename)
+
+
 async def init_db():
-    async with Database() as db:
+    """
+    Базовая инициализация БД.
+
+    Схема (CREATE TABLE ...) задаётся в postgres/init.sql и создаётся на стороне Postgres.
+    Здесь ничего дополнительно не создаём, оставляем заглушку на случай будущих миграций.
+    """
+    return None
+
+
+async def ensure_selections_user_id_column() -> None:
+    """Добавляет колонку user_id в selections, если её нет (совместимость со старыми БД)."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS user_id BIGINT NULL REFERENCES users(user_id)",
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка selections.user_id: %s", e)
+
+
+async def ensure_selections_idempotency_key_column() -> None:
+    """Добавляет колонку idempotency_key в selections, если её нет."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(128) NULL",
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка selections.idempotency_key: %s", e)
+
+
+async def ensure_selections_amount_columns() -> None:
+    """Добавляет колонки cashback и estimated_spend в selections, если их нет."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS cashback INT NULL",
+                (),
+            )
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS estimated_spend BIGINT NULL",
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонки selections.cashback/estimated_spend: %s", e)
+
+
+async def ensure_selection_idempotency_requests_table() -> None:
+    """Создаёт таблицу хранения ответов для идемпотентных подтверждений выбора."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS selection_idempotency_requests (
+                    user_id BIGINT NOT NULL REFERENCES users(user_id),
+                    idempotency_key VARCHAR(128) NOT NULL,
+                    request_hash VARCHAR(64) NOT NULL,
+                    response_body JSONB NOT NULL,
+                    status_code INT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, idempotency_key)
+                )
+                """,
+                (),
+            )
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NOT NULL DEFAULT ''
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS response_body JSONB NOT NULL DEFAULT '{}'::jsonb
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS status_code INT NOT NULL DEFAULT 200
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Таблица selection_idempotency_requests: %s", e)
+
+
+async def ensure_categories_status_column() -> None:
+    """Добавляет колонку status в categories, если её нет (совместимость со старыми БД)."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE categories
+                ADD COLUMN IF NOT EXISTS status VARCHAR(20)
+                    NOT NULL DEFAULT 'running'
+                    CHECK (status IN ('running', 'paused', 'archived'))
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка categories.status: %s", e)
+
+
+async def ensure_categories_icon_url_column() -> None:
+    """Добавляет колонку icon_url в categories и переносит в неё старые icon_path, если они есть."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE categories
+                ADD COLUMN IF NOT EXISTS icon_url VARCHAR(500) NULL
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'categories' AND column_name = 'icon_path'
+                    ) THEN
+                        UPDATE categories
+                        SET icon_url = COALESCE(icon_url, icon_path)
+                        WHERE icon_path IS NOT NULL;
+                    END IF;
+                END $$;
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка categories.icon_url: %s", e)
+
+
+async def ensure_categories_unique_name_constraint() -> None:
+    """Гарантирует уникальность названий категорий без учёта регистра и пробелов по краям."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS categories_name_normalized_uniq
+                ON categories (lower(btrim(name)))
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Уникальность categories.name: %s", e)
+
+
+async def ensure_category_creation_idempotency_requests_table() -> None:
+    """Создаёт таблицу хранения идемпотентных ответов для создания категорий."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS category_creation_idempotency_requests (
+                    admin_id INT NOT NULL REFERENCES admin_users(admin_id),
+                    idempotency_key VARCHAR(128) NOT NULL,
+                    request_hash VARCHAR(64) NOT NULL,
+                    response_body JSONB NOT NULL,
+                    status_code INT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (admin_id, idempotency_key)
+                )
+                """,
+                (),
+            )
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NOT NULL DEFAULT ''
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS response_body JSONB NOT NULL DEFAULT '{}'::jsonb
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS status_code INT NOT NULL DEFAULT 201
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Таблица category_creation_idempotency_requests: %s", e)
+
+
+_BIGINT_MIN = -(2**63)
+_BIGINT_MAX = 2**63 - 1
+
+
+def _parse_user_id(raw: str) -> int | None:
+    """Парсит строку в user_id (BIGINT). Возвращает int или None при невалидном значении."""
+    s = raw.strip()
+    if not s:
+        return None
+    try:
+        n = int(s)
+        if _BIGINT_MIN <= n <= _BIGINT_MAX:
+            return n
+    except ValueError:
+        pass
+    return None
+
+
+def _parse_age(age_bucket: str | None) -> int:
+    """
+    Нормализует возрастной диапазон из CSV в «типичный» возраст пользователя.
+
+    Примеры:
+    - "<=25"  -> 25
+    - "26-35" -> 30
+    - "36-45" -> 40
+    - "46-55" -> 50
+    - "56-65" -> 60
+    - "65+"   -> 70
+    """
+    s = (age_bucket or "").strip()
+    if not s:
+        return 30
+
+    if s.startswith("<="):
         try:
-            ...
-        except Exception as e:
-            print(f"Ошибка при создании таблицы: {e}")
+            return int(s[2:])
+        except ValueError:
+            return 25
+
+    if "-" in s:
+        left, _sep, right = s.partition("-")
+        try:
+            left_i = int(left)
+            right_i = int(right)
+            return (left_i + right_i) // 2
+        except ValueError:
+            return 30
+
+    if s.endswith("+"):
+        try:
+            base = int(s[:-1])
+            return base + 5
+        except ValueError:
+            return 65
+
+    try:
+        return int(s)
+    except ValueError:
+        return 30
 
 
-async def ensure_users_from_csv(csv_path: str = "data/users.csv") -> None:
+def _parse_income(income_bucket: str | None) -> int:
+    """
+    Преобразует диапазон дохода вида "<=30k", "60-100k", "250k+" в одно число.
+
+    Возвращаем значение в тех же единицах, что и в CSV (k -> * 1000), используя:
+    - для "<=30k"   верхнюю границу (30000),
+    - для "60-100k" середину диапазона ((60000 + 100000) // 2 = 80000),
+    - для "250k+"   нижнюю границу диапазона (250000).
+    """
+
+    def _parse_number_token(token: str) -> int | None:
+        """Парсит один числовой фрагмент вроде '30k' или '250' в абсолютное значение."""
+        t = token.strip().lower()
+        if not t:
+            return None
+        multiplier = 1
+        if t.endswith("k"):
+            multiplier = 1000
+            t = t[:-1]
+        try:
+            return int(float(t)) * multiplier
+        except ValueError:
+            return None
+
+    s = (income_bucket or "").strip()
+    if not s:
+        return 0
+    s = s.lower().replace(" ", "")
+
+    if s.startswith("<=") or s.startswith("≤"):
+        num_part = s[2:] if s.startswith("<=") else s[1:]
+        num_part = num_part.rstrip("+")
+        val = _parse_number_token(num_part)
+        return val if val is not None else 0
+
+    if "-" in s:
+        left, _sep, right = s.partition("-")
+        left_val = _parse_number_token(left)
+        right_val = _parse_number_token(right)
+        if left_val is not None and right_val is not None:
+            return (left_val + right_val) // 2
+        if left_val is not None:
+            return left_val
+        if right_val is not None:
+            return right_val
+        return 0
+
+    if s.endswith("+"):
+        num_part = s[:-1]
+        val = _parse_number_token(num_part)
+        return val if val is not None else 0
+
+    val = _parse_number_token(s)
+    return val if val is not None else 0
+
+
+def _parse_gender(gender_code: str | None) -> str:
+    """
+    Преобразует код пола из CSV в строковое значение для БД.
+
+    По договорённости:
+    - "cat_4" -> "female"
+    - "cat_6" -> "male"
+    Всё остальное -> "other".
+    """
+    code = (gender_code or "").strip().lower()
+    if code == "cat_4":
+        return "female"
+    if code == "cat_6":
+        return "male"
+    return "other"
+
+
+async def ensure_users_from_csv(csv_path: str | None = None) -> None:
+    if csv_path is None:
+        csv_path = _data_path("users.csv")
     if not os.path.exists(csv_path):
-        logger.warning(f"Файл с пользователями не найден: {csv_path}")
+        logger.warning("Файл с пользователями не найден: %s", csv_path)
         return
 
-    async with Database() as db:
-        existing = await db.execute("SELECT 1 FROM users LIMIT 1")
-        if existing is not None:
-            logger.info("Таблица users уже содержит записи, импорт из CSV пропущен.")
+    to_insert: list[tuple[int, int, str, int]] = []
+    skipped = 0
+
+    try:
+        with open(csv_path, newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                raw_id = row.get("client_id") or row.get("user_id") or ""
+                user_id = _parse_user_id(raw_id)
+                if user_id is None:
+                    skipped += 1
+                    continue
+                age = _parse_age(row.get("soc_dem___age_bucket"))
+                gender = _parse_gender(row.get("soc_dem___gender_cd"))
+                income = _parse_income(row.get("soc_dem___income_bucket"))
+                to_insert.append((user_id, age, gender, income))
+    except OSError as e:
+        logger.error("Не удалось прочитать файл пользователей %s: %s", csv_path, e)
+        return
+
+    if skipped:
+        logger.warning("Пропущено невалидных строк в %s: %d", csv_path, skipped)
+    if not to_insert:
+        logger.info("В файле %s не найдено валидных пользователей для импорта.", csv_path)
+        return
+
+    try:
+        async with Database() as db:
+            existing = await db.execute("SELECT 1 FROM users LIMIT 1")
+            if existing is not None:
+                logger.info("Таблица users уже содержит записи, импорт из CSV пропущен.")
+                return
+
+            batch_size = 5000
+            for i in range(0, len(to_insert), batch_size):
+                batch = to_insert[i : i + batch_size]
+                await db.executemany(
+                    "INSERT INTO users (user_id, age, gender, income) "
+                    "VALUES ($1::bigint, $2::int, $3::varchar, $4::int) "
+                    "ON CONFLICT (user_id) DO NOTHING",
+                    batch,
+                )
+            logger.info("Импортировано пользователей из CSV: %d", len(to_insert))
+    except Exception as e:
+        msg = str(e)
+        if (
+            "UndefinedTableError" in msg
+            or 'relation "users" does not exist' in msg
+            or "DataError" in msg
+            or "invalid input for query argument" in msg
+        ):
+            logger.warning(
+                "Не удалось импортировать пользователей из CSV, пропускаю ensure_users_from_csv: %s",
+                e,
+            )
             return
+        raise
 
-        to_insert: list[tuple[int]] = []
 
-        try:
-            with open(csv_path, newline="", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if not row:
-                        continue
-                    raw_id = row[0].strip()
-                    if not raw_id:
-                        continue
+async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
+    if csv_path is None:
+        csv_path = _data_path("categories.csv")
+    if not os.path.exists(csv_path):
+        logger.warning("Файл с категориями не найден: %s", csv_path)
+        return
+
+    rows: list[tuple[str, str, str, int, str]] = []
+
+    try:
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header_skipped = False
+            for row in reader:
+                if not row:
+                    continue
+                if not header_skipped:
+                    header_skipped = True
+                    continue
+                if len(row) < 2:
+                    continue
+                category_id = row[0].strip()
+                name = row[1].strip()
+                if not category_id or not name:
+                    continue
+                subtitle = (row[2].strip() if len(row) > 2 else "") or name
+                budget_amount = 0
+                if len(row) > 4 and row[4].strip():
                     try:
-                        value = int(raw_id)
-                    except ValueError:
-                        logger.warning(f"Пропускаю некорректный user_id (не bigint) из CSV: {raw_id!r}")
-                        continue
-                    to_insert.append((value,))
-        except OSError as e:
-            logger.error(f"Не удалось прочитать файл пользователей {csv_path}: {e}")
-            return
+                        budget_amount = max(0, int(float(row[4].strip())))
+                    except (ValueError, TypeError):
+                        pass
 
-        if not to_insert:
-            logger.info(f"В файле {csv_path} не найдено валидных пользователей для импорта.")
-            return
+                rule_id = "a0000000-0000-0000-0000-000000000001"
+                rows.append((category_id, name, subtitle, budget_amount, rule_id))
+    except OSError as e:
+        logger.error(f"Не удалось прочитать файл категорий {csv_path}: {e}")
+        return
 
-        await db.executemany(
-            "INSERT INTO users (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING",
-            to_insert,
+    if not rows:
+        logger.info(f"В файле {csv_path} не найдено валидных категорий для импорта.")
+        return
+
+    params: list[tuple] = []
+    for category_id, name, subtitle, budget_amount, rule_id in rows:
+        params.append(
+            (
+                category_id,
+                name,
+                subtitle,
+                budget_amount,
+                5,
+                15,
+                rule_id,
+            )
         )
-        logger.info(f"Импортировано пользователей из CSV: {len(to_insert)}")
+
+    try:
+        async with Database() as db:
+            ok = await db.executemany(
+                """
+                INSERT INTO categories (
+                    category_id,
+                    name,
+                    subtitle,
+                    budget_amount,
+                    rate_min,
+                    rate_max,
+                    rule_id
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7
+                )
+                ON CONFLICT (category_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    subtitle = EXCLUDED.subtitle,
+                    budget_amount = EXCLUDED.budget_amount,
+                    rule_id = EXCLUDED.rule_id
+                """,
+                params,
+            )
+            if ok is not True:
+                logger.error("Импорт категорий из CSV не выполнен (ошибка БД, см. выше)")
+                return
+    except Exception as e:
+        logger.exception("Импорт категорий из CSV завершился с ошибкой: %s", e)
+        return
+    logger.info("Импортировано/обновлено категорий из CSV: %d", len(params))
