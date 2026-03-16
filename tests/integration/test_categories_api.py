@@ -185,10 +185,22 @@ async def test_get_category_invalid_uuid(aiohttp_client, app):
 
 
 async def test_update_category_success(aiohttp_client, app):
-    """Тест: успешное обновление категории"""
-    update_data = {"category_id": CAT_ID, "name": "Updated Category", "budget_amount": 150000}
+    """Тест: успешное обновление категории (get_category для аудита, затем update_category)."""
+    update_data = {"name": "Updated Category", "budget_amount": 150000}
+    before_category = {
+        "id": CAT_ID,
+        "name": "Old Name",
+        "subtitle": "Old",
+        "budget": {"amount": 100000},
+        "rate": {"min": 0, "max": 100},
+        "status": "running",
+    }
 
-    with patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update:
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = before_category
         mock_update.return_value = {"id": CAT_ID, "name": "Updated Category"}
 
         async with aiohttp_client(app) as client:
@@ -203,11 +215,11 @@ async def test_update_category_success(aiohttp_client, app):
 
 
 async def test_update_category_not_found(aiohttp_client, app):
-    """Тест: категория для обновления не найдена"""
-    update_data = {"category_id": NOT_FOUND_CAT_ID, "name": "Updated Category"}
+    """Тест: категория для обновления не найдена (get_category возвращает None → 404)."""
+    update_data = {"name": "Updated Category"}
 
-    with patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update:
-        mock_update.return_value = None
+    with patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = None
 
         async with aiohttp_client(app) as client:
             resp = await client.request(
@@ -269,8 +281,12 @@ async def test_get_category_returns_status(aiohttp_client, app):
 
 
 async def test_run_category_success(aiohttp_client, app):
-    """Тест: успешный перевод категории в статус running"""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
+    """Тест: успешный перевод категории в статус running (статус меняется paused→running, аудит пишется)."""
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = {"id": CAT_ID, "name": "Test", "status": "paused"}
         mock_update.return_value = {"id": CAT_ID, "name": "Test", "status": "running"}
 
         async with aiohttp_client(app) as client:
@@ -286,8 +302,12 @@ async def test_run_category_success(aiohttp_client, app):
 
 
 async def test_pause_category_success(aiohttp_client, app):
-    """Тест: успешный перевод категории в статус paused"""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
+    """Тест: успешный перевод категории в статус paused (статус меняется running→paused, аудит пишется)."""
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = {"id": CAT_ID, "name": "Test", "status": "running"}
         mock_update.return_value = {"id": CAT_ID, "name": "Test", "status": "paused"}
 
         async with aiohttp_client(app) as client:
@@ -303,8 +323,12 @@ async def test_pause_category_success(aiohttp_client, app):
 
 
 async def test_archive_category_success(aiohttp_client, app):
-    """Тест: успешный перевод категории в статус archived"""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
+    """Тест: успешный перевод категории в статус archived (статус меняется paused→archived, аудит пишется)."""
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = {"id": CAT_ID, "name": "Test", "status": "paused"}
         mock_update.return_value = {"id": CAT_ID, "name": "Test", "status": "archived"}
 
         async with aiohttp_client(app) as client:
@@ -320,9 +344,9 @@ async def test_archive_category_success(aiohttp_client, app):
 
 
 async def test_archive_category_not_found(aiohttp_client, app):
-    """Тест: archive категории — категория не найдена (404)"""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
-        mock_update.return_value = None
+    """Тест: archive категории — категория не найдена (get_category возвращает None → 404)."""
+    with patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = None
 
         async with aiohttp_client(app) as client:
             resp = await client.request(
@@ -336,9 +360,9 @@ async def test_archive_category_not_found(aiohttp_client, app):
 
 
 async def test_run_category_not_found(aiohttp_client, app):
-    """Тест: run категории — категория не найдена (404)"""
-    with patch("functions.categories.update_category_status", new_callable=AsyncMock) as mock_update:
-        mock_update.return_value = None
+    """Тест: run категории — категория не найдена (get_category возвращает None → 404)."""
+    with patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = None
 
         async with aiohttp_client(app) as client:
             resp = await client.request(
@@ -352,8 +376,20 @@ async def test_run_category_not_found(aiohttp_client, app):
 
 
 async def test_update_category_status_via_patch(aiohttp_client, app):
-    """Тест: обновление статуса категории через PATCH"""
-    with patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update:
+    """Тест: обновление статуса категории через PATCH (get_category для аудита, затем update_category)."""
+    before_category = {
+        "id": CAT_ID,
+        "name": "Test",
+        "subtitle": "Sub",
+        "budget": {"amount": 100000},
+        "rate": {"min": 0, "max": 100},
+        "status": "running",
+    }
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = before_category
         mock_update.return_value = {"id": CAT_ID, "name": "Test", "status": "paused"}
 
         async with aiohttp_client(app) as client:
