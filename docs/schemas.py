@@ -920,7 +920,7 @@ class ProgressListResponseSchema(Schema):
 class WordlyStartResponseSchema(Schema):
     game_id = fields.Str(
         required=True,
-        description="Идентификатор игры Wordly. Используется во всех последующих запросах для этой игры.",
+        description="Идентификатор игры T-Word. Используется во всех последующих запросах для этой игры.",
     )
     word_length = fields.Int(
         required=True,

@@ -1,4 +1,4 @@
-"""Создание таблицы wordly_words для слов игры Wordly."""
+"""Создание таблицы wordly_words для слов игры T-Word."""
 
 from alembic import op
 import sqlalchemy as sa

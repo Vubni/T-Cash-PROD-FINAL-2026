@@ -48,8 +48,8 @@ class Wordly_state(BaseModel):
 
 
 @docs(
-    tags=["Wordly"],
-    summary="Начать новую игру Wordly",
+    tags=["T-Word"],
+    summary="Начать новую игру T-Word",
     description="Создаёт новую игру наподобие Wordle и возвращает идентификатор игры, длину слова и количество попыток.",
     security=validate.SECURITY_USER_BEARER,
     responses={
@@ -75,8 +75,8 @@ async def start_game(request: web.Request, _: Wordly_start) -> web.Response:
 
 
 @docs(
-    tags=["Wordly"],
-    summary="Сделать попытку в игре Wordly",
+    tags=["T-Word"],
+    summary="Сделать попытку в игре T-Word",
     description=(
         "Принимает угадываемое слово и возвращает результат по каждой букве: correct (на своём месте), "
         "present (есть в слове, но в другой позиции), absent (буквы нет в слове)."
@@ -114,8 +114,8 @@ async def make_guess(request: web.Request, parsed: Wordly_guess) -> web.Response
 
 
 @docs(
-    tags=["Wordly"],
-    summary="Получить текущее состояние игры Wordly",
+    tags=["T-Word"],
+    summary="Получить текущее состояние игры T-Word",
     description="Возвращает статус игры, количество сделанных попыток и историю попыток.",
     security=validate.SECURITY_USER_BEARER,
     responses={

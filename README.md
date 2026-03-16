@@ -47,7 +47,7 @@ backend/
 ├── functions/               # Бизнес-логика без HTTP
 │   ├── __init__.py
 │   ├── calculate.py         # Алгоритм отбора категорий, причины
-│   └── wordly.py            # Логика игры Wordly
+│   └── wordly.py            # Логика игры T-Word
 ├── database/                # Доступ к БД (PostgreSQL)
 │   ├── __init__.py
 │   ├── database.py          # Обёртка над asyncpg, транзакции
@@ -178,7 +178,7 @@ python server.py
 - **Слой бизнес‑логики (`functions/`, частично `core/`)**
   - Алгоритм расчёта офферов и причин (reasons) по категории;
   - вызов внешнего ML‑сервиса;
-  - логика игры Wordly;
+  - логика игры T-Word;
   - вспомогательные функции и авторизация (`core/auth.py`, `core/utils.py`).
 
 - **Слой доступа к данным (`database/`, `alembic/`)**
@@ -212,7 +212,7 @@ alembic downgrade -1
 - `0003_uuid_ids` — переход бизнес‑ID на `UUID`;
 - `0004`–`0007` — очистка ненужных полей, `rate_min`/`rate_max`, CHECK‑ограничения, BIGINT для бюджета;
 - `0008` — `UNIQUE (user_id, category_id)` в `selections`;
-- `0009_wordly_words` — таблица слов для игры Wordly.
+- `0009_wordly_words` — таблица слов для игры T-Word.
 
 ---
 
