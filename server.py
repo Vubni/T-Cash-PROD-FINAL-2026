@@ -131,6 +131,7 @@ def register_routes(app: web.Application, cors: aiohttp_cors.CorsConfig) -> None
         web.post(prefix + "/wordly/start", wordly.start_game),
         web.post(prefix + "/wordly/guess", wordly.make_guess),
         web.get(prefix + "/wordly/state", wordly.get_state),
+        web.get(prefix + "/wordly/user-status", wordly.get_user_status),
     ]
 
     for route in api_routes:

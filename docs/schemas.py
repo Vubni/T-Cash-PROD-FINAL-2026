@@ -381,8 +381,8 @@ class CategoryListItemSchema(Schema):
     avg_cashback_percent = fields.Float(
         required=False,
         allow_none=True,
-        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
-        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
+        description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback / 100 * estimated_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
 
 
@@ -411,8 +411,8 @@ class CategoryDetailSchema(Schema):
     avg_cashback_percent = fields.Float(
         required=False,
         allow_none=True,
-        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
-        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
+        description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback / 100 * estimated_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
     rule = fields.Nested(
         CategoryRuleSchema,
@@ -452,6 +452,12 @@ class CategoryCreateSchema(Schema):
         required=True,
         validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX),
         description="Подзаголовок/краткое описание категории (1–500 символов). Обязательное поле.",
+    )
+    icon_url = fields.Str(
+        required=False,
+        allow_none=True,
+        validate=validate.Length(max=NAME_SUBTITLE_MAX),
+        description="URL иконки категории. Опционально при создании.",
     )
     budget_amount = fields.Float(
         required=True,
@@ -1028,4 +1034,17 @@ class WordlyStateResponseSchema(Schema):
         required=False,
         allow_none=True,
         description="Секретное слово, если игра завершена поражением; иначе null.",
+    )
+
+
+class WordlyUserStatusResponseSchema(Schema):
+    played = fields.Bool(
+        required=True,
+        description="true, если по пользователю есть запись в таблице user_winners (он завершал хотя бы одну игру); "
+        "false, если записей нет или БД недоступна.",
+    )
+    winners = fields.Bool(
+        required=True,
+        description="true, если поле winners в таблице user_winners для пользователя установлено в true "
+        "(то есть он выигрывал хотя бы одну игру); иначе false.",
     )

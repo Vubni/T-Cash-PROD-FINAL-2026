@@ -176,6 +176,21 @@ async def make_guess(game_id: str, raw_guess: str, user_id: int) -> dict:
         game.status = "won"
     elif len(game.attempts) >= game.max_attempts:
         game.status = "lost"
+    if game.status in ("won", "lost"):
+        winners_flag = game.status == "won"
+        try:
+            async with Database() as db:
+                await db.execute(
+                    """
+                    INSERT INTO user_winners (user_id, winners)
+                    VALUES ($1, $2)
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET winners = EXCLUDED.winners
+                    """,
+                    (user_id, winners_flag),
+                )
+        except Exception:
+            pass
 
     return {
         "game_id": game.game_id,
@@ -210,5 +225,37 @@ async def get_state(game_id: str, user_id: int) -> dict:
             for idx, attempt in enumerate(game.attempts)
         ],
         "target_word_revealed": game.target_word if game.status == "lost" else None,
+    }
+
+
+async def get_user_status(user_id: int) -> dict:
+    """
+    Возвращает агрегированный статус пользователя по игре T-Word:
+    - played: есть ли запись в user_winners (то есть пользователь завершал хотя бы одну игру);
+    - winners: значение флага winners из таблицы (выигрывал ли он хотя бы раз).
+    При отсутствии таблицы или записи возвращаем played = False, winners = False.
+    """
+    try:
+        async with Database() as db:
+            row = await db.execute(
+                "SELECT winners FROM user_winners WHERE user_id = $1::bigint",
+                (user_id,),
+            )
+    except Exception:
+        # При проблемах с БД не блокируем фронт, возвращаем «не играл / не выиграл»
+        return {
+            "played": False,
+            "winners": False,
+        }
+
+    if row is None:
+        return {
+            "played": False,
+            "winners": False,
+        }
+
+    return {
+        "played": True,
+        "winners": bool(row.get("winners")),
     }
 

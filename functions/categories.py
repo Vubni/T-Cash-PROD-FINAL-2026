@@ -67,7 +67,7 @@ LEFT JOIN rules r ON r.rule_id = c.rule_id
 LEFT JOIN LATERAL (
     SELECT
         AVG(
-            (s.cashback::numeric * 100.0) / NULLIF(s.estimated_spend, 0)
+            (s.cashback::numeric / 100.0) * s.estimated_spend
         ) AS avg_cashback_percent
     FROM selections s
     WHERE
@@ -106,6 +106,7 @@ def _build_create_category_request_hash(
     budget_amount: int,
     rate_min: int,
     rate_max: int,
+    icon_url: str | None,
 ) -> str:
     payload = {
         "name": name,
@@ -113,6 +114,7 @@ def _build_create_category_request_hash(
         "budget_amount": budget_amount,
         "rate_min": rate_min,
         "rate_max": rate_max,
+        "icon_url": icon_url,
     }
     canonical_payload = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest()
@@ -156,9 +158,17 @@ async def create_category(
     budget_amount: int,
     rate_min: int,
     rate_max: int,
+    icon_url: str | None = None,
     idempotency_key: str | None = None,
 ) -> tuple[dict | None, bool]:
-    request_hash = _build_create_category_request_hash(name, subtitle, budget_amount, rate_min, rate_max)
+    request_hash = _build_create_category_request_hash(
+        name,
+        subtitle,
+        budget_amount,
+        rate_min,
+        rate_max,
+        icon_url,
+    )
 
     async with Database() as db:
         if idempotency_key is not None:
@@ -178,16 +188,16 @@ async def create_category(
 
         sql = """
             INSERT INTO categories (
-                name, subtitle,
+                name, subtitle, icon_url,
                 budget_amount, rate_min, rate_max
             )
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING category_id
         """
         try:
             category_id = await db.fetchval(
                 sql,
-                (name, subtitle, budget_amount, rate_min, rate_max),
+                (name, subtitle, icon_url, budget_amount, rate_min, rate_max),
             )
         except UniqueViolationError as exc:
             raise DuplicateCategoryNameError("Категория с таким названием уже существует") from exc
