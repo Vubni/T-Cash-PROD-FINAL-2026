@@ -67,7 +67,7 @@ LEFT JOIN rules r ON r.rule_id = c.rule_id
 LEFT JOIN LATERAL (
     SELECT
         AVG(
-            (s.cashback::numeric * 100.0) / NULLIF(s.estimated_spend, 0)
+            (s.cashback::numeric / 100.0) * s.estimated_spend
         ) AS avg_cashback_percent
     FROM selections s
     WHERE

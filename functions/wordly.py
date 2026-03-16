@@ -227,3 +227,35 @@ async def get_state(game_id: str, user_id: int) -> dict:
         "target_word_revealed": game.target_word if game.status == "lost" else None,
     }
 
+
+async def get_user_status(user_id: int) -> dict:
+    """
+    Возвращает агрегированный статус пользователя по игре T-Word:
+    - played: есть ли запись в user_winners (то есть пользователь завершал хотя бы одну игру);
+    - winners: значение флага winners из таблицы (выигрывал ли он хотя бы раз).
+    При отсутствии таблицы или записи возвращаем played = False, winners = False.
+    """
+    try:
+        async with Database() as db:
+            row = await db.execute(
+                "SELECT winners FROM user_winners WHERE user_id = $1::bigint",
+                (user_id,),
+            )
+    except Exception:
+        # При проблемах с БД не блокируем фронт, возвращаем «не играл / не выиграл»
+        return {
+            "played": False,
+            "winners": False,
+        }
+
+    if row is None:
+        return {
+            "played": False,
+            "winners": False,
+        }
+
+    return {
+        "played": True,
+        "winners": bool(row.get("winners")),
+    }
+

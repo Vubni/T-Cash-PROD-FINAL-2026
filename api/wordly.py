@@ -47,6 +47,10 @@ class Wordly_state(BaseModel):
         return v.strip()
 
 
+class Wordly_status(BaseModel):
+    model_config = {"extra": "forbid"}
+
+
 @docs(
     tags=["T-Word"],
     summary="Начать новую игру T-Word",
@@ -149,5 +153,35 @@ async def get_state(request: web.Request, parsed: Wordly_state) -> web.Response:
         return validate.format_404_error(request, message="Игра не найдена")
     except Exception:
         logger.exception("wordly get_state handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["T-Word"],
+    summary="Получить статус участия пользователя в игре T-Word",
+    description=(
+        "Возвращает, играл ли пользователь хотя бы одну игру T-Word и выигрывал ли он когда-либо. "
+        "Данные берутся из агрегирующей таблицы user_winners."
+    ),
+    security=validate.SECURITY_USER_BEARER,
+    responses={
+        200: {"description": "Статус участия пользователя", "schema": sh.WordlyUserStatusResponseSchema},
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@validate.validate(Wordly_status, require_auth=True)
+async def get_user_status(request: web.Request, _: Wordly_status) -> web.Response:
+    try:
+        payload = request.get("user_payload") or {}
+        user_id = payload.get("user_id")
+        if user_id is None:
+            return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
+        if not await users_fns.user_exists(user_id):
+            return validate.format_404_error(request, message="Пользователь не найден")
+
+        status = await wordly_fns.get_user_status(user_id=user_id)
+        return web.json_response(status, status=200)
+    except Exception:
+        logger.exception("wordly get_user_status handler failed")
         return validate.format_500_error(request)
 

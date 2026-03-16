@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS categories (
     subtitle        VARCHAR(500) NOT NULL CHECK (char_length(subtitle) >= 1 AND char_length(subtitle) <= 500),
     budget_amount   BIGINT   NOT NULL CHECK (budget_amount >= 0),
     rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100) DEFAULT 1,
-    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 17,
+    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 30,
     rule_id         UUID        NULL REFERENCES rules(rule_id),
     icon_url        VARCHAR(500) NULL,
     status          VARCHAR(20) NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'paused', 'archived')),
