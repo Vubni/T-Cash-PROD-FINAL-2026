@@ -79,19 +79,33 @@ _CATEGORY_SELECT_FIELDS = """
 _CATEGORY_FROM_JOIN = "FROM categories c LEFT JOIN rules r ON r.rule_id = c.rule_id"
 
 
-async def list_categories(offset: int, limit: int) -> tuple[list[dict], int]:
+async def list_categories(offset: int, limit: int, status: str | None = None) -> tuple[list[dict], int]:
     async with Database() as db:
-        count_sql = "SELECT COUNT(*) AS n FROM categories"
-        row_count = await db.execute(count_sql, ())
+        if status is not None:
+            count_sql = "SELECT COUNT(*) AS n FROM categories WHERE status = $1"
+            row_count = await db.execute(count_sql, (status,))
+        else:
+            count_sql = "SELECT COUNT(*) AS n FROM categories"
+            row_count = await db.execute(count_sql, ())
         total = row_count["n"] if row_count else 0
 
-        sql = f"""
-            SELECT {_CATEGORY_SELECT_FIELDS}
-            {_CATEGORY_FROM_JOIN}
-            ORDER BY c.created_at DESC, c.category_id
-            OFFSET $1 LIMIT $2
-        """
-        rows = await db.execute_all(sql, (offset, limit)) or []
+        if status is not None:
+            sql = f"""
+                SELECT {_CATEGORY_SELECT_FIELDS}
+                {_CATEGORY_FROM_JOIN}
+                WHERE c.status = $1
+                ORDER BY c.created_at DESC, c.category_id
+                OFFSET $2 LIMIT $3
+            """
+            rows = await db.execute_all(sql, (status, offset, limit)) or []
+        else:
+            sql = f"""
+                SELECT {_CATEGORY_SELECT_FIELDS}
+                {_CATEGORY_FROM_JOIN}
+                ORDER BY c.created_at DESC, c.category_id
+                OFFSET $1 LIMIT $2
+            """
+            rows = await db.execute_all(sql, (offset, limit)) or []
         items = [row_to_category_list_item(row) for row in rows]
         return items, total
 
@@ -173,6 +187,16 @@ async def update_category(
         return await get_category(category_id)
 
     async with Database() as db:
+        # Нельзя изменять архивированную категорию
+        status_row = await db.execute(
+            "SELECT status FROM categories WHERE category_id = $1",
+            (category_id,),
+        )
+        if status_row is None:
+            return None
+        if (status_row.get("status") or "").lower() == "archived":
+            raise ValueError("Cannot modify archived category")
+
         fields.append("updated_at = NOW()")
         params.append(category_id)
         sql_update = f"UPDATE categories SET {', '.join(fields)} WHERE category_id = ${len(params)}"
@@ -180,7 +204,6 @@ async def update_category(
         return await _get_category(db, category_id)
 
 
-# Допустимые переходы статуса категории: (текущий, новый). Остальные — невалидны.
 _CATEGORY_STATUS_TRANSITIONS = {
     ("running", "running"),
     ("running", "paused"),
@@ -188,8 +211,6 @@ _CATEGORY_STATUS_TRANSITIONS = {
     ("paused", "running"),
     ("paused", "paused"),
     ("paused", "archived"),
-    ("archived", "running"),
-    ("archived", "paused"),
     ("archived", "archived"),
 }
 
@@ -208,10 +229,15 @@ async def update_category_status(category_id: str, status: str) -> dict | None:
         if row is None:
             return None
         current = row["status"]
+        if (current or "").lower() == "archived" and status != "archived":
+            raise ValueError(
+                f"Invalid category status transition: {current!r} -> {status!r}. "
+                "Archived categories cannot be restored or changed."
+            )
         if (current, status) not in _CATEGORY_STATUS_TRANSITIONS:
             raise ValueError(
                 f"Invalid category status transition: {current!r} -> {status!r}. "
-                "Allowed: running, paused, archived (any to any)."
+                "Allowed transitions: running <-> paused, any -> archived, archived -> archived."
             )
         sql_update = """
             UPDATE categories

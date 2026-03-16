@@ -47,7 +47,7 @@ async def test_get_categories_with_pagination(aiohttp_client, app):
                 "GET", "/api/v1/admin/categories?limit=5&offset=10", headers={"Authorization": "Bearer admin_token"}
             )
             assert resp.status == 200
-        mock_get.assert_called_once_with(10, 5)
+        mock_get.assert_called_once_with(10, 5, status="running")
 
 
 async def test_get_categories_invalid_limit(aiohttp_client, app):

@@ -28,6 +28,7 @@ class Admin_categories_list(BaseModel):
 
     offset: int = 0
     limit: int = 10
+    status: Optional[str] = "running"
 
     @field_validator("offset")
     @classmethod
@@ -42,6 +43,17 @@ class Admin_categories_list(BaseModel):
         if v < 1 or v > LIMIT_MAX:
             raise ValueError(f"limit must be between 1 and {LIMIT_MAX}")
         return v
+
+    @field_validator("status")
+    @classmethod
+    def status_allowed(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return "running"
+        allowed = {"running", "paused", "archived"}
+        value = v.strip().lower()
+        if value not in allowed:
+            raise ValueError(f"status must be one of: {', '.join(sorted(allowed))}")
+        return value
 
 
 RATE_MIN_LIMIT = 0
@@ -236,12 +248,20 @@ class Category_rule_create(BaseModel):
             "description": "Максимальное количество элементов в ответе. Опционально, по умолчанию 10.",
             "default": 10,
         },
+        {
+            "in": "query",
+            "name": "status",
+            "type": "string",
+            "required": False,
+            "description": "Статус категорий для вывода: running (запущены), paused (на паузе) или archived (архив). По умолчанию running.",
+            "default": "running",
+        },
     ],
 )
 @validate.validate(Admin_categories_list, require_admin=True)
 async def list_categories(request: web.Request, parsed: Admin_categories_list) -> web.Response:
     try:
-        items, total = await cat_fns.list_categories(parsed.offset, parsed.limit)
+        items, total = await cat_fns.list_categories(parsed.offset, parsed.limit, status=parsed.status)
         return web.json_response({"items": items, "total": total}, status=200)
     except Exception:
         logger.exception("list_categories handler failed")
@@ -343,6 +363,12 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 @validate.validate(Category_id_path, require_admin=True)
 async def upload_category_icon(request: web.Request, parsed: Category_id_path) -> web.Response:
     try:
+        category = await cat_fns.get_category(parsed.category_id)
+        if category is None:
+            return validate.format_404_error(request, message="Категория не найдена")
+        if (category.get("status") or "").lower() == "archived":
+            return validate.format_409_error(request, message="Нельзя изменять иконку архивной категории")
+
         reader = await request.multipart()
         field = await reader.next()
 
@@ -477,6 +503,8 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
         category = await cat_fns.get_category(parsed.category_id)
         if category is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        if (category.get("status") or "").lower() == "archived":
+            return validate.format_409_error(request, message="Нельзя создавать правило для архивной категории")
         rule = await rules_fns.create_rule(
             min_age=parsed.min_age,
             max_age=parsed.max_age,
@@ -522,6 +550,8 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
         category = await cat_fns.get_category(category_id)
         if category is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        if (category.get("status") or "").lower() == "archived":
+            return validate.format_409_error(request, message="Нельзя изменять правило архивной категории")
         rule_id = (category.get("rule") or {}).get("rule_id")
         if not rule_id:
             return validate.format_404_error(request, message="У категории нет правила")
@@ -559,6 +589,8 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
         category = await cat_fns.get_category(parsed.category_id)
         if category is None:
             return validate.format_404_error(request, message="Категория не найдена")
+        if (category.get("status") or "").lower() == "archived":
+            return validate.format_409_error(request, message="Нельзя удалять правило архивной категории")
         rule_id = (category.get("rule") or {}).get("rule_id")
         if not rule_id:
             return validate.format_404_error(request, message="У категории нет правила")
@@ -616,6 +648,8 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             details=details if details else None,
         )
         return web.json_response(response, status=200)
+    except ValueError as e:
+        return validate.format_409_error(request, message=str(e))
     except Exception:
         logger.exception("update_category handler failed")
         return validate.format_500_error(request)
