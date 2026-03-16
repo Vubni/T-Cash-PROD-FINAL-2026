@@ -13,8 +13,9 @@ from startup import run_startup
 
 API_PREFIX = "/api/v1"
 STATIC_DIR = "static"
-SWAGGER_JSON_URL = "/swagger.json"
-SWAGGER_UI_PATH = "/"
+# Swagger/OpenAPI JSON и UI
+SWAGGER_JSON_URL = "/docs/swagger.json"
+SWAGGER_UI_PATH = "/docs"
 SWAGGER_TITLE = "Cashback API"
 SWAGGER_VERSION = "v1"
 

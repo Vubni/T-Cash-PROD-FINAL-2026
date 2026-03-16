@@ -41,6 +41,8 @@ services:
 
   tests:
     build: .
+    profiles:
+      - tests
     environment:
       DB_IP: db
       DB_USER: user
