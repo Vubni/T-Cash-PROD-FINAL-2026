@@ -106,7 +106,6 @@ def register_routes(app: web.Application, cors: aiohttp_cors.CorsConfig) -> None
         web.get(prefix + "/admin/categories/{category_id}", categories.get_category),
         web.post(prefix + "/admin/categories/{category_id}/rule", categories.create_category_rule),
         web.patch(prefix + "/admin/categories/{category_id}/rule", categories.update_category_rule),
-        web.delete(prefix + "/admin/categories/{category_id}/rule", categories.delete_category_rule),
         web.patch(prefix + "/admin/categories/{category_id}", categories.update_category),
         web.post(prefix + "/admin/categories/{category_id}/run", categories.run_category),
         web.post(prefix + "/admin/categories/{category_id}/pause", categories.pause_category),

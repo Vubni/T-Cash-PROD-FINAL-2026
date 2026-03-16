@@ -499,6 +499,15 @@ class CategoryUpdateSchema(Schema):
     )
     rate_min = fields.Int(required=False, description="Новый минимальный кэшбек в процентах (0–100). Опционально.")
     rate_max = fields.Int(required=False, description="Новый максимальный кэшбек в процентах (0–100). Опционально.")
+    rule = fields.Dict(
+        required=False,
+        allow_none=True,
+        description=(
+            "Изменение правила категории. Семантика: rule = null — не менять правило; "
+            "rule = {} — отвязать и удалить текущее правило; "
+            "Иначе rule частично обновить существующее правило или создать новое, если его ещё нет."
+        ),
+    )
 
 
 class RuleDetailSchema(Schema):

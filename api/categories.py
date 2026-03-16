@@ -123,6 +123,7 @@ class Admin_category_update(BaseModel):
     rate_min: Optional[int] = None
     rate_max: Optional[int] = None
     status: Optional[str] = None
+    rule: Optional[dict] = None
 
     @field_validator("name", "subtitle")
     @classmethod
@@ -542,7 +543,7 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
 @docs(
     tags=["Admin"],
     summary="Удалить правило категории",
-    description="Отвязывает и удаляет правило отбора у категории.",
+    description="Отвязывает и удаляет правило отбора у категории. Требуется JWT админа. 404, если у категории нет правила.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         204: {"description": "Правило удалено"},
@@ -587,7 +588,7 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию (название, подзаголовок, иконка, бюджет, кэшбэк, статус).",
+    description="Частично обновляет категорию. Можно менять название, подзаголовок, URL иконки, бюджет, диапазон кэшбэка (rate_min, rate_max) и status. Правила через POST/PATCH/DELETE .../categories/{id}/rule. Требуется JWT админа. Все поля **опциональны**.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -610,6 +611,41 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
         before = await cat_fns.get_category(parsed.category_id)
         if before is None:
             return validate.format_404_error(request, message="Категория не найдена")
+
+        current_rule = before.get("rule") or {}
+        current_rule_id = current_rule.get("rule_id")
+
+        rule_body = parsed.rule
+        rule_deleted = False
+
+        if rule_body is not None:
+            if isinstance(rule_body, dict) and len(rule_body) == 0:
+                # удалить правило
+                if current_rule_id:
+                    await rules_fns.delete_rule(current_rule_id)
+                    rule_deleted = True
+            else:
+                # создать или обновить правило
+                min_age = rule_body.get("min_age")
+                max_age = rule_body.get("max_age")
+                gender = rule_body.get("gender")
+                income = rule_body.get("income")
+                if current_rule_id:
+                    await rules_fns.update_rule(
+                        current_rule_id,
+                        min_age=min_age,
+                        max_age=max_age,
+                        gender=gender,
+                        income=income,
+                    )
+                else:
+                    new_rule = await rules_fns.create_rule(
+                        min_age=min_age,
+                        max_age=max_age,
+                        gender=gender,
+                        income=income,
+                    )
+                    current_rule_id = new_rule["rule_id"]
         response = await cat_fns.update_category(
             parsed.category_id,
             name=parsed.name,
@@ -619,6 +655,8 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
             status=parsed.status,
+            rule_id=current_rule_id if (rule_body is not None and not rule_deleted) else None,
+            _rule_id_set_null=rule_deleted,
         )
         if response is None:
             return validate.format_404_error(request, message="Категория не найдена")
@@ -644,6 +682,13 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
                 changes["rate_max"] = {"old": old_max, "new": parsed.rate_max}
         if parsed.status is not None and before.get("status") != parsed.status:
             changes["status"] = {"old": before.get("status"), "new": parsed.status}
+            
+        if parsed.rule is not None:
+            before_rule = (before.get("rule") or {}).get("rule_id")
+            after_rule = (response.get("rule") or {}).get("rule_id")
+
+            if before_rule != after_rule:
+                changes["rule_id"] = {"old": before_rule, "new": after_rule}
         await audit_fns.write_audit(
             "category",
             parsed.category_id,
