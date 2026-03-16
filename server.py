@@ -126,6 +126,12 @@ if __name__ == "__main__":
         "bearerFormat": "JWT",
         "description": "JWT токен админа (получить через POST /api/v1/admin/auth/login). В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
     }
+    user_bearer_scheme = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT токен пользователя. В поле ниже введите токен — можно с префиксом «Bearer » или без него.",
+    }
     swagger_dict = app["swagger_dict"]
     if "components" in swagger_dict:
         swagger_dict.setdefault("components", {}).setdefault("securitySchemes", {})["adminBearer"] = admin_bearer_scheme
