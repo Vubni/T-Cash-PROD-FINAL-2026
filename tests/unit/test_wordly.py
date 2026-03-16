@@ -102,3 +102,99 @@ def test_build_feedback_present_and_absent():
     for item in feedback:
         assert item["result"] in ("correct", "present", "absent")
 
+
+@pytest.mark.asyncio
+async def test_start_game_uses_loaded_words_and_initial_state(monkeypatch):
+    async def fake_ensure_words_loaded():
+        return ["домик"]
+
+    monkeypatch.setattr(wordly, "_ensure_words_loaded", fake_ensure_words_loaded)
+    wordly._GAMES.clear()
+
+    state = await wordly.start_game(user_id=123)
+
+    assert state["game_id"]
+    assert state["word_length"] == 5
+    assert state["max_attempts"] == 6
+    assert state["status"] == "in_progress"
+    assert state["attempts_made"] == 0
+    assert state["game_id"] in wordly._GAMES
+
+
+@pytest.mark.asyncio
+async def test_make_guess_win_and_state_updated(monkeypatch):
+    # фиксируем список слов и целевое слово
+    async def fake_ensure_words_loaded():
+        return ["домик"]
+
+    monkeypatch.setattr(wordly, "_ensure_words_loaded", fake_ensure_words_loaded)
+    monkeypatch.setattr(wordly.random, "choice", lambda words: "домик")
+
+    wordly._GAMES.clear()
+    start = await wordly.start_game(user_id=1)
+    game_id = start["game_id"]
+
+    resp = await wordly.make_guess(game_id=game_id, raw_guess="Домик", user_id=1)
+
+    assert resp["game_id"] == game_id
+    assert resp["guess"] == "домик"
+    assert resp["attempt"] == 1
+    assert resp["remaining_attempts"] == 5
+    assert resp["status"] == "won"
+    assert resp["is_win"] is True
+    assert resp["is_finished"] is True
+    assert resp["target_word_revealed"] is None
+
+
+@pytest.mark.asyncio
+async def test_make_guess_lost_and_word_revealed(monkeypatch):
+    async def fake_ensure_words_loaded():
+        return ["домик"]
+
+    monkeypatch.setattr(wordly, "_ensure_words_loaded", fake_ensure_words_loaded)
+    monkeypatch.setattr(wordly.random, "choice", lambda words: "домик")
+
+    wordly._GAMES.clear()
+    start = await wordly.start_game(user_id=1)
+    game_id = start["game_id"]
+
+    # делаем максимум попыток с неправильным словом
+    for i in range(6):
+        resp = await wordly.make_guess(game_id=game_id, raw_guess="книга", user_id=1)
+
+    assert resp["status"] == "lost"
+    assert resp["is_win"] is False
+    assert resp["is_finished"] is True
+    assert resp["remaining_attempts"] == 0
+    assert resp["target_word_revealed"] == "домик"
+
+
+@pytest.mark.asyncio
+async def test_get_state_returns_history(monkeypatch):
+    async def fake_ensure_words_loaded():
+        return ["домик"]
+
+    monkeypatch.setattr(wordly, "_ensure_words_loaded", fake_ensure_words_loaded)
+    monkeypatch.setattr(wordly.random, "choice", lambda words: "домик")
+
+    wordly._GAMES.clear()
+    start = await wordly.start_game(user_id=42)
+    game_id = start["game_id"]
+
+    await wordly.make_guess(game_id=game_id, raw_guess="книга", user_id=42)
+    await wordly.make_guess(game_id=game_id, raw_guess="домик", user_id=42)
+
+    state = await wordly.get_state(game_id=game_id, user_id=42)
+
+    assert state["game_id"] == game_id
+    assert state["word_length"] == 5
+    assert state["max_attempts"] == 6
+    assert state["status"] in ("in_progress", "won", "lost")
+    assert state["attempts_made"] == 2
+    assert len(state["attempts"]) == 2
+    # каждая попытка содержит guess, feedback и номер попытки
+    for idx, attempt in enumerate(state["attempts"], start=1):
+        assert "guess" in attempt
+        assert "feedback" in attempt
+        assert attempt["attempt"] == idx
+
