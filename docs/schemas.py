@@ -384,6 +384,15 @@ class CategoryListItemSchema(Schema):
         description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
         "Считается как AVG(cashback / 100 * estimated_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
+    rule = fields.Nested(
+        CategoryRuleSchema,
+        required=False,
+        allow_none=True,
+        description=(
+            "Правило отбора категории (rule_id, min_age, max_age, gender, income). "
+            "Может быть null, если для категории ещё не создано правило."
+        ),
+    )
 
 
 class CategoryDetailSchema(Schema):

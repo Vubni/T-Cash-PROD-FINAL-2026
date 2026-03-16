@@ -33,6 +33,7 @@ def row_to_category(item: dict) -> dict:
 
 
 def row_to_category_list_item(item: dict) -> dict:
+    has_rule = item.get("rule_id") is not None
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
@@ -42,6 +43,7 @@ def row_to_category_list_item(item: dict) -> dict:
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
         "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "rule": _rule_from_row(item) if has_rule else None,
     }
 
 
