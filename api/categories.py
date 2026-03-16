@@ -53,7 +53,7 @@ class Admin_categories_list(BaseModel):
     def status_allowed(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return "running"
-        allowed = {"running", "paused", "archived"}
+        allowed = {"running", "paused", "archived", "all"}
         value = v.strip().lower()
         if value not in allowed:
             raise ValueError(f"status must be one of: {', '.join(sorted(allowed))}")
@@ -258,15 +258,23 @@ class Category_rule_create(BaseModel):
             "name": "status",
             "type": "string",
             "required": False,
-            "description": "Статус категорий для вывода: running (запущены), paused (на паузе) или archived (архив). По умолчанию running.",
+            "description": (
+                "Статус категорий для вывода. Возможные значения: "
+                "running — только запущенные, "
+                "paused — на паузе, "
+                "archived — в архиве, "
+                "all — все статусы. По умолчанию running."
+            ),
             "default": "running",
+            "enum": ["running", "paused", "archived", "all"],
         },
     ],
 )
 @validate.validate(Admin_categories_list, require_admin=True)
 async def list_categories(request: web.Request, parsed: Admin_categories_list) -> web.Response:
     try:
-        items, total = await cat_fns.list_categories(parsed.offset, parsed.limit, status=parsed.status)
+        status = None if parsed.status == "all" else parsed.status
+        items, total = await cat_fns.list_categories(parsed.offset, parsed.limit, status=status)
         return web.json_response({"items": items, "total": total}, status=200)
     except Exception:
         logger.exception("list_categories handler failed")

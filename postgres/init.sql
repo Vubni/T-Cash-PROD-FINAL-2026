@@ -87,3 +87,25 @@ CREATE TABLE IF NOT EXISTS category_creation_idempotency_requests (
 INSERT INTO rules (rule_id, min_age, max_age, gender, income)
 VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
 ON CONFLICT (rule_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS wordly_words (
+    id    BIGSERIAL PRIMARY KEY,
+    word  VARCHAR(5) NOT NULL,
+    active BOOLEAN   NOT NULL DEFAULT TRUE,
+    CONSTRAINT wordly_words_word_length_check CHECK (char_length(word) = 5),
+    CONSTRAINT wordly_words_word_key UNIQUE (word)
+);
+
+INSERT INTO wordly_words (word)
+VALUES
+    ('домик'),
+    ('книга'),
+    ('мосты'),
+    ('школа'),
+    ('река '),
+    ('листь'),
+    ('окно '),
+    ('город'),
+    ('мячик'),
+    ('берег')
+ON CONFLICT (word) DO NOTHING;

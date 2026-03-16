@@ -1,6 +1,6 @@
 import os
 
-from logging_setup import logger  # noqa: F401
+from logging_setup import logger
 
 
 DATE_BASE_CONNECT = {
@@ -11,6 +11,8 @@ DATE_BASE_CONNECT = {
 }
 
 SECRET = os.getenv("RANDOM_SECRET", "AJd27GqoS#gvxp@V")
+
+logger.debug("Config loaded")
 
 CALC_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://127.0.0.1:8008")
 
