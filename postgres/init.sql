@@ -33,10 +33,23 @@ CREATE TABLE IF NOT EXISTS selections (
     selection_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         BIGINT      NULL REFERENCES users(user_id),
     category_id     UUID        NOT NULL REFERENCES categories(category_id),
+    cashback        INT         NULL,
+    estimated_spend BIGINT      NULL,
     idempotency_key VARCHAR(128) NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, category_id)
+);
+
+CREATE TABLE IF NOT EXISTS selection_idempotency_requests (
+    user_id         BIGINT       NOT NULL REFERENCES users(user_id),
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_hash    VARCHAR(64)  NOT NULL,
+    response_body   JSONB        NOT NULL,
+    status_code     INT          NOT NULL,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (

@@ -78,6 +78,11 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
         if user_id is None:
             return validate.format_401_error(request, "Токен пользователя отсутствует или не содержит user_id")
 
+        try:
+            idempotency_key = sel_fns.normalize_idempotency_key(request.headers.get("Idempotency-Key"))
+        except ValueError as exc:
+            return validate.format_400_error(request, str(exc))
+
         if not await users_fns.user_exists(user_id):
             return validate.format_404_error(request, message="Пользователь не найден")
 
@@ -95,17 +100,18 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
                 ],
             )
 
-        current = await sel_fns.get_current_category_ids(user_id)
-        items = sel_fns.get_selection_submit_items(user_id, parsed.category_ids)
-        if (
-            current is not None
-            and len(current) == len(parsed.category_ids)
-            and set(current) == set(parsed.category_ids)
-        ):
-            return web.json_response({"category_ids": parsed.category_ids, "items": items}, status=200)
-
-        await sel_fns.save_selection_batch(user_id, parsed.category_ids)
-        return web.json_response({"category_ids": parsed.category_ids, "items": items}, status=200)
+        response_body, status_code = await sel_fns.confirm_selection(
+            user_id,
+            parsed.category_ids,
+            idempotency_key=idempotency_key,
+        )
+        return web.json_response(response_body, status=status_code)
+    except sel_fns.IdempotencyConflictError:
+        return validate.format_409_conflict(
+            request,
+            message="Этот Idempotency-Key уже использован для другого выбора категорий",
+            code="IDEMPOTENCY_CONFLICT",
+        )
     except Exception:
         logger.exception("confirm_selection handler failed")
         return validate.format_500_error(request)

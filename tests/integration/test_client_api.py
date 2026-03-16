@@ -2,6 +2,7 @@ from unittest.mock import patch, AsyncMock
 import json
 
 import core
+from functions import selection as selection_fns
 
 _SELECTION_CATEGORY_IDS = [
     "00000000-0000-0000-0000-000000000001",
@@ -38,13 +39,14 @@ async def test_selection_success(aiohttp_client, app):
     with (
         patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists,
         patch("functions.selection.check_categories_exist", new_callable=AsyncMock) as mock_check,
-        patch("functions.selection.get_current_category_ids", new_callable=AsyncMock) as mock_get_current,
-        patch("functions.selection.save_selection_batch", new_callable=AsyncMock) as mock_save,
+        patch("functions.selection.confirm_selection", new_callable=AsyncMock) as mock_confirm,
     ):
         mock_user_exists.return_value = True
         mock_check.return_value = True
-        mock_get_current.return_value = None
-        mock_save.return_value = []
+        mock_confirm.return_value = (
+            {"user_id": _TEST_USER_ID, "category_ids": _SELECTION_CATEGORY_IDS.copy(), "items": []},
+            200,
+        )
 
         async with aiohttp_client(app) as client:
             resp = await client.request(
@@ -56,6 +58,83 @@ async def test_selection_success(aiohttp_client, app):
             assert resp.status == 200
             data = await resp.json()
             assert "category_ids" in data
+            assert data["user_id"] == _TEST_USER_ID
+
+
+async def test_selection_success_with_idempotency_key(aiohttp_client, app):
+    """Тест: заголовок Idempotency-Key пробрасывается в бизнес-логику."""
+    selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
+    key = "selection-key-1"
+
+    with (
+        patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists,
+        patch("functions.selection.check_categories_exist", new_callable=AsyncMock) as mock_check,
+        patch("functions.selection.confirm_selection", new_callable=AsyncMock) as mock_confirm,
+    ):
+        mock_user_exists.return_value = True
+        mock_check.return_value = True
+        mock_confirm.return_value = (
+            {"user_id": _TEST_USER_ID, "category_ids": _SELECTION_CATEGORY_IDS.copy(), "items": []},
+            200,
+        )
+
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/client/selection",
+                headers={**_auth_headers(), "Idempotency-Key": key},
+                data=json.dumps(selection_data),
+            )
+            assert resp.status == 200
+            mock_confirm.assert_awaited_once_with(
+                _TEST_USER_ID,
+                _SELECTION_CATEGORY_IDS.copy(),
+                idempotency_key=key,
+            )
+
+
+async def test_selection_idempotency_conflict(aiohttp_client, app):
+    """Тест: тот же Idempotency-Key с другим payload даёт 409."""
+    selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
+
+    with (
+        patch("functions.users.user_exists", new_callable=AsyncMock) as mock_user_exists,
+        patch("functions.selection.check_categories_exist", new_callable=AsyncMock) as mock_check,
+        patch(
+            "functions.selection.confirm_selection",
+            new_callable=AsyncMock,
+            side_effect=selection_fns.IdempotencyConflictError(),
+        ),
+    ):
+        mock_user_exists.return_value = True
+        mock_check.return_value = True
+
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/client/selection",
+                headers={**_auth_headers(), "Idempotency-Key": "selection-key-1"},
+                data=json.dumps(selection_data),
+            )
+            assert resp.status == 409
+            data = await resp.json()
+            assert data["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+async def test_selection_invalid_idempotency_key(aiohttp_client, app):
+    """Тест: пустой Idempotency-Key отклоняется как bad request."""
+    selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}
+
+    async with aiohttp_client(app) as client:
+        resp = await client.request(
+            "POST",
+            "/api/v1/client/selection",
+            headers={**_auth_headers(), "Idempotency-Key": "   "},
+            data=json.dumps(selection_data),
+        )
+        assert resp.status == 400
+        data = await resp.json()
+        assert data["code"] == "BAD_REQUEST"
 
 
 async def test_selection_user_not_found(aiohttp_client, app):

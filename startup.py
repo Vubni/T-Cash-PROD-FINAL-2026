@@ -6,6 +6,9 @@ from database.functions import (
     init_db,
     ensure_users_from_csv,
     ensure_selections_user_id_column,
+    ensure_selections_idempotency_key_column,
+    ensure_selections_amount_columns,
+    ensure_selection_idempotency_requests_table,
     ensure_categories_from_csv,
     ensure_categories_status_column,
     ensure_categories_icon_column,
@@ -23,5 +26,8 @@ async def run_startup() -> None:
     await ensure_users_from_csv()
     await ensure_categories_from_csv()
     await ensure_selections_user_id_column()
+    await ensure_selections_idempotency_key_column()
+    await ensure_selections_amount_columns()
+    await ensure_selection_idempotency_requests_table()
     await ensure_categories_status_column()
     await ensure_categories_icon_column()

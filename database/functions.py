@@ -35,6 +35,93 @@ async def ensure_selections_user_id_column() -> None:
         logger.warning("Колонка selections.user_id: %s", e)
 
 
+async def ensure_selections_idempotency_key_column() -> None:
+    """Добавляет колонку idempotency_key в selections, если её нет."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(128) NULL",
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонка selections.idempotency_key: %s", e)
+
+
+async def ensure_selections_amount_columns() -> None:
+    """Добавляет колонки cashback и estimated_spend в selections, если их нет."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS cashback INT NULL",
+                (),
+            )
+            await db.execute(
+                "ALTER TABLE selections ADD COLUMN IF NOT EXISTS estimated_spend BIGINT NULL",
+                (),
+            )
+    except Exception as e:
+        logger.warning("Колонки selections.cashback/estimated_spend: %s", e)
+
+
+async def ensure_selection_idempotency_requests_table() -> None:
+    """Создаёт таблицу хранения ответов для идемпотентных подтверждений выбора."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS selection_idempotency_requests (
+                    user_id BIGINT NOT NULL REFERENCES users(user_id),
+                    idempotency_key VARCHAR(128) NOT NULL,
+                    request_hash VARCHAR(64) NOT NULL,
+                    response_body JSONB NOT NULL,
+                    status_code INT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, idempotency_key)
+                )
+                """,
+                (),
+            )
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NOT NULL DEFAULT ''
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS response_body JSONB NOT NULL DEFAULT '{}'::jsonb
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS status_code INT NOT NULL DEFAULT 200
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE selection_idempotency_requests
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Таблица selection_idempotency_requests: %s", e)
+
+
 async def ensure_categories_status_column() -> None:
     """Добавляет колонку status в categories, если её нет (совместимость со старыми БД)."""
     try:

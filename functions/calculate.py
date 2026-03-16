@@ -32,6 +32,8 @@ async def get_calculate_items(user_id: int) -> dict:
             SELECT
                 s.selection_id,
                 s.category_id,
+                s.cashback,
+                s.estimated_spend,
                 c.name,
                 c.subtitle,
                 c.icon_path,
@@ -51,8 +53,8 @@ async def get_calculate_items(user_id: int) -> dict:
             [
                 {
                     "category_id": r["category_id"],
-                    "cashback": r.get("rate_min"),
-                    "estimated_spend": None,
+                    "cashback": r.get("cashback") if r.get("cashback") is not None else r.get("rate_min"),
+                    "estimated_spend": r.get("estimated_spend"),
                     "name": r["name"],
                     "subtitle": r.get("subtitle"),
                 }
