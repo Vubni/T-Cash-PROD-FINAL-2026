@@ -47,6 +47,7 @@ test:
     expire_in: 1 week
   only:
     - master
+    - experiment
 
 deploy_prod:
   stage: deploy
