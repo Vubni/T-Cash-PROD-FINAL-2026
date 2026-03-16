@@ -19,6 +19,11 @@ def _admin_actor(request: web.Request) -> str:
     return f"admin:{payload.get('admin_id', '')}"
 
 
+def _admin_id(request: web.Request) -> int:
+    payload = request.get("admin_payload") or {}
+    return int(payload.get("admin_id"))
+
+
 LIMIT_MAX = 500
 STRING_FIELD_MAX_LENGTH = 500
 
@@ -72,11 +77,12 @@ class Admin_category_create(BaseModel):
     @field_validator("name", "subtitle")
     @classmethod
     def check_non_empty_strings(cls, v: str) -> str:
-        if not v or not v.strip():
+        value = v.strip()
+        if not value:
             raise ValueError("Field cannot be empty")
-        if len(v) > STRING_FIELD_MAX_LENGTH:
+        if len(value) > STRING_FIELD_MAX_LENGTH:
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
-        return v
+        return value
 
     @field_validator("rate_min", "rate_max")
     @classmethod
@@ -282,17 +288,24 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @validate.validate(Admin_category_create, require_admin=True)
 async def create_category(request: web.Request, parsed: Admin_category_create) -> web.Response:
     try:
-        response = await cat_fns.create_category(
+        try:
+            idempotency_key = cat_fns.normalize_idempotency_key(request.headers.get("Idempotency-Key"))
+        except ValueError as exc:
+            return validate.format_400_error(request, str(exc))
+
+        response, created_now = await cat_fns.create_category(
+            admin_id=_admin_id(request),
             name=parsed.name,
             subtitle=parsed.subtitle,
             budget_amount=int(parsed.budget_amount),
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
+            idempotency_key=idempotency_key,
         )
         if response is None:
             return validate.format_500_error(request)
         entity_id = response.get("id") or response.get("category_id")
-        if entity_id:
+        if entity_id and created_now:
             await audit_fns.write_audit(
                 "category",
                 str(entity_id),
@@ -301,6 +314,14 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
                 details={"name": parsed.name},
             )
         return web.json_response(response, status=201)
+    except cat_fns.DuplicateCategoryNameError as exc:
+        return validate.format_409_conflict(request, str(exc), code="CATEGORY_NAME_ALREADY_EXISTS")
+    except cat_fns.CategoryIdempotencyConflictError:
+        return validate.format_409_conflict(
+            request,
+            "Этот Idempotency-Key уже использован для другого запроса на создание категории",
+            code="IDEMPOTENCY_CONFLICT",
+        )
     except Exception:
         logger.exception("create_category handler failed")
         return validate.format_500_error(request)
@@ -701,7 +722,9 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
         )
         return web.json_response(response, status=200)
     except ValueError as e:
-        return validate.format_409_error(request, message=str(e))
+        return validate.format_409_conflict(request, str(e))
+    except cat_fns.DuplicateCategoryNameError as exc:
+        return validate.format_409_conflict(request, str(exc), code="CATEGORY_NAME_ALREADY_EXISTS")
     except Exception:
         logger.exception("update_category handler failed")
         return validate.format_500_error(request)

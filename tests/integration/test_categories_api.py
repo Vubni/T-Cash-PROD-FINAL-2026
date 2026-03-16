@@ -1,6 +1,8 @@
 from unittest.mock import patch, AsyncMock
 import json
 
+from functions import categories as cat_fns
+
 CAT_ID = "11111111-1111-1111-1111-111111111111"
 NOT_FOUND_CAT_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -83,7 +85,7 @@ async def test_create_category_success(aiohttp_client, app):
     }
 
     with patch("functions.categories.create_category", new_callable=AsyncMock) as mock_create:
-        mock_create.return_value = {"id": "cat123", "name": "Test Category"}
+        mock_create.return_value = ({"id": "cat123", "name": "Test Category"}, True)
 
         async with aiohttp_client(app) as client:
             resp = await client.request(
@@ -95,6 +97,60 @@ async def test_create_category_success(aiohttp_client, app):
             assert resp.status == 201
             data = await resp.json()
             assert data["id"] == "cat123"
+
+
+async def test_create_category_duplicate_name_conflict(aiohttp_client, app):
+    category_data = {
+        "name": "Test Category",
+        "subtitle": "Test subtitle",
+        "budget_amount": 100000,
+        "rate_min": 0,
+        "rate_max": 100,
+    }
+
+    with patch("functions.categories.create_category", new_callable=AsyncMock) as mock_create:
+        mock_create.side_effect = cat_fns.DuplicateCategoryNameError("Категория с таким названием уже существует")
+
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/admin/categories",
+                headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
+                data=json.dumps(category_data),
+            )
+
+        assert resp.status == 409
+        data = await resp.json()
+        assert data["code"] == "CATEGORY_NAME_ALREADY_EXISTS"
+
+
+async def test_create_category_idempotency_conflict(aiohttp_client, app):
+    category_data = {
+        "name": "Test Category",
+        "subtitle": "Test subtitle",
+        "budget_amount": 100000,
+        "rate_min": 0,
+        "rate_max": 100,
+    }
+
+    with patch("functions.categories.create_category", new_callable=AsyncMock) as mock_create:
+        mock_create.side_effect = cat_fns.CategoryIdempotencyConflictError()
+
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "POST",
+                "/api/v1/admin/categories",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer admin_token",
+                    "Idempotency-Key": "same-key",
+                },
+                data=json.dumps(category_data),
+            )
+
+        assert resp.status == 409
+        data = await resp.json()
+        assert data["code"] == "IDEMPOTENCY_CONFLICT"
 
 
 async def test_create_category_missing_fields(aiohttp_client, app):

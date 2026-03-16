@@ -1,4 +1,8 @@
+import hashlib
+import json
 import os
+
+from asyncpg import UniqueViolationError
 
 from database.database import Database
 
@@ -78,6 +82,45 @@ _CATEGORY_SELECT_FIELDS = """
 """
 _CATEGORY_FROM_JOIN = "FROM categories c LEFT JOIN rules r ON r.rule_id = c.rule_id"
 
+IDEMPOTENCY_KEY_MAX_LENGTH = 128
+
+
+class DuplicateCategoryNameError(Exception):
+    """Категория с таким названием уже существует."""
+
+
+class CategoryIdempotencyConflictError(Exception):
+    """Один и тот же Idempotency-Key использован с другим payload."""
+
+
+def normalize_idempotency_key(idempotency_key: str | None) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized = str(idempotency_key).strip()
+    if not normalized:
+        raise ValueError("Idempotency-Key не может быть пустым")
+    if len(normalized) > IDEMPOTENCY_KEY_MAX_LENGTH:
+        raise ValueError(f"Idempotency-Key не должен быть длиннее {IDEMPOTENCY_KEY_MAX_LENGTH} символов")
+    return normalized
+
+
+def _build_create_category_request_hash(
+    name: str,
+    subtitle: str,
+    budget_amount: int,
+    rate_min: int,
+    rate_max: int,
+) -> str:
+    payload = {
+        "name": name,
+        "subtitle": subtitle,
+        "budget_amount": budget_amount,
+        "rate_min": rate_min,
+        "rate_max": rate_max,
+    }
+    canonical_payload = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest()
+
 
 async def list_categories(offset: int, limit: int, status: str | None = None) -> tuple[list[dict], int]:
     async with Database() as db:
@@ -111,13 +154,32 @@ async def list_categories(offset: int, limit: int, status: str | None = None) ->
 
 
 async def create_category(
+    admin_id: int,
     name: str,
     subtitle: str,
     budget_amount: int,
     rate_min: int,
     rate_max: int,
-) -> dict | None:
+    idempotency_key: str | None = None,
+) -> tuple[dict | None, bool]:
+    request_hash = _build_create_category_request_hash(name, subtitle, budget_amount, rate_min, rate_max)
+
     async with Database() as db:
+        if idempotency_key is not None:
+            await db.execute("SELECT pg_advisory_xact_lock($1::bigint)", (admin_id,))
+            existing_request = await db.execute(
+                """
+                SELECT request_hash, response_body
+                FROM category_creation_idempotency_requests
+                WHERE admin_id = $1 AND idempotency_key = $2
+                """,
+                (admin_id, idempotency_key),
+            )
+            if existing_request is not None:
+                if existing_request["request_hash"] != request_hash:
+                    raise CategoryIdempotencyConflictError
+                return existing_request["response_body"], False
+
         sql = """
             INSERT INTO categories (
                 name, subtitle,
@@ -126,11 +188,36 @@ async def create_category(
             VALUES ($1, $2, $3, $4, $5)
             RETURNING category_id
         """
-        category_id = await db.fetchval(
-            sql,
-            (name, subtitle, budget_amount, rate_min, rate_max),
-        )
-        return await _get_category(db, category_id)
+        try:
+            category_id = await db.fetchval(
+                sql,
+                (name, subtitle, budget_amount, rate_min, rate_max),
+            )
+        except UniqueViolationError as exc:
+            raise DuplicateCategoryNameError("Категория с таким названием уже существует") from exc
+
+        if category_id is None:
+            return None, False
+
+        response = await _get_category(db, category_id)
+        if response is None:
+            return None, False
+
+        if idempotency_key is not None:
+            await db.execute(
+                """
+                INSERT INTO category_creation_idempotency_requests (
+                    admin_id,
+                    idempotency_key,
+                    request_hash,
+                    response_body,
+                    status_code
+                )
+                VALUES ($1, $2, $3, $4::jsonb, $5)
+                """,
+                (admin_id, idempotency_key, request_hash, json.dumps(response, ensure_ascii=False), 201),
+            )
+        return response, True
 
 
 async def get_category(category_id: str) -> dict | None:
@@ -190,7 +277,10 @@ async def update_category(
         fields.append("updated_at = NOW()")
         params.append(category_id)
         sql_update = f"UPDATE categories SET {', '.join(fields)} WHERE category_id = ${len(params)}"
-        await db.execute(sql_update, tuple(params))
+        try:
+            await db.execute(sql_update, tuple(params))
+        except UniqueViolationError as exc:
+            raise DuplicateCategoryNameError("Категория с таким названием уже существует") from exc
         return await _get_category(db, category_id)
 
 

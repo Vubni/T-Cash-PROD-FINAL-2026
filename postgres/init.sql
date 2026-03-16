@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS categories_name_normalized_uniq
+    ON categories (lower(btrim(name)));
+
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     age INT NOT NULL CHECK (age >= 0 AND age <= 100),
@@ -68,6 +71,17 @@ CREATE TABLE IF NOT EXISTS admin_users (
     login      VARCHAR(255) NOT NULL UNIQUE CHECK (char_length(login) >= 1 AND char_length(login) <= 255),
     password   VARCHAR(255) NOT NULL CHECK (char_length(password) >= 1),
     approved   BOOLEAN   NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS category_creation_idempotency_requests (
+    admin_id         INT          NOT NULL REFERENCES admin_users(admin_id),
+    idempotency_key  VARCHAR(128) NOT NULL,
+    request_hash     VARCHAR(64)  NOT NULL,
+    response_body    JSONB        NOT NULL,
+    status_code      INT          NOT NULL,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (admin_id, idempotency_key)
 );
 
 INSERT INTO rules (rule_id, min_age, max_age, gender, income)

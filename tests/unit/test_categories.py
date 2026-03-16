@@ -4,6 +4,7 @@
 
 import pytest
 from unittest.mock import patch, AsyncMock
+from asyncpg import UniqueViolationError
 from functions import categories as categories_fns
 
 
@@ -86,14 +87,63 @@ class TestCreateCategory:
             MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
 
             result = await categories_fns.create_category(
+                admin_id=1,
                 name="Test Category",
                 subtitle="Test subtitle",
                 budget_amount=100000,
                 rate_min=0,
                 rate_max=100,
             )
-            assert result is not None
-            assert result.get("id") == "cat123"
+            category, created_now = result
+            assert category is not None
+            assert created_now is True
+            assert category.get("id") == "cat123"
+
+    @pytest.mark.asyncio
+    async def test_create_category_idempotent_replay_returns_saved_response(self):
+        saved_response = {"id": "cat123", "name": "Test Category"}
+        with patch("functions.categories.Database") as MockDB:
+            mock_conn = AsyncMock()
+            mock_conn.execute = AsyncMock(
+                side_effect=[
+                    {},
+                    {"request_hash": categories_fns._build_create_category_request_hash("Test Category", "Test subtitle", 100000, 0, 100), "response_body": saved_response},
+                ]
+            )
+            MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+            MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            category, created_now = await categories_fns.create_category(
+                admin_id=1,
+                name="Test Category",
+                subtitle="Test subtitle",
+                budget_amount=100000,
+                rate_min=0,
+                rate_max=100,
+                idempotency_key="same-key",
+            )
+
+            assert category == saved_response
+            assert created_now is False
+            assert mock_conn.fetchval.await_count == 0
+
+    @pytest.mark.asyncio
+    async def test_create_category_duplicate_name_raises_domain_error(self):
+        with patch("functions.categories.Database") as MockDB:
+            mock_conn = AsyncMock()
+            mock_conn.fetchval = AsyncMock(side_effect=UniqueViolationError("duplicate key"))
+            MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+            MockDB.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            with pytest.raises(categories_fns.DuplicateCategoryNameError):
+                await categories_fns.create_category(
+                    admin_id=1,
+                    name="Test Category",
+                    subtitle="Test subtitle",
+                    budget_amount=100000,
+                    rate_min=0,
+                    rate_max=100,
+                )
 
 
 class TestGetCategory:

@@ -12,6 +12,8 @@ from database.functions import (
     ensure_categories_from_csv,
     ensure_categories_status_column,
     ensure_categories_icon_column,
+    ensure_categories_unique_name_constraint,
+    ensure_category_creation_idempotency_requests_table,
 )
 from functions import admin_users as admin_users_fns
 
@@ -31,3 +33,5 @@ async def run_startup() -> None:
     await ensure_selection_idempotency_requests_table()
     await ensure_categories_status_column()
     await ensure_categories_icon_column()
+    await ensure_categories_unique_name_constraint()
+    await ensure_category_creation_idempotency_requests_table()

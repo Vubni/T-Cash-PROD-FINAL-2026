@@ -154,6 +154,80 @@ async def ensure_categories_icon_column() -> None:
         logger.warning("Колонка categories.icon_path: %s", e)
 
 
+async def ensure_categories_unique_name_constraint() -> None:
+    """Гарантирует уникальность названий категорий без учёта регистра и пробелов по краям."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS categories_name_normalized_uniq
+                ON categories (lower(btrim(name)))
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Уникальность categories.name: %s", e)
+
+
+async def ensure_category_creation_idempotency_requests_table() -> None:
+    """Создаёт таблицу хранения идемпотентных ответов для создания категорий."""
+    try:
+        async with Database() as db:
+            await db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS category_creation_idempotency_requests (
+                    admin_id INT NOT NULL REFERENCES admin_users(admin_id),
+                    idempotency_key VARCHAR(128) NOT NULL,
+                    request_hash VARCHAR(64) NOT NULL,
+                    response_body JSONB NOT NULL,
+                    status_code INT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (admin_id, idempotency_key)
+                )
+                """,
+                (),
+            )
+        async with Database() as db:
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NOT NULL DEFAULT ''
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS response_body JSONB NOT NULL DEFAULT '{}'::jsonb
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS status_code INT NOT NULL DEFAULT 201
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                ALTER TABLE category_creation_idempotency_requests
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                """,
+                (),
+            )
+    except Exception as e:
+        logger.warning("Таблица category_creation_idempotency_requests: %s", e)
+
+
 _BIGINT_MIN = -(2**63)
 _BIGINT_MAX = 2**63 - 1
 
