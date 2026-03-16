@@ -176,6 +176,21 @@ async def make_guess(game_id: str, raw_guess: str, user_id: int) -> dict:
         game.status = "won"
     elif len(game.attempts) >= game.max_attempts:
         game.status = "lost"
+    if game.status in ("won", "lost"):
+        winners_flag = game.status == "won"
+        try:
+            async with Database() as db:
+                await db.execute(
+                    """
+                    INSERT INTO user_winners (user_id, winners)
+                    VALUES ($1, $2)
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET winners = EXCLUDED.winners
+                    """,
+                    (user_id, winners_flag),
+                )
+        except Exception:
+            pass
 
     return {
         "game_id": game.game_id,

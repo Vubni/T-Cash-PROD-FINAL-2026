@@ -109,3 +109,11 @@ VALUES
     ('мячик'),
     ('берег')
 ON CONFLICT (word) DO NOTHING;
+
+
+CREATE TABLE IF NOT EXISTS user_winners(
+    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    winners BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id)
+);
