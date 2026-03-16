@@ -378,7 +378,7 @@ class CategoryListItemSchema(Schema):
         validate=validate.OneOf(["running", "paused", "archived"]),
         description="Статус категории в системе: running - активна и участвует в расчёте; paused - временно выключена; archived - в архиве (скрыта для клиентов). Обязательное поле.",
     )
-    avg_cashback_percent = fields.Float(
+    avg_cashback_amount = fields.Float(
         required=False,
         allow_none=True,
         description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
@@ -417,7 +417,7 @@ class CategoryDetailSchema(Schema):
         validate=validate.OneOf(["running", "paused", "archived"]),
         description="Текущий статус категории: running - запущена, paused - на паузе, archived - в архиве (аналог мягкого удаления). Обязательное поле.",
     )
-    avg_cashback_percent = fields.Float(
+    avg_cashback_amount = fields.Float(
         required=False,
         allow_none=True,
         description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "

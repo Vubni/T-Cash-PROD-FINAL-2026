@@ -193,7 +193,7 @@ GENDER_ALLOWED = ("male", "female", "other")
 
 
 class Category_rule_create(BaseModel):
-    """Тело запроса создания правила и привязки к категории. category_id приходит из пути."""
+    """Создание правила и привязка его к категории."""
 
     model_config = {"extra": "forbid"}
 
@@ -243,7 +243,7 @@ class Category_rule_create(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Список категорий кэшбэка",
-    description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок. Требуется JWT админа.",
+    description="Возвращает список категорий с бюджетом и диапазонами ставок для админки.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Список категорий получен", "schema": sh.CategoryListResponseSchema},
@@ -298,9 +298,9 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
     description=(
-        "Создаёт новую категорию с бюджетом и диапазоном кэшбэка (rate_min, rate_max в %). "
-        "Правило (rule_id) привязывается отдельно. Требуется JWT админа. "
-        "**Обязательные** поля: name, subtitle, budget_amount, rate_min, rate_max."
+        "Создаёт категорию с бюджетом и диапазоном кэшбэка (rate_min, rate_max в %). "
+        "Правило (rule_id) настраивается отдельно. "
+        "Обязательные поля: name, subtitle, budget_amount, rate_min, rate_max."
     ),
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
@@ -355,7 +355,7 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
 @docs(
     tags=["Admin"],
     summary="Получить категорию кэшбэка",
-    description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений. Требуется JWT админа.",
+    description="Возвращает полную информацию по категории: метаданные, бюджет, диапазон ставок и правило.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория получена", "schema": sh.CategoryDetailSchema},
@@ -384,7 +384,7 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 
 
 class Category_rule_update(BaseModel):
-    """Path: category_id. Body: опциональные поля правила."""
+    """Частичное обновление полей правила категории."""
 
     model_config = {"extra": "forbid"}
 
@@ -426,7 +426,7 @@ class Category_rule_update(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Создать правило и привязать к категории",
-    description="Создаёт правило отбора (возраст мин/макс, пол, заработок) и привязывает его к указанной категории. Требуется JWT админа. Категория должна существовать. Все поля тела **опциональны** (rule_id при отсутствии сгенерируется; min_age, max_age, gender, income можно не передавать).",
+    description="Создаёт правило отбора (возраст, пол, доход) и привязывает его к категории.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Правило создано и привязано к категории", "schema": sh.RuleDetailSchema},
@@ -484,7 +484,7 @@ async def create_category_rule(request: web.Request, parsed: Category_rule_creat
 @docs(
     tags=["Admin"],
     summary="Изменить правило категории",
-    description="Частично обновляет правило отбора, привязанное к категории. Требуется JWT админа. Все поля тела опциональны.",
+    description="Частично обновляет параметры правила отбора, привязанного к категории.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Правило обновлено", "schema": sh.RuleDetailSchema},
@@ -542,7 +542,7 @@ async def update_category_rule(request: web.Request, parsed: Category_rule_updat
 @docs(
     tags=["Admin"],
     summary="Удалить правило категории",
-    description="Отвязывает и удаляет правило отбора у категории. Требуется JWT админа. 404, если у категории нет правила.",
+    description="Отвязывает и удаляет правило отбора у категории.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         204: {"description": "Правило удалено"},
@@ -587,7 +587,7 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Можно менять название, подзаголовок, URL иконки, бюджет, диапазон кэшбэка (rate_min, rate_max) и status. Правила через POST/PATCH/DELETE .../categories/{id}/rule. Требуется JWT админа. Все поля **опциональны**.",
+    description="Частично обновляет категорию (название, подзаголовок, иконка, бюджет, кэшбэк, статус).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -704,7 +704,7 @@ async def _change_category_status(
 @docs(
     tags=["Admin"],
     summary="Запустить категорию кэшбэка",
-    description="Переводит категорию в статус running (запущена) и включает её в расчёты и выдачу клиенту. Требуется JWT админа.",
+    description="Переводит категорию в статус running и включает её в расчёты.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Статус категории изменён на running", "schema": sh.CategoryDetailSchema},
@@ -728,7 +728,7 @@ async def run_category(request: web.Request, parsed: Category_status_path) -> we
 @docs(
     tags=["Admin"],
     summary="Поставить категорию на паузу",
-    description="Переводит категорию в статус paused категория скрывается из клиентских расчётов, но остаётся в системе. Требуется JWT админа.",
+    description="Переводит категорию в статус paused и исключает её из клиентских расчётов.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Статус категории изменён на paused", "schema": sh.CategoryDetailSchema},
@@ -752,7 +752,7 @@ async def pause_category(request: web.Request, parsed: Category_status_path) -> 
 @docs(
     tags=["Admin"],
     summary="Отправить категорию в архив",
-    description="Переводит категорию в статус archived мягкое удаление. Категория не участвует в расчётах и не отображается клиенту, но остаётся в админке. Требуется JWT админа.",
+    description="Переводит категорию в статус archived (мягкое удаление без полного удаления из БД).",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Статус категории изменён на archived", "schema": sh.CategoryDetailSchema},

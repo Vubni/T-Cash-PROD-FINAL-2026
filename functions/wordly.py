@@ -30,26 +30,27 @@ class GameState:
 _GAMES: Dict[str, GameState] = {}
 _WORDS: Optional[List[str]] = None
 
+_ALLOWED_RUSSIAN_LETTERS = set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
+_FALLBACK_WORDS = [
+    "домик",
+    "книга",
+    "мосты",
+    "школа",
+    "ветер",
+    "листы",
+    "город",
+    "берег",
+    "лимон",
+    "мячик",
+]
+
+
+def _is_valid_word(word: str) -> bool:
+    return len(word) == 5 and all(ch in _ALLOWED_RUSSIAN_LETTERS for ch in word)
+
 
 async def _load_words() -> List[str]:
-    """
-    Загружает список допустимых слов из таблицы wordly_words.
-    Если таблица или БД недоступны, используется файл static/wordly_words_ru.txt,
-    а затем встроенный fallback список. Все слова приводятся к нижнему регистру
-    и фильтруются по длине 5 символов.
-    """
-    fallback = [
-        "домик",
-        "книга",
-        "мосты",
-        "школа",
-        "рекад",
-        "листы",
-        "окноо",
-        "город",
-        "берег",
-    ]
-
+    """Загружает список допустимых слов из БД или fallback-источников."""
     words: List[str] = []
 
     try:
@@ -73,11 +74,11 @@ async def _load_words() -> List[str]:
             words = []
 
     if not words:
-        words = fallback
+        words = _FALLBACK_WORDS
 
-    filtered = [w for w in words if len(w) == 5]
+    filtered = list(dict.fromkeys(w for w in words if _is_valid_word(w)))
     if not filtered:
-        filtered = [w for w in fallback if len(w) == 5]
+        filtered = [w for w in _FALLBACK_WORDS if _is_valid_word(w)]
     return filtered
 
 
@@ -104,8 +105,7 @@ def _normalize_word(word: str) -> str:
     value = word.strip().lower()
     if not value:
         raise InvalidGuessError("guess cannot be empty")
-    allowed = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
-    if any(ch not in allowed for ch in value):
+    if any(ch not in _ALLOWED_RUSSIAN_LETTERS for ch in value):
         raise InvalidGuessError("guess must contain only russian letters а-я")
     return value
 
@@ -157,7 +157,7 @@ def _build_feedback(target: str, guess: str) -> List[Dict[str, ResultType]]:
 
 
 async def make_guess(game_id: str, raw_guess: str, user_id: int) -> dict:
-    """Обрабатывает попытку и возвращает ответ для клиента."""
+    """Обрабатывает попытку угадывания слова."""
     game = _check_game_exists(game_id)
     if game.user_id != user_id:
         raise GameNotFoundError("game not found")
@@ -206,7 +206,7 @@ async def make_guess(game_id: str, raw_guess: str, user_id: int) -> dict:
 
 
 async def get_state(game_id: str, user_id: int) -> dict:
-    """Возвращает текущее состояние игры по game_id."""
+    """Возвращает текущее состояние игры."""
     game = _check_game_exists(game_id)
     if game.user_id != user_id:
         raise GameNotFoundError("game not found")
@@ -229,12 +229,7 @@ async def get_state(game_id: str, user_id: int) -> dict:
 
 
 async def get_user_status(user_id: int) -> dict:
-    """
-    Возвращает агрегированный статус пользователя по игре T-Word:
-    - played: есть ли запись в user_winners (то есть пользователь завершал хотя бы одну игру);
-    - winners: значение флага winners из таблицы (выигрывал ли он хотя бы раз).
-    При отсутствии таблицы или записи возвращаем played = False, winners = False.
-    """
+    """Возвращает агрегированный статус пользователя по игре T-Word (played, winners)."""
     try:
         async with Database() as db:
             row = await db.execute(
@@ -258,4 +253,3 @@ async def get_user_status(user_id: int) -> dict:
         "played": True,
         "winners": bool(row.get("winners")),
     }
-

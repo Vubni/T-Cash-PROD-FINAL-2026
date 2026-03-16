@@ -23,6 +23,22 @@ async def test_load_words_from_db_filters_length_and_lowercase(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_load_words_filters_non_russian_and_duplicates(monkeypatch):
+    async_mock = AsyncMock()
+    async_mock.__aenter__.return_value.execute_all.return_value = [
+        {"word": "Домик"},
+        {"word": "домик"},
+        {"word": "abcde"},
+        {"word": "дом1к"},
+    ]
+
+    with patch("functions.wordly.Database", return_value=async_mock):
+        words = await wordly._load_words()
+
+    assert words == ["домик"]
+
+
+@pytest.mark.asyncio
 async def test_load_words_from_file_when_db_fails(tmp_path, monkeypatch):
     # Смоделировать падение БД
     async_mock = AsyncMock()
@@ -197,4 +213,3 @@ async def test_get_state_returns_history(monkeypatch):
         assert "guess" in attempt
         assert "feedback" in attempt
         assert attempt["attempt"] == idx
-

@@ -54,7 +54,7 @@ class Wordly_status(BaseModel):
 @docs(
     tags=["T-Word"],
     summary="Начать новую игру T-Word",
-    description="Создаёт новую игру наподобие Wordle и возвращает идентификатор игры, длину слова и количество попыток.",
+    description="Создаёт новую игру и возвращает идентификатор, длину слова и количество попыток.",
     security=validate.SECURITY_USER_BEARER,
     responses={
         200: {"description": "Игра создана", "schema": sh.WordlyStartResponseSchema},
@@ -82,8 +82,9 @@ async def start_game(request: web.Request, _: Wordly_start) -> web.Response:
     tags=["T-Word"],
     summary="Сделать попытку в игре T-Word",
     description=(
-        "Принимает угадываемое слово и возвращает результат по каждой букве: correct (на своём месте), "
-        "present (есть в слове, но в другой позиции), absent (буквы нет в слове)."
+        "Принимает угадываемое слово и возвращает результат по каждой букве: "
+        "correct (буква на своём месте), present (есть в слове, но в другой позиции), "
+        "absent (буквы нет в слове)."
     ),
     security=validate.SECURITY_USER_BEARER,
     responses={
@@ -120,7 +121,7 @@ async def make_guess(request: web.Request, parsed: Wordly_guess) -> web.Response
 @docs(
     tags=["T-Word"],
     summary="Получить текущее состояние игры T-Word",
-    description="Возвращает статус игры, количество сделанных попыток и историю попыток.",
+    description="Возвращает статус игры, число попыток и историю ходов.",
     security=validate.SECURITY_USER_BEARER,
     responses={
         200: {"description": "Состояние игры", "schema": sh.WordlyStateResponseSchema},
@@ -160,8 +161,7 @@ async def get_state(request: web.Request, parsed: Wordly_state) -> web.Response:
     tags=["T-Word"],
     summary="Получить статус участия пользователя в игре T-Word",
     description=(
-        "Возвращает, играл ли пользователь хотя бы одну игру T-Word и выигрывал ли он когда-либо. "
-        "Данные берутся из агрегирующей таблицы user_winners."
+        "Возвращает, играл ли пользователь в T-Word и выигрывал ли он когда-либо (по данным user_winners)."
     ),
     security=validate.SECURITY_USER_BEARER,
     responses={

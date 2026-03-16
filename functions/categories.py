@@ -26,7 +26,7 @@ def row_to_category(item: dict) -> dict:
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
-        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "avg_cashback_amount": float(item["avg_cashback_amount"]) if item.get("avg_cashback_amount") is not None else None,
         "rule": _rule_from_row(item) if has_rule else None,
         "history": [],
     }
@@ -42,7 +42,7 @@ def row_to_category_list_item(item: dict) -> dict:
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
-        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "avg_cashback_amount": float(item["avg_cashback_amount"]) if item.get("avg_cashback_amount") is not None else None,
         "rule": _rule_from_row(item) if has_rule else None,
     }
 
@@ -61,7 +61,7 @@ _CATEGORY_SELECT_FIELDS = """
     r.max_age,
     r.gender,
     r.income,
-    stats.avg_cashback_percent
+    stats.avg_cashback_amount
 """
 _CATEGORY_FROM_JOIN = """
 FROM categories c
@@ -70,7 +70,7 @@ LEFT JOIN LATERAL (
     SELECT
         AVG(
             (s.cashback::numeric / 100.0) * s.estimated_spend
-        ) AS avg_cashback_percent
+        ) AS avg_cashback_amount
     FROM selections s
     WHERE
         s.category_id = c.category_id
