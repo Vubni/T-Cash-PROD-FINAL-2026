@@ -81,12 +81,12 @@ docker compose down
 ### API обзор
 
 Админские эндпоинты:
-- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}; правило отбора — `GET` / `POST` / `PATCH` / `DELETE` .../categories/{category_id}/rule.
-- **audit**: `GET /api/v1/admin/audit` — журнал аудита.
+- **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}; правило отбора - `GET` / `POST` / `PATCH` / `DELETE` .../categories/{category_id}/rule.
+- **audit**: `GET /api/v1/admin/audit` - журнал аудита.
 
 Клиентские эндпоинты:
-- **offers/run**: `POST /api/v1/offers/run` — запуск офферов (расчёт списка категорий для клиента).
-- **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} — получение и подтверждение выбора (`Idempotency-Key`).
+- **offers/run**: `POST /api/v1/offers/run` - запуск офферов (расчёт списка категорий для клиента).
+- **selection**: `GET` / `POST` /api/v1/client/selection/{selection_id} - получение и подтверждение выбора (`Idempotency-Key`).
 
 Все схемы запросов/ответов описаны через `docs/schemas.py` и видны в Swagger.
 
@@ -95,7 +95,7 @@ docker compose down
 ### Архитектура
 
 **Слой HTTP / API**
-- `server.py` — точка входа:
+- `server.py` - точка входа:
   - создаёт aiohttp‑приложение;
   - подключает CORS и middleware валидации (`validation_middleware`);
   - настраивает Swagger (`/doc`, `/swagger.json`);
@@ -103,11 +103,11 @@ docker compose down
   - проксирует все остальные запросы на статику через `handle_get_file`.
 
 **Модули API**
-- `api/categories.py` — CRUD категорий кэшбэка и правил отбора (возраст, пол, заработок) в рамках категории: GET/POST/PATCH/DELETE .../categories/{id}/rule.
-- `api/audit.py` — чтение журнала аудита.
-- `api/calculate.py` — запуск офферов (`POST /api/v1/offers/run`).
-- `api/selection.py` — получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
-- `api/validate.py` — схемы валидации и формат ошибок.
+- `api/categories.py` - CRUD категорий кэшбэка и правил отбора (возраст, пол, заработок) в рамках категории: GET/POST/PATCH/DELETE .../categories/{id}/rule.
+- `api/audit.py` - чтение журнала аудита.
+- `api/calculate.py` - запуск офферов (`POST /api/v1/offers/run`).
+- `api/selection.py` - получение и подтверждение выбора (идемпотентность по `Idempotency-Key`).
+- `api/validate.py` - схемы валидации и формат ошибок.
 
 **База данных**
 
@@ -115,50 +115,50 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
 
 Схема:
 - Таблица `rules`
-  - `id` — внутренний автоинкрементный ID.
-  - `rule_id` — бизнес‑ID правила (уникальный).
-  - `min_age`, `max_age` — минимальный и максимальный возраст (nullable).
-  - `gender` — пол (nullable).
-  - `income` — заработок (nullable).
-  - `created_at`, `updated_at` — временные метки.
+  - `id` - внутренний автоинкрементный ID.
+  - `rule_id` - бизнес‑ID правила (уникальный).
+  - `min_age`, `max_age` - минимальный и максимальный возраст (nullable).
+  - `gender` - пол (nullable).
+  - `income` - заработок (nullable).
+  - `created_at`, `updated_at` - временные метки.
 
 - Таблица `categories`
-  - `id` — внутренний автоинкрементный ID.
-  - `category_id` — бизнес‑ID категории (уникальный).
-  - `name`, `subtitle` — метаданные категории.
-  - `budget_amount` — бюджет на одного пользователя по категории за период.
-  - `rule_id` — ссылка на `rules.rule_id` (правило отбора: возраст, пол, заработок).
-  - `created_at`, `updated_at` — временные метки.
+  - `id` - внутренний автоинкрементный ID.
+  - `category_id` - бизнес‑ID категории (уникальный).
+  - `name`, `subtitle` - метаданные категории.
+  - `budget_amount` - бюджет на одного пользователя по категории за период.
+  - `rule_id` - ссылка на `rules.rule_id` (правило отбора: возраст, пол, заработок).
+  - `created_at`, `updated_at` - временные метки.
 
 - Таблица `selections`
-  - `id` — внутренний ID выбора.
-  - `selection_id` — внешний ID выбора (отдаётся клиенту).
-  - `category_id` — ссылка на `categories.category_id` (TEXT).
-  - `expected_benefit_amount` — ожидаемая выгода.
-  - `availability_status`, `availability_reason` — статусы доступности.
-  - `created_at`, `updated_at` — временные метки.
+  - `id` - внутренний ID выбора.
+  - `selection_id` - внешний ID выбора (отдаётся клиенту).
+  - `category_id` - ссылка на `categories.category_id` (TEXT).
+  - `expected_benefit_amount` - ожидаемая выгода.
+  - `availability_status`, `availability_reason` - статусы доступности.
+  - `created_at`, `updated_at` - временные метки.
 
 - Таблица `audit_log`
-  - `id` — внутренний ID записи аудита.
-  - `entity_type` — тип сущности (`category`, `selection` и т.д.).
-  - `entity_id` — идентификатор сущности.
-  - `action` — действие (create/update/confirm и т.п.).
-  - `actor` — инициатор изменения.
-  - `details` — JSON с деталями события.
-  - `created_at` — время события.
+  - `id` - внутренний ID записи аудита.
+  - `entity_type` - тип сущности (`category`, `selection` и т.д.).
+  - `entity_id` - идентификатор сущности.
+  - `action` - действие (create/update/confirm и т.п.).
+  - `actor` - инициатор изменения.
+  - `details` - JSON с деталями события.
+  - `created_at` - время события.
 
 **Работа с БД**
-- `database/database.py` — обёртка над asyncpg:
+- `database/database.py` - обёртка над asyncpg:
   - управление подключением и транзакцией через контекстный менеджер `Database`;
   - методы `execute`, `execute_all`, `fetchval`, `executemany`;
   - сериализация результатов в JSON‑дружелюбный формат.
-- `database/functions.py` — точка для инициализации/миграций на старте (сейчас просто шаблон).
+- `database/functions.py` - точка для инициализации/миграций на старте (сейчас просто шаблон).
 
 ---
 
 ### Тестирование через Insomnia
 
-В корне проекта лежит файл `insomnia_cashback_mvp.json` — коллекция запросов для Insomnia:
+В корне проекта лежит файл `insomnia_cashback_mvp.json` - коллекция запросов для Insomnia:
 - окружение `Base Environment` с `baseUrl = http://localhost:8080`;
 - позитивные запросы к каждому endpoint;
 - отдельные [NEGATIVE]‑запросы для проверки валидации и ошибок (не перепутай их с основными).

@@ -104,7 +104,6 @@ def register_routes(app: web.Application, cors: aiohttp_cors.CorsConfig) -> None
         web.get(prefix + "/admin/categories", categories.list_categories),
         web.post(prefix + "/admin/categories", categories.create_category),
         web.get(prefix + "/admin/categories/{category_id}", categories.get_category),
-        web.post(prefix + "/admin/categories/{category_id}/icon", categories.upload_category_icon),
         web.get(prefix + "/admin/categories/{category_id}/rule", categories.get_category_rule),
         web.post(prefix + "/admin/categories/{category_id}/rule", categories.create_category_rule),
         web.patch(prefix + "/admin/categories/{category_id}/rule", categories.update_category_rule),
@@ -152,7 +151,7 @@ def configure_swagger(app: web.Application) -> None:
         "bearerFormat": "JWT",
         "description": (
             "JWT токен админа (получить через POST /api/v1/admin/auth/login). "
-            "В поле ниже введите токен — можно с префиксом «Bearer » или без него."
+            "В поле ниже введите токен можно с префиксом «Bearer » или без него."
         ),
     }
     user_bearer_scheme = {
@@ -161,7 +160,7 @@ def configure_swagger(app: web.Application) -> None:
         "bearerFormat": "JWT",
         "description": (
             "JWT токен пользователя (получить через GET /api/v1/users/{user_id}/auth). "
-            "В поле ниже введите токен — можно с префиксом «Bearer » или без него."
+            "В поле ниже введите токен можно с префиксом «Bearer » или без него."
         ),
     }
     swagger_dict = app["swagger_dict"]

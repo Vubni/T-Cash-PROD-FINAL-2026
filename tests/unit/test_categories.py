@@ -16,6 +16,7 @@ class TestListCategories:
                 "category_id": "cat1",
                 "name": "Category 1",
                 "subtitle": "s1",
+                "icon_url": "https://cdn.example.com/cat1.png",
                 "budget_amount": 100000,
                 "rate_min": 0,
                 "rate_max": 100,
@@ -50,6 +51,7 @@ class TestListCategories:
             assert total == 2
             assert len(items) == 2
             assert items[0]["name"] == "Category 1"
+            assert items[0]["icon_url"] == "https://cdn.example.com/cat1.png"
 
     @pytest.mark.asyncio
     async def test_list_categories_exception(self):
@@ -70,6 +72,7 @@ class TestCreateCategory:
             "category_id": "cat123",
             "name": "Test Category",
             "subtitle": "Test subtitle",
+            "icon_url": "https://cdn.example.com/test.png",
             "budget_amount": 100000,
             "rate_min": 0,
             "rate_max": 100,
@@ -98,6 +101,7 @@ class TestCreateCategory:
             assert category is not None
             assert created_now is True
             assert category.get("id") == "cat123"
+            assert category.get("icon_url") == "https://cdn.example.com/test.png"
 
     @pytest.mark.asyncio
     async def test_create_category_idempotent_replay_returns_saved_response(self):
@@ -153,6 +157,7 @@ class TestGetCategory:
             "category_id": "cat1",
             "name": "Category 1",
             "subtitle": "s",
+            "icon_url": "https://cdn.example.com/cat1.png",
             "budget_amount": 100000,
             "rate_min": 0,
             "rate_max": 100,
@@ -171,6 +176,7 @@ class TestGetCategory:
             result = await categories_fns.get_category("cat1")
             assert result is not None
             assert result["id"] == "cat1"
+            assert result["icon_url"] == "https://cdn.example.com/cat1.png"
 
     @pytest.mark.asyncio
     async def test_get_category_not_found(self):
@@ -191,6 +197,7 @@ class TestUpdateCategory:
             "category_id": "cat1",
             "name": "Updated",
             "subtitle": "s",
+            "icon_url": "https://cdn.example.com/updated.png",
             "budget_amount": 150000,
             "rate_min": 0,
             "rate_max": 100,
@@ -208,6 +215,7 @@ class TestUpdateCategory:
 
             result = await categories_fns.update_category("cat1", name="Updated Category", budget_amount=150000)
             assert result is not None
+            assert result["icon_url"] == "https://cdn.example.com/updated.png"
 
     @pytest.mark.asyncio
     async def test_update_category_not_found(self):

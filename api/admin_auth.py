@@ -88,10 +88,10 @@ async def list_pending(request: web.Request, parsed: EmptyBody) -> web.Response:
 @docs(
     tags=["Admin"],
     summary="Регистрация обычного админа (заявка)",
-    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ. В теле запроса: **обязательные** — login, password.",
+    description="Создаёт обычного админа с approved = false, которого потом должен одобрить главный админ. В теле запроса: **обязательные** login, password.",
     responses={
         201: {"description": "Заявка создана"},
-        409: {"description": "Такой login уже занят (в т.ч. логин главного админа по умолчанию — укажите другой)"},
+        409: {"description": "Такой login уже занят (в т.ч. логин главного админа по умолчанию укажите другой)"},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
@@ -120,7 +120,7 @@ async def register_admin(request: web.Request, parsed: AdminRegisterBody) -> web
 @docs(
     tags=["Admin"],
     summary="Логин админа",
-    description="Проверяет логин/пароль. Если admin не approved — 403. В теле запроса: **обязательные** — login, password.",
+    description="Проверяет логин/пароль. Если admin не approved 403. В теле запроса: **обязательные** login, password.",
     responses={
         200: {"description": "Успешный вход", "schema": sh.AdminAuthResponseSchema},
         401: {"description": "Неверный логин или пароль"},
@@ -166,7 +166,7 @@ async def login_admin(request: web.Request, parsed: AdminRegisterBody) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Одобрить обычного админа",
-    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа. В теле: **обязательное** — admin_id.",
+    description="Супер-админ по Bearer-токену одобряет admin_id (ставит approved = true). Доступно только с токеном главного админа. В теле: **обязательное** admin_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Админ одобрен", "schema": sh.AdminAuthResponseSchema},
@@ -202,7 +202,7 @@ async def approve_admin(request: web.Request, parsed: AdminApproveBody) -> web.R
 @docs(
     tags=["Admin"],
     summary="Отклонить заявку обычного админа",
-    description="Супер-админ по Bearer-токену отклоняет заявку admin_id (удаляет не одобренного обычного админа). Доступно только с токеном главного админа. В теле: **обязательное** — admin_id.",
+    description="Супер-админ по Bearer-токену отклоняет заявку admin_id (удаляет не одобренного обычного админа). Доступно только с токеном главного админа. В теле: **обязательное** admin_id.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         204: {"description": "Заявка отклонена, админ удалён"},

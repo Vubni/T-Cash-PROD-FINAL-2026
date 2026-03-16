@@ -3,7 +3,7 @@
 
 Модули functions.offers и functions.progress в текущей кодовой базе отсутствуют:
 логика офферов реализована в api/calculate.py (использует functions.calculate),
-прогресс — в api/progress.py (заглушка). Эти тесты пропущены до появления
+прогресс в api/progress.py (заглушка). Эти тесты пропущены до появления
 соответствующих модулей в functions/.
 """
 

@@ -1,4 +1,4 @@
-"""Добавление UNIQUE (user_id, category_id) в selections — один выбор категории на пользователя."""
+"""Добавление UNIQUE (user_id, category_id) в selections один выбор категории на пользователя."""
 
 from alembic import op
 

@@ -19,7 +19,7 @@ services:
       - ./nginx/ml-proxy.conf:/etc/nginx/conf.d/default.conf:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Порт наружу не пробрасываем — доступ только внутри сети композа
+    # Порт наружу не пробрасываем доступ только внутри сети композа
 
   app:
     build: .

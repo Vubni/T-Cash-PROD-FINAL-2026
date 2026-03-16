@@ -1,32 +1,9 @@
 import hashlib
 import json
-import os
 
 from asyncpg import UniqueViolationError
 
 from database.database import Database
-
-_BACKEND_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_STATIC_DIR = os.path.join(_BACKEND_ROOT, "static")
-
-
-def save_category_icon_file(category_id: str, file_content: bytes, file_extension: str = ".png") -> str:
-    """
-    Сохраняет файл иконки в static/icons/{category_id}{ext}.
-    Возвращает относительный путь вида 'icons/...' для записи в icon_path.
-    """
-    os.makedirs(os.path.join(_STATIC_DIR, "icons"), exist_ok=True)
-    ext = (file_extension or ".png").strip().lower()
-    if ext and not ext.startswith("."):
-        ext = "." + ext
-    if not ext:
-        ext = ".png"
-    safe_filename = f"{category_id}{ext}"
-    full_path = os.path.join(_STATIC_DIR, "icons", safe_filename)
-    with open(full_path, "wb") as f:
-        f.write(file_content)
-    return f"icons/{safe_filename}"
-
 
 def _rule_from_row(item: dict) -> dict:
     r = item.get("rule_id")
@@ -40,15 +17,17 @@ def _rule_from_row(item: dict) -> dict:
 
 
 def row_to_category(item: dict) -> dict:
+    has_rule = item.get("rule_id") is not None
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "icon_path": item.get("icon_path"),
+        "icon_url": item.get("icon_url"),
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
-        "rule": _rule_from_row(item),
+        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "rule": _rule_from_row(item) if has_rule else None,
         "history": [],
     }
 
@@ -58,10 +37,11 @@ def row_to_category_list_item(item: dict) -> dict:
         "id": str(item["category_id"]),
         "name": item["name"],
         "subtitle": item["subtitle"],
-        "icon_path": item.get("icon_path"),
+        "icon_url": item.get("icon_url"),
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
+        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
     }
 
 
@@ -69,7 +49,7 @@ _CATEGORY_SELECT_FIELDS = """
     c.category_id,
     c.name,
     c.subtitle,
-    c.icon_path,
+    c.icon_url,
     c.budget_amount,
     c.rate_min,
     c.rate_max,
@@ -78,9 +58,25 @@ _CATEGORY_SELECT_FIELDS = """
     r.min_age,
     r.max_age,
     r.gender,
-    r.income
+    r.income,
+    stats.avg_cashback_percent
 """
-_CATEGORY_FROM_JOIN = "FROM categories c LEFT JOIN rules r ON r.rule_id = c.rule_id"
+_CATEGORY_FROM_JOIN = """
+FROM categories c
+LEFT JOIN rules r ON r.rule_id = c.rule_id
+LEFT JOIN LATERAL (
+    SELECT
+        AVG(
+            (s.cashback::numeric * 100.0) / NULLIF(s.estimated_spend, 0)
+        ) AS avg_cashback_percent
+    FROM selections s
+    WHERE
+        s.category_id = c.category_id
+        AND s.cashback IS NOT NULL
+        AND s.estimated_spend IS NOT NULL
+        AND s.estimated_spend > 0
+) stats ON TRUE
+"""
 
 IDEMPOTENCY_KEY_MAX_LENGTH = 128
 
@@ -242,7 +238,7 @@ async def update_category(
     *,
     name: str | None = None,
     subtitle: str | None = None,
-    icon_path: str | None = None,
+    icon_url: str | None = None,
     budget_amount: int | None = None,
     rate_min: int | None = None,
     rate_max: int | None = None,
@@ -260,7 +256,7 @@ async def update_category(
 
     add("name", name)
     add("subtitle", subtitle)
-    add("icon_path", icon_path)
+    add("icon_url", icon_url)
     add("budget_amount", budget_amount)
     add("rate_min", rate_min)
     add("rate_max", rate_max)

@@ -36,7 +36,7 @@ async def get_calculate_items(user_id: int) -> dict:
                 s.estimated_spend,
                 c.name,
                 c.subtitle,
-                c.icon_path,
+                c.icon_url,
                 c.rate_min,
                 c.rate_max
             FROM selections s
@@ -69,7 +69,7 @@ async def get_calculate_items(user_id: int) -> dict:
                 c.category_id,
                 c.name,
                 c.subtitle,
-                c.icon_path,
+                c.icon_url,
                 c.rate_min,
                 c.rate_max
             FROM categories c

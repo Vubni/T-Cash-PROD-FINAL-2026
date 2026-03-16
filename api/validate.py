@@ -157,7 +157,7 @@ BIGINT_MAX = 2**63 - 1
 
 
 def validate_user_id(value: int | str, field_name: str = "user_id") -> int:
-    """Проверяет, что значение — целое число в диапазоне BIGINT. Возвращает int."""
+    """Проверяет, что значение целое число в диапазоне BIGINT. Возвращает int."""
     if value is None or (isinstance(value, str) and not value.strip()):
         raise ValueError(f"{field_name} cannot be empty")
     if isinstance(value, bool):

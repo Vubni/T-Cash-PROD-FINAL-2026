@@ -1,5 +1,4 @@
 from typing import Optional
-import os
 
 from aiohttp import web
 from aiohttp_apispec import docs, request_schema
@@ -107,7 +106,7 @@ class Admin_category_update(BaseModel):
     name: Optional[str] = None
     subtitle: Optional[str] = None
     budget_amount: Optional[float] = None
-    icon_path: Optional[str] = None
+    icon_url: Optional[str] = None
     rate_min: Optional[int] = None
     rate_max: Optional[int] = None
     status: Optional[str] = None
@@ -124,16 +123,16 @@ class Admin_category_update(BaseModel):
             raise ValueError(f"Field cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
 
-    @field_validator("icon_path")
+    @field_validator("icon_url")
     @classmethod
-    def icon_path_length(cls, v: Optional[str]) -> Optional[str]:
+    def icon_url_length(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
         v = v.strip()
         if not v:
             return None
         if len(v) > STRING_FIELD_MAX_LENGTH:
-            raise ValueError(f"icon_path cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
+            raise ValueError(f"icon_url cannot exceed {STRING_FIELD_MAX_LENGTH} characters")
         return v
 
     @field_validator("rate_min", "rate_max")
@@ -277,7 +276,11 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @docs(
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
-    description="Создаёт новую категорию с бюджетом и диапазоном кэшбэка (rate_min, rate_max в %). Правило (rule_id) привязывается отдельно. Требуется JWT админа. **Обязательные** поля: name, subtitle, budget_amount, rate_min, rate_max. **Опционально**: category_id.",
+    description=(
+        "Создаёт новую категорию с бюджетом и диапазоном кэшбэка (rate_min, rate_max в %). "
+        "Правило (rule_id) привязывается отдельно. Требуется JWT админа. "
+        "**Обязательные** поля: name, subtitle, budget_amount, rate_min, rate_max."
+    ),
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Категория создана", "schema": sh.CategoryDetailSchema},
@@ -355,78 +358,6 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
         return web.json_response(response, status=200)
     except Exception:
         logger.exception("get_category handler failed")
-        return validate.format_500_error(request)
-
-
-@docs(
-    tags=["Admin"],
-    summary="Загрузить иконку для категории",
-    description=(
-        "Загружает файл иконки для указанной категории и сохраняет относительный путь в поле icon_path. "
-        "Фронтенд затем может получать эту иконку по URL `/icons/<filename>` (относительно хоста бэкенда). "
-        "Требуется JWT админа. Тело запроса — multipart/form-data с полем `file`."
-    ),
-    security=validate.SECURITY_ADMIN_BEARER,
-    responses={
-        200: {"description": "Иконка загружена, категория обновлена", "schema": sh.CategoryDetailSchema},
-        **sh.RESPONSES_HTTP_ERROR,
-    },
-    parameters=[
-        {
-            "in": "path",
-            "name": "category_id",
-            "type": "string",
-            "required": True,
-            "description": "Идентификатор категории (UUID), для которой загружается иконка.",
-        }
-    ],
-)
-@validate.validate(Category_id_path, require_admin=True)
-async def upload_category_icon(request: web.Request, parsed: Category_id_path) -> web.Response:
-    try:
-        category = await cat_fns.get_category(parsed.category_id)
-        if category is None:
-            return validate.format_404_error(request, message="Категория не найдена")
-        if (category.get("status") or "").lower() == "archived":
-            return validate.format_409_error(request, message="Нельзя изменять иконку архивной категории")
-
-        reader = await request.multipart()
-        field = await reader.next()
-
-        if field is None or field.name not in ("file", "icon"):
-            return validate.format_400_error(request, message="Ожидается файл в поле 'file' или 'icon'")
-
-        filename = field.filename
-        if not filename:
-            return validate.format_400_error(request, message="Имя файла иконки не задано")
-
-        _name, ext = os.path.splitext(filename)
-        if not ext:
-            ext = ".png"
-        ext = ext.lower()
-
-        chunks = []
-        while True:
-            chunk = await field.read_chunk()
-            if not chunk:
-                break
-            chunks.append(chunk)
-        file_content = b"".join(chunks)
-
-        icon_rel_path = cat_fns.save_category_icon_file(parsed.category_id, file_content, ext)
-        updated = await cat_fns.update_category(parsed.category_id, icon_path=icon_rel_path)
-        if updated is None:
-            return validate.format_404_error(request, message="Категория не найдена")
-        await audit_fns.write_audit(
-            "category",
-            parsed.category_id,
-            "icon_upload",
-            _admin_actor(request),
-            details={"icon_path": icon_rel_path},
-        )
-        return web.json_response(updated, status=200)
-    except Exception:
-        logger.exception("upload_category_icon handler failed")
         return validate.format_500_error(request)
 
 
@@ -656,7 +587,7 @@ async def delete_category_rule(request: web.Request, parsed: Category_id_path) -
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Можно менять бюджет и диапазон кэшбэка (rate_min, rate_max). Правила — через POST/PATCH/DELETE .../categories/{id}/rule. Требуется JWT админа. Все поля **опциональны**: name, subtitle, budget_amount, rate_min, rate_max, status.",
+    description="Частично обновляет категорию. Можно менять название, подзаголовок, URL иконки, бюджет, диапазон кэшбэка (rate_min, rate_max) и status. Правила через POST/PATCH/DELETE .../categories/{id}/rule. Требуется JWT админа. Все поля **опциональны**.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
@@ -683,7 +614,7 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_path=parsed.icon_path,
+            icon_url=parsed.icon_url,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
             rate_min=parsed.rate_min,
             rate_max=parsed.rate_max,
@@ -696,8 +627,8 @@ async def update_category(request: web.Request, parsed: Admin_category_update) -
             changes["name"] = {"old": before.get("name"), "new": parsed.name}
         if parsed.subtitle is not None and before.get("subtitle") != parsed.subtitle:
             changes["subtitle"] = {"old": before.get("subtitle"), "new": parsed.subtitle}
-        if parsed.icon_path is not None and before.get("icon_path") != parsed.icon_path:
-            changes["icon_path"] = {"old": before.get("icon_path"), "new": parsed.icon_path}
+        if parsed.icon_url is not None and before.get("icon_url") != parsed.icon_url:
+            changes["icon_url"] = {"old": before.get("icon_url"), "new": parsed.icon_url}
         if parsed.budget_amount is not None:
             old_budget = (before.get("budget") or {}).get("amount")
             new_budget = int(parsed.budget_amount)
@@ -797,7 +728,7 @@ async def run_category(request: web.Request, parsed: Category_status_path) -> we
 @docs(
     tags=["Admin"],
     summary="Поставить категорию на паузу",
-    description="Переводит категорию в статус paused — категория скрывается из клиентских расчётов, но остаётся в системе. Требуется JWT админа.",
+    description="Переводит категорию в статус paused категория скрывается из клиентских расчётов, но остаётся в системе. Требуется JWT админа.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Статус категории изменён на paused", "schema": sh.CategoryDetailSchema},
@@ -821,7 +752,7 @@ async def pause_category(request: web.Request, parsed: Category_status_path) -> 
 @docs(
     tags=["Admin"],
     summary="Отправить категорию в архив",
-    description="Переводит категорию в статус archived — мягкое удаление. Категория не участвует в расчётах и не отображается клиенту, но остаётся в админке. Требуется JWT админа.",
+    description="Переводит категорию в статус archived мягкое удаление. Категория не участвует в расчётах и не отображается клиенту, но остаётся в админке. Требуется JWT админа.",
     security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Статус категории изменён на archived", "schema": sh.CategoryDetailSchema},

@@ -280,5 +280,5 @@ async def test_selection_missing_category_ids(aiohttp_client, app):
 
 
 def test_user_id_integer_in_client_api():
-    """user_id в client API — целое число (BIGINT); тесты используют int (например 12345)."""
+    """user_id в client API целое число (BIGINT); тесты используют int (например 12345)."""
     assert isinstance(12345, int)

@@ -14,7 +14,7 @@ class TokenResponseSchema(Schema):
 
 class UserAuthSchema(Schema):
     identifier = fields.Str(
-        required=True, description="Логин или email пользователя — по нему ищется аккаунт при входе."
+        required=True, description="Логин или email пользователя - по нему ищется аккаунт при входе."
     )
     password = fields.Str(required=True, description="Пароль пользователя для проверки при входе.")
 
@@ -64,7 +64,7 @@ class ClubsListSchema(Schema):
     type = fields.Str(
         required=False,
         missing="my",
-        description="Тип списка: 'my' — клубы пользователя, иначе — общий список. По умолчанию my.",
+        description="Тип списка: 'my' - клубы пользователя, иначе общий список. По умолчанию my.",
     )
     offset = fields.Int(
         required=False, missing=0, description="Смещение для пагинации: сколько записей пропустить. По умолчанию 0."
@@ -198,7 +198,7 @@ class TelegramAuthSchema(Schema):
 class ForgotPasswordSchema(Schema):
     identifier = fields.Str(
         required=True,
-        description="Логин или email пользователя — по нему ищется аккаунт для отправки письма сброса пароля.",
+        description="Логин или email пользователя - по нему ищется аккаунт для отправки письма сброса пароля.",
     )
     new_password = fields.Str(
         required=True,
@@ -215,7 +215,7 @@ class ErrorDetailSchema(Schema):
         description="Имя параметра или поля, из-за которого вернулась ошибка (для привязки к форме на фронте)."
     )
     type = fields.Str(
-        description="Тип ошибки валидации: например missing — поле обязательно, value_error — неверный формат."
+        description="Тип ошибки валидации: например missing - поле обязательно, value_error - неверный формат."
     )
     message = fields.Str(description="Человекочитаемое сообщение об ошибке; показывать пользователю под полем.")
     value = fields.Raw(description="Значение, которое было передано (если было); может быть null.", allow_none=True)
@@ -248,7 +248,7 @@ class HttpErrorSchema(Schema):
     fieldErrors = fields.List(
         fields.Nested(FieldErrorItemSchema),
         allow_none=True,
-        description="При 422 — список ошибок по полям (field, issue, rejectedValue). Показывать под соответствующими полями формы. Иначе null.",
+        description="При 422 - список ошибок по полям (field, issue, rejectedValue). Показывать под соответствующими полями формы. Иначе null.",
     )
 
 
@@ -267,7 +267,7 @@ class Error400Schema(Schema):
     error = fields.Str(description="Общее сообщение об ошибке запроса; показывать вверху формы или в тосте.")
     errors = fields.List(
         fields.Nested(ErrorDetailSchema),
-        description="Список ошибок по полям: name, type, message, value — для привязки к полям формы.",
+        description="Список ошибок по полям: name, type, message, value - для привязки к полям формы.",
     )
     received_params = fields.Dict(
         description="Параметры запроса, которые сервер принял; полезно для отладки при частичной валидации."
@@ -310,20 +310,20 @@ class CategoryRuleSchema(Schema):
     )
     min_age = fields.Int(
         allow_none=True,
-        description="Минимальный возраст пользователя в годах; null — ограничение не задано. Используется для отбора по правилу.",
+        description="Минимальный возраст пользователя в годах; null - ограничение не задано. Используется для отбора по правилу.",
     )
     max_age = fields.Int(
         allow_none=True,
-        description="Максимальный возраст пользователя в годах; null — ограничение не задано. Используется для отбора по правилу.",
+        description="Максимальный возраст пользователя в годах; null - ограничение не задано. Используется для отбора по правилу.",
     )
     gender = fields.Str(
         allow_none=True,
         validate=validate.OneOf(GENDER_ENUM),
-        description="Пол пользователя: male, female или other; null — ограничение не задано.",
+        description="Пол пользователя: male, female или other; null - ограничение не задано.",
     )
     income = fields.Int(
         allow_none=True,
-        description="Доход пользователя (в рублях); null — ограничение не задано. Используется для отбора по правилу.",
+        description="Доход пользователя (в рублях); null - ограничение не задано. Используется для отбора по правилу.",
     )
 
 
@@ -358,15 +358,15 @@ class CategoryListItemSchema(Schema):
         required=True,
         description="Краткий подзаголовок/описание категории для карточки (до 500 символов). Обязательное поле.",
     )
-    icon_path = fields.Str(
+    icon_url = fields.Str(
         required=False,
         allow_none=True,
-        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'); склеивать с base URL статики.",
+        description="URL иконки категории. Бэкенд хранит и возвращает готовую ссылку, а фронтенд сам решает, как её загружать.",
     )
     budget = fields.Nested(
         CategoryBudgetSchema,
         required=True,
-        description="Бюджет по категории: amount — сумма на одного пользователя за период (руб).",
+        description="Бюджет по категории: amount - сумма на одного пользователя за период (руб).",
     )
     rate = fields.Nested(
         CategoryRateSchema,
@@ -376,7 +376,13 @@ class CategoryListItemSchema(Schema):
     status = fields.Str(
         required=True,
         validate=validate.OneOf(["running", "paused", "archived"]),
-        description="Статус категории в системе: running — активна и участвует в расчёте; paused — временно выключена; archived — в архиве (скрыта для клиентов). Обязательное поле.",
+        description="Статус категории в системе: running - активна и участвует в расчёте; paused - временно выключена; archived - в архиве (скрыта для клиентов). Обязательное поле.",
+    )
+    avg_cashback_percent = fields.Float(
+        required=False,
+        allow_none=True,
+        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
 
 
@@ -384,15 +390,15 @@ class CategoryDetailSchema(Schema):
     id = fields.Str(required=True, description="UUID категории. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
-    icon_path = fields.Str(
+    icon_url = fields.Str(
         required=False,
         allow_none=True,
-        description="Относительный путь к иконке категории на сервере (например, 'icons/food.svg'); склеивать с base URL статики.",
+        description="URL иконки категории. Бэкенд хранит и возвращает готовую ссылку, а фронтенд сам решает, как её загружать.",
     )
     budget = fields.Nested(
         CategoryBudgetSchema,
         required=True,
-        description="Бюджет: amount — бюджет на одного пользователя за период (руб).",
+        description="Бюджет: amount - бюджет на одного пользователя за период (руб).",
     )
     rate = fields.Nested(
         CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка: min, max в процентах."
@@ -400,12 +406,22 @@ class CategoryDetailSchema(Schema):
     status = fields.Str(
         required=True,
         validate=validate.OneOf(["running", "paused", "archived"]),
-        description="Текущий статус категории: running — запущена, paused — на паузе, archived — в архиве (аналог мягкого удаления). Обязательное поле.",
+        description="Текущий статус категории: running - запущена, paused - на паузе, archived - в архиве (аналог мягкого удаления). Обязательное поле.",
+    )
+    avg_cashback_percent = fields.Float(
+        required=False,
+        allow_none=True,
+        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
     rule = fields.Nested(
         CategoryRuleSchema,
-        required=True,
-        description="Правило отбора: rule_id, min_age, max_age, gender, income — условия показа категории пользователю.",
+        required=False,
+        allow_none=True,
+        description=(
+            "Правило отбора: rule_id, min_age, max_age, gender, income - условия показа категории пользователю. "
+            "Может быть null, если для категории ещё не создано правило."
+        ),
     )
     history = fields.List(
         fields.Nested(CategoryHistoryItemSchema),
@@ -427,11 +443,6 @@ class CategoryListResponseSchema(Schema):
 
 
 class CategoryCreateSchema(Schema):
-    category_id = fields.Str(
-        required=False,
-        allow_none=True,
-        description="UUID категории. Не передавайте — сервер сгенерирует сам. Нужен только если фронт хочет задать свой ID. Опционально.",
-    )
     name = fields.Str(
         required=True,
         validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX),
@@ -461,11 +472,11 @@ class CategoryUpdateSchema(Schema):
         validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX),
         description="Новый подзаголовок категории (1–500 символов). Опционально.",
     )
-    icon_path = fields.Str(
+    icon_url = fields.Str(
         required=False,
         allow_none=True,
         validate=validate.Length(max=NAME_SUBTITLE_MAX),
-        description="Новый относительный путь к иконке категории на сервере (например, 'icons/food.svg'). Опционально.",
+        description="Новый URL иконки категории. Опционально.",
     )
     budget_amount = fields.Float(
         required=False,
@@ -481,31 +492,31 @@ class RuleDetailSchema(Schema):
         description="UUID правила. Возвращается в ответах GET/POST/PATCH .../categories/{id}/rule. Обязательное поле.",
     )
     min_age = fields.Int(
-        allow_none=True, description="Минимальный возраст пользователя в годах; null — ограничение не задано."
+        allow_none=True, description="Минимальный возраст пользователя в годах; null - ограничение не задано."
     )
     max_age = fields.Int(
-        allow_none=True, description="Максимальный возраст пользователя в годах; null — ограничение не задано."
+        allow_none=True, description="Максимальный возраст пользователя в годах; null - ограничение не задано."
     )
     gender = fields.Str(
         allow_none=True,
         validate=validate.OneOf(GENDER_ENUM),
-        description="Пол: male, female или other; null — без ограничения.",
+        description="Пол: male, female или other; null - без ограничения.",
     )
     income = fields.Int(
-        allow_none=True, description="Доход в рублях; null — без ограничения. Используется для отбора по правилу."
+        allow_none=True, description="Доход в рублях; null - без ограничения. Используется для отбора по правилу."
     )
 
 
 class RuleListItemSchema(Schema):
     rule_id = fields.Str(required=True, description="UUID правила. Обязательное поле.")
-    min_age = fields.Int(allow_none=True, description="Минимальный возраст (годы); null — не задано.")
-    max_age = fields.Int(allow_none=True, description="Максимальный возраст (годы); null — не задано.")
+    min_age = fields.Int(allow_none=True, description="Минимальный возраст (годы); null - не задано.")
+    max_age = fields.Int(allow_none=True, description="Максимальный возраст (годы); null - не задано.")
     gender = fields.Str(
         allow_none=True,
         validate=validate.OneOf(GENDER_ENUM),
-        description="Пол: male, female или other; null — не задано.",
+        description="Пол: male, female или other; null - не задано.",
     )
-    income = fields.Int(allow_none=True, description="Доход (руб); null — не задано.")
+    income = fields.Int(allow_none=True, description="Доход (руб); null - не задано.")
 
 
 class RuleListResponseSchema(Schema):
@@ -583,11 +594,11 @@ class AdminAuthResponseSchema(Schema):
     login = fields.Str(required=True, description="Логин администратора. Обязательное поле.")
     main_admin = fields.Bool(
         required=True,
-        description="true — главный/супер-админ (может одобрять других); false — обычный админ. Обязательное поле.",
+        description="true - главный/супер-админ (может одобрять других); false - обычный админ. Обязательное поле.",
     )
     approved = fields.Bool(
         required=True,
-        description="true — админ одобрен и может работать; false — ожидает одобрения главным админом. Обязательное поле.",
+        description="true - админ одобрен и может работать; false - ожидает одобрения главным админом. Обязательное поле.",
     )
     token = fields.Str(
         required=True,
@@ -598,28 +609,28 @@ class AdminAuthResponseSchema(Schema):
 class RuleCreateSchema(Schema):
     rule_id = fields.Str(
         required=False,
-        description="UUID правила. Не передавайте — сервер сгенерирует. Нужен только если фронт задаёт свой ID. Опционально.",
+        description="UUID правила. Не передавайте - сервер сгенерирует. Нужен только если фронт задаёт свой ID. Опционально.",
     )
     min_age = fields.Int(
         required=False,
         allow_none=True,
-        description="Минимальный возраст в годах; null — ограничение не задано. Используется при привязке правила к категории.",
+        description="Минимальный возраст в годах; null - ограничение не задано. Используется при привязке правила к категории.",
     )
     max_age = fields.Int(
         required=False,
         allow_none=True,
-        description="Максимальный возраст в годах; null — не задано. Опционально.",
+        description="Максимальный возраст в годах; null - не задано. Опционально.",
     )
     gender = fields.Str(
         required=False,
         allow_none=True,
         validate=validate.OneOf(GENDER_ENUM),
-        description="Пол: male, female или other; null — не задано. Опционально.",
+        description="Пол: male, female или other; null - не задано. Опционально.",
     )
     income = fields.Int(
         required=False,
         allow_none=True,
-        description="Доход в рублях; null — не задано. Опционально.",
+        description="Доход в рублях; null - не задано. Опционально.",
     )
 
 
@@ -627,23 +638,23 @@ class RuleUpdateSchema(Schema):
     min_age = fields.Int(
         required=False,
         allow_none=True,
-        description="Новый минимальный возраст (годы); null — снять ограничение. Опционально.",
+        description="Новый минимальный возраст (годы); null - снять ограничение. Опционально.",
     )
     max_age = fields.Int(
         required=False,
         allow_none=True,
-        description="Новый максимальный возраст (годы); null — снять ограничение. Опционально.",
+        description="Новый максимальный возраст (годы); null - снять ограничение. Опционально.",
     )
     gender = fields.Str(
         required=False,
         allow_none=True,
         validate=validate.OneOf(GENDER_ENUM),
-        description="Пол: male, female или other; null — снять ограничение. Опционально.",
+        description="Пол: male, female или other; null - снять ограничение. Опционально.",
     )
     income = fields.Int(
         required=False,
         allow_none=True,
-        description="Новый доход (руб); null — снять ограничение. Опционально.",
+        description="Новый доход (руб); null - снять ограничение. Опционально.",
     )
 
 
@@ -712,7 +723,7 @@ class CalculateCategoryItemSchema(Schema):
     selection_id = fields.Str(
         required=False,
         allow_none=True,
-        description="UUID сохранённого выбора по этой категории; null — пользователь ещё не выбрал эту категорию. Нужен для подтверждения выбора и отображения «уже выбрано».",
+        description="UUID сохранённого выбора по этой категории; null - пользователь ещё не выбрал эту категорию. Нужен для подтверждения выбора и отображения «уже выбрано».",
     )
     category_id = fields.Str(
         required=True,
@@ -720,22 +731,22 @@ class CalculateCategoryItemSchema(Schema):
     )
     name = fields.Str(required=True, description="Название категории для отображения. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории для карточки. Обязательное поле.")
-    icon_path = fields.Str(
+    icon_url = fields.Str(
         required=False,
         allow_none=True,
-        description="Относительный путь к иконке категории (например, 'icons/food.svg'); склеивать с base URL статики.",
+        description="URL иконки категории.",
     )
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка (min, max в %).")
     expected_benefit_amount = fields.Float(
         required=False,
         allow_none=True,
-        description="Ожидаемая сумма выгоды в рублях по этой категории за период. null — категория ещё не выбрана или выгода не рассчитана. Показывать пользователю как «до X ₽».",
+        description="Ожидаемая сумма выгоды в рублях по этой категории за период. null - категория ещё не выбрана или выгода не рассчитана. Показывать пользователю как «до X ₽».",
     )
     availability_status = fields.Str(
         required=False,
         allow_none=True,
         validate=validate.OneOf(["available", "budget_limited", "unavailable"]),
-        description="Код доступности: available — можно выбрать, budget_limited — лимит бюджета исчерпан, unavailable — недоступно.",
+        description="Код доступности: available - можно выбрать, budget_limited - лимит бюджета исчерпан, unavailable - недоступно.",
     )
     availability_reason = fields.Str(
         required=False,
@@ -756,7 +767,7 @@ class CalculateResponseSchema(Schema):
     )
     already_selected_categories = fields.Bool(
         required=True,
-        description="true — данные взяты из кэша (уже выбранные пользователем категории из selections); false — категории рассчитаны заново.",
+        description="true - данные взяты из кэша (уже выбранные пользователем категории из selections); false - категории рассчитаны заново.",
     )
 
 
@@ -768,10 +779,10 @@ class SelectionDetailSchema(Schema):
     category_id = fields.Str(required=True, description="UUID выбранной категории. Обязательное поле.")
     name = fields.Str(required=True, description="Название категории для отображения. Обязательное поле.")
     subtitle = fields.Str(required=True, description="Подзаголовок категории. Обязательное поле.")
-    icon_path = fields.Str(
+    icon_url = fields.Str(
         required=False,
         allow_none=True,
-        description="Относительный путь к иконке категории (например, 'icons/food.svg'); склеивать с base URL статики.",
+        description="URL иконки категории.",
     )
     rate = fields.Nested(CategoryRateSchema, required=True, description="Диапазон ставок кэшбэка (min, max в %).")
     expected_benefit_amount = fields.Float(
@@ -781,7 +792,7 @@ class SelectionDetailSchema(Schema):
     budget_message = fields.Str(
         required=False,
         allow_none=True,
-        description="Текст о бюджетных ограничениях (например, «часть выгоды может быть ограничена бюджетом»). null — ограничений нет. Показывать под карточкой при необходимости.",
+        description="Текст о бюджетных ограничениях (например, «часть выгоды может быть ограничена бюджетом»). null - ограничений нет. Показывать под карточкой при необходимости.",
     )
 
 
@@ -801,7 +812,7 @@ class SelectionConfirmSchema(Schema):
     confirm = fields.Bool(
         required=False,
         missing=True,
-        description="true — подтвердить выбор категории; false — отменить. По умолчанию true. Опционально.",
+        description="true - подтвердить выбор категории; false - отменить. По умолчанию true. Опционально.",
     )
 
 
@@ -870,7 +881,7 @@ class SelectionConfirmResponseSchema(Schema):
 class CategorySelectionSettingsSchema(Schema):
     all_categories = fields.Int(
         required=False,
-        description="0 — показывать пользователю только ограниченный набор категорий по max_selection_count; 1 — показывать все категории без ограничения по количеству выбора. Опционально.",
+        description="0 - показывать пользователю только ограниченный набор категорий по max_selection_count; 1 - показывать все категории без ограничения по количеству выбора. Опционально.",
     )
     max_selection_count = fields.Int(
         required=False,
@@ -881,7 +892,7 @@ class CategorySelectionSettingsSchema(Schema):
 class CategorySelectionSettingsResponseSchema(Schema):
     all_categories = fields.Int(
         required=True,
-        description="Текущее значение: 0 — ограниченный выбор, 1 — все категории. Нужно для отображения правил выбора на фронте. Обязательное поле.",
+        description="Текущее значение: 0 - ограниченный выбор, 1 - все категории. Нужно для отображения правил выбора на фронте. Обязательное поле.",
     )
     max_selection_count = fields.Int(
         required=True,

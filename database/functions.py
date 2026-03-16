@@ -139,19 +139,36 @@ async def ensure_categories_status_column() -> None:
         logger.warning("Колонка categories.status: %s", e)
 
 
-async def ensure_categories_icon_column() -> None:
-    """Добавляет колонку icon_path в categories, если её нет (совместимость со старыми БД)."""
+async def ensure_categories_icon_url_column() -> None:
+    """Добавляет колонку icon_url в categories и переносит в неё старые icon_path, если они есть."""
     try:
         async with Database() as db:
             await db.execute(
                 """
                 ALTER TABLE categories
-                ADD COLUMN IF NOT EXISTS icon_path VARCHAR(255) NULL
+                ADD COLUMN IF NOT EXISTS icon_url VARCHAR(500) NULL
+                """,
+                (),
+            )
+            await db.execute(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'categories' AND column_name = 'icon_path'
+                    ) THEN
+                        UPDATE categories
+                        SET icon_url = COALESCE(icon_url, icon_path)
+                        WHERE icon_path IS NOT NULL;
+                    END IF;
+                END $$;
                 """,
                 (),
             )
     except Exception as e:
-        logger.warning("Колонка categories.icon_path: %s", e)
+        logger.warning("Колонка categories.icon_url: %s", e)
 
 
 async def ensure_categories_unique_name_constraint() -> None:
@@ -295,9 +312,9 @@ def _parse_income(income_bucket: str | None) -> int:
     Преобразует диапазон дохода вида "<=30k", "60-100k", "250k+" в одно число.
 
     Возвращаем значение в тех же единицах, что и в CSV (k -> * 1000), используя:
-    - для "<=30k"  — верхнюю границу (30000),
-    - для "60-100k" — середину диапазона ((60000 + 100000) // 2 = 80000),
-    - для "250k+"  — нижнюю границу диапазона (250000).
+    - для "<=30k"   верхнюю границу (30000),
+    - для "60-100k" середину диапазона ((60000 + 100000) // 2 = 80000),
+    - для "250k+"   нижнюю границу диапазона (250000).
     """
 
     def _parse_number_token(token: str) -> int | None:

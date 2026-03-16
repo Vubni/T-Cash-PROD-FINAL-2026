@@ -154,7 +154,7 @@ async def test_create_category_idempotency_conflict(aiohttp_client, app):
 
 
 async def test_create_category_missing_fields(aiohttp_client, app):
-    """Тест: создание категории с отсутствующими полями (с токеном админа — проверяем именно валидацию тела)."""
+    """Тест: создание категории с отсутствующими полями (с токеном админа проверяем именно валидацию тела)."""
     category_data = {"name": "Test Category"}
 
     async with aiohttp_client(app) as client:
@@ -170,7 +170,7 @@ async def test_create_category_missing_fields(aiohttp_client, app):
 
 
 async def test_create_category_negative_budget(aiohttp_client, app):
-    """Тест: создание категории с отрицательным бюджетом (с токеном админа — проверяем валидацию)."""
+    """Тест: создание категории с отрицательным бюджетом (с токеном админа проверяем валидацию)."""
     category_data = {
         "name": "Test Category",
         "subtitle": "Test subtitle",
@@ -268,6 +268,39 @@ async def test_update_category_success(aiohttp_client, app):
             )
 
         assert resp.status == 200
+
+
+async def test_update_category_icon_url_success(aiohttp_client, app):
+    update_data = {"icon_url": "https://cdn.example.com/icons/cat.png"}
+    before_category = {
+        "id": CAT_ID,
+        "name": "Old Name",
+        "subtitle": "Old",
+        "icon_url": None,
+        "budget": {"amount": 100000},
+        "rate": {"min": 0, "max": 100},
+        "status": "running",
+    }
+
+    with (
+        patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get,
+        patch("functions.categories.update_category", new_callable=AsyncMock) as mock_update,
+    ):
+        mock_get.return_value = before_category
+        mock_update.return_value = {"id": CAT_ID, "icon_url": update_data["icon_url"]}
+
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "PATCH",
+                f"/api/v1/admin/categories/{CAT_ID}",
+                headers={"Content-Type": "application/json", "Authorization": "Bearer admin_token"},
+                data=json.dumps(update_data),
+            )
+
+        assert resp.status == 200
+        mock_update.assert_called_once()
+        call_kwargs = mock_update.call_args[1]
+        assert call_kwargs.get("icon_url") == update_data["icon_url"]
 
 
 async def test_update_category_not_found(aiohttp_client, app):
@@ -400,7 +433,7 @@ async def test_archive_category_success(aiohttp_client, app):
 
 
 async def test_archive_category_not_found(aiohttp_client, app):
-    """Тест: archive категории — категория не найдена (get_category возвращает None → 404)."""
+    """Тест: archive категории категория не найдена (get_category возвращает None → 404)."""
     with patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = None
 
@@ -416,7 +449,7 @@ async def test_archive_category_not_found(aiohttp_client, app):
 
 
 async def test_run_category_not_found(aiohttp_client, app):
-    """Тест: run категории — категория не найдена (get_category возвращает None → 404)."""
+    """Тест: run категории категория не найдена (get_category возвращает None → 404)."""
     with patch("functions.categories.get_category", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = None
 

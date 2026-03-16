@@ -71,7 +71,7 @@ Authorization: Bearer <token>
    - либо **PATCH** `/api/v1/admin/categories/{{ category_id }}` с телом `{"status": "paused"}` и т.п.
 3. Запросите журнал аудита:
    - **GET** `/api/v1/admin/categories/{{ category_id }}/audit`
-4. В ответе 200 поле **`items`** должно содержать события (action: `running`, `paused`, `archived`, `update`, `create`, `icon_upload`, `rule_attached`). В каждом событии есть **`details`** (если передавались) и **`actor`** (например, `admin:1`).
+4. В ответе 200 поле **`items`** должно содержать события (action: `running`, `paused`, `archived`, `update`, `create`, `rule_attached`). В каждом событии есть **`details`** (если передавались) и **`actor`** (например, `admin:1`).
 
 ---
 
