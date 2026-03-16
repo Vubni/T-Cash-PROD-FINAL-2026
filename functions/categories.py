@@ -187,16 +187,6 @@ async def update_category(
         return await get_category(category_id)
 
     async with Database() as db:
-        # Нельзя изменять архивированную категорию
-        status_row = await db.execute(
-            "SELECT status FROM categories WHERE category_id = $1",
-            (category_id,),
-        )
-        if status_row is None:
-            return None
-        if (status_row.get("status") or "").lower() == "archived":
-            raise ValueError("Cannot modify archived category")
-
         fields.append("updated_at = NOW()")
         params.append(category_id)
         sql_update = f"UPDATE categories SET {', '.join(fields)} WHERE category_id = ${len(params)}"
