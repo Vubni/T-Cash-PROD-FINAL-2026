@@ -775,6 +775,10 @@ class CalculateResponseSchema(Schema):
         required=True,
         description="true - данные взяты из кэша (уже выбранные пользователем категории из selections); false - категории рассчитаны заново.",
     )
+    has_bonus_category = fields.Bool(
+        required=True,
+        description="true - в списке категорий присутствует дополнительная бонусная категория, выданная за победу в игре T-Word; false - бонусной категории нет.",
+    )
 
 
 class SelectionDetailSchema(Schema):

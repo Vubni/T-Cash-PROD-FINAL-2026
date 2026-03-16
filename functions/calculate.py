@@ -2,6 +2,7 @@ import aiohttp
 from database.database import Database
 from config import CALC_SERVICE_URL, logger
 from core import serialize_json, FALLBACK_CATEGORY_NAMES, get_all_categories
+from functions.wordly import get_user_status
 
 _offers_run_cache: dict[int, list[dict]] = {}
 
@@ -26,7 +27,6 @@ def _set_offers_run_cache(user_id: int, items: list[dict]) -> None:
 
 
 async def get_calculate_items(user_id: int) -> dict:
-    items = []
     async with Database() as db:
         sql = """
             SELECT
@@ -61,7 +61,15 @@ async def get_calculate_items(user_id: int) -> dict:
                 for r in rows
             ],
         )
-        return {"items": items_serialized, "already_selected_categories": True}
+        return {
+            "items": items_serialized,
+            "already_selected_categories": True,
+            "has_bonus_category": False,
+        }
+
+    items: list[dict] = []
+    user_status = await get_user_status(user_id=user_id)
+    is_tword_winner = bool(user_status.get("winners"))
 
     async with Database() as db:
         sql = """
@@ -92,10 +100,12 @@ async def get_calculate_items(user_id: int) -> dict:
             category_names = FALLBACK_CATEGORY_NAMES
 
         logger.info("Calculating categories for user %s: %s", user_id, category_names)
+        base_top_n = max(1, get_all_categories())
+        top_n = base_top_n + 1 if is_tword_winner else base_top_n
         payload = {
             "categories": category_names,
             "client_id": str(user_id),
-            "top_n": max(1, get_all_categories()),
+            "top_n": top_n,
         }
         logger.info(
             "Calculate request: url=%s categories_count=%s client_id=%s top_n=%s",
@@ -172,9 +182,13 @@ async def get_calculate_items(user_id: int) -> dict:
                     "subtitle": category["subtitle"],
                     "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
                     "reasons": [ITEMS_REASONS.get(reason) for reason in predict.get("reasons", [])],
-                    "estimated_spend": predict.get("estimated_spend")
+                    "estimated_spend": predict.get("estimated_spend"),
                 }
             )
 
     _set_offers_run_cache(user_id, items)
-    return {"items": serialize_json(items), "already_selected_categories": False}
+    return {
+        "items": serialize_json(items),
+        "already_selected_categories": False,
+        "has_bonus_category": is_tword_winner,
+    }
