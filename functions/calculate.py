@@ -140,7 +140,7 @@ async def get_calculate_items(user_id: int) -> dict:
                 "Для части признаков использован последний доступный исторический срез по клиенту": "HighShareInRecentTurnover",
                 "Категория выбрана по совокупности исторических паттернов клиента и глобального спроса": "SelectedByPatternsAndDemand",
 
-
+                
             }
             items.append(
                 {
