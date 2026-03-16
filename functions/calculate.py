@@ -93,7 +93,7 @@ async def get_calculate_items(user_id: int) -> dict:
         payload = {
             "categories": category_names,
             "client_id": str(user_id),
-            "top_n": max(1, get_all_categories() + 1),
+            "top_n": max(1, get_all_categories()),
         }
         logger.info(
             "Calculate request: url=%s categories_count=%s client_id=%s top_n=%s",
