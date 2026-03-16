@@ -108,7 +108,7 @@ def _build_create_category_request_hash(
     budget_amount: int,
     rate_min: int,
     rate_max: int,
-    icon_url: str | None,
+    icon_url: str | None = None,
 ) -> str:
     payload = {
         "name": name,

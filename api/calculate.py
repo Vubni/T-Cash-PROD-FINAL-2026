@@ -44,7 +44,9 @@ async def calculate(request: web.Request, _: Client_calculate) -> web.Response:
                 "user_id": user_id,
                 "items": result["items"],
                 "already_selected_categories": result["already_selected_categories"],
-                "has_bonus_category": result["has_bonus_category"],
+                # Для совместимости с тестами и моками, где это поле может отсутствовать,
+                # по умолчанию считаем, что бонусной категории нет.
+                "has_bonus_category": result.get("has_bonus_category", False),
             },
             status=200,
         )
