@@ -42,14 +42,11 @@ class Admin_category_create(BaseModel):
     category_id: Optional[str] = None
     name: str
     subtitle: str
-    icon_key: str
     budget_amount: float
-    target_users: int
-    avg_spend_per_user: int
     audience_segments: list[str]
     rule_id: str
 
-    @field_validator("name", "subtitle", "icon_key")
+    @field_validator("name", "subtitle")
     @classmethod
     def check_non_empty_strings(cls, v: str) -> str:
         if not v or not v.strip():
@@ -79,13 +76,6 @@ class Admin_category_create(BaseModel):
             raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
         return v
 
-    @field_validator("target_users", "avg_spend_per_user")
-    @classmethod
-    def check_non_negative_int(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError("Value cannot be negative")
-        return v
-
     @model_validator(mode="after")
     def check_budget(self) -> "Admin_category_create":
         if self.budget_amount < 0:
@@ -99,10 +89,7 @@ class Admin_category_update(BaseModel):
     category_id: str
     name: Optional[str] = None
     subtitle: Optional[str] = None
-    icon_key: Optional[str] = None
     budget_amount: Optional[float] = None
-    target_users: Optional[int] = None
-    avg_spend_per_user: Optional[int] = None
     audience_segments: Optional[list[str]] = None
     rule_id: Optional[str] = None
 
@@ -118,13 +105,6 @@ class Admin_category_update(BaseModel):
     def check_segments_max(cls, v: Optional[list[str]]) -> Optional[list[str]]:
         if v is not None and len(v) > AUDIENCE_SEGMENTS_MAX:
             raise ValueError(f"audience_segments cannot exceed {AUDIENCE_SEGMENTS_MAX} items")
-        return v
-
-    @field_validator("target_users", "avg_spend_per_user")
-    @classmethod
-    def check_non_negative_int(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and v < 0:
-            raise ValueError("Value cannot be negative")
         return v
 
     @model_validator(mode="after")
@@ -155,7 +135,8 @@ class Category_id_path(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Список категорий кэшбэка",
-    description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок.",
+    description="Возвращает список категорий для админки. Используется для просмотра всех настроенных категорий вместе с бюджетом и диапазоном ставок. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Список категорий получен", "schema": sh.CategoryListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -166,18 +147,20 @@ class Category_id_path(BaseModel):
             "name": "offset",
             "type": "integer",
             "required": False,
-            "description": "Смещение для пагинации",
+            "description": "Смещение для пагинации. Опционально, по умолчанию 0.",
+            "default": 0,
         },
         {
             "in": "query",
             "name": "limit",
             "type": "integer",
             "required": False,
-            "description": "Максимальное количество элементов в ответе",
+            "description": "Максимальное количество элементов в ответе. Опционально, по умолчанию 50.",
+            "default": 50,
         },
     ],
 )
-@validate.validate(Admin_categories_list)
+@validate.validate(Admin_categories_list, require_admin=True)
 async def list_categories(request: web.Request, parsed: Admin_categories_list) -> web.Response:
     try:
         items, total = await cat_fns.list_categories(parsed.offset, parsed.limit)
@@ -190,24 +173,22 @@ async def list_categories(request: web.Request, parsed: Admin_categories_list) -
 @docs(
     tags=["Admin"],
     summary="Создать категорию кэшбэка",
-    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации.",
+    description="Создаёт новую категорию вместе с бюджетом, диапазоном ставок, аудиторией и правилом персонализации. Требуется JWT админа. **Обязательные** поля тела: name, subtitle, budget_amount, audience_segments, rule_id. **Опционально**: category_id (если не передан — сгенерируется UUID).",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         201: {"description": "Категория создана", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
 )
 @request_schema(sh.CategoryCreateSchema)
-@validate.validate(Admin_category_create)
+@validate.validate(Admin_category_create, require_admin=True)
 async def create_category(request: web.Request, parsed: Admin_category_create) -> web.Response:
     try:
         response = await cat_fns.create_category(
             category_id=parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount),
-            target_users=parsed.target_users,
-            avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,
         )
@@ -222,7 +203,8 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
 @docs(
     tags=["Admin"],
     summary="Получить категорию кэшбэка",
-    description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений.",
+    description="Возвращает одну категорию целиком: метаданные, бюджет, диапазон ставок, аудиторию, правило и историю изменений. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория получена", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -233,11 +215,11 @@ async def create_category(request: web.Request, parsed: Admin_category_create) -
             "name": "category_id",
             "type": "string",
             "required": True,
-            "description": "Идентификатор категории",
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
         }
     ],
 )
-@validate.validate(Category_id_path)
+@validate.validate(Category_id_path, require_admin=True)
 async def get_category(request: web.Request, parsed: Category_id_path) -> web.Response:
     try:
         response = await cat_fns.get_category(parsed.category_id)
@@ -254,7 +236,8 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
 @docs(
     tags=["Admin"],
     summary="Изменить категорию кэшбэка",
-    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию, статус и правило категории.",
+    description="Частично обновляет категорию. Через этот endpoint можно менять бюджет, диапазон ставок, аудиторию и правило категории. Требуется JWT админа. Все поля тела **опциональны** (передайте только те, что нужно изменить: name, subtitle, budget_amount, audience_segments, rule_id).",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Категория обновлена", "schema": sh.CategoryDetailSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -265,22 +248,19 @@ async def get_category(request: web.Request, parsed: Category_id_path) -> web.Re
             "name": "category_id",
             "type": "string",
             "required": True,
-            "description": "Идентификатор категории",
+            "description": "Идентификатор категории (UUID). Обязательный параметр пути.",
         }
     ],
 )
 @request_schema(sh.CategoryUpdateSchema)
-@validate.validate(Admin_category_update)
+@validate.validate(Admin_category_update, require_admin=True)
 async def update_category(request: web.Request, parsed: Admin_category_update) -> web.Response:
     try:
         response = await cat_fns.update_category(
             parsed.category_id,
             name=parsed.name,
             subtitle=parsed.subtitle,
-            icon_key=parsed.icon_key,
             budget_amount=int(parsed.budget_amount) if parsed.budget_amount is not None else None,
-            target_users=parsed.target_users,
-            avg_spend_per_user=parsed.avg_spend_per_user,
             audience_segments=parsed.audience_segments,
             rule_id=parsed.rule_id,
         )

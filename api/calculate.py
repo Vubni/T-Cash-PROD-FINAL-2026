@@ -25,21 +25,14 @@ class Client_calculate(BaseModel):
 @docs(
     tags=["Client"],
     summary="Рассчитать категории для пользователя",
-    description="По переданному user_id возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля.",
+    description="По переданному в теле запроса user_id (UUID) возвращает категории/выборы для этого пользователя. На фронте — выбор пользователя без пароля. В теле: **обязательное** — user_id.",
     responses={
         200: {"description": "Список категорий рассчитан", "schema": sh.CalculateResponseSchema},
+        404: {"description": "Пользователь не найден", "schema": sh.HttpErrorSchema},
         **sh.RESPONSES_HTTP_ERROR,
     },
-    parameters=[
-        {
-            "in": "query",
-            "name": "user_id",
-            "type": "integer",
-            "required": True,
-            "description": "ID пользователя (BIGINT)",
-        },
-    ],
 )
+@request_schema(sh.CalculateRequestSchema)
 @validate.validate(Client_calculate)
 async def calculate(request: web.Request, parsed: Client_calculate) -> web.Response:
     try:

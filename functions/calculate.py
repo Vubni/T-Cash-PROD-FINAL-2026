@@ -19,10 +19,7 @@ async def get_calculate_items(user_id: int) -> list[dict]:
                 s.availability_reason,
                 c.name,
                 c.subtitle,
-                c.icon_key,
-                c.budget_amount,
-                c.target_users,
-                c.avg_spend_per_user
+                c.budget_amount
             FROM selections s
             JOIN categories c ON c.category_id = s.category_id
             WHERE s.user_id = $1
@@ -39,30 +36,20 @@ async def get_calculate_items(user_id: int) -> list[dict]:
                 category_id,
                 name,
                 subtitle,
-                icon_key,
-                budget_amount,
-                target_users,
-                avg_spend_per_user
+                budget_amount
             FROM categories
         """
         rows = await db.execute_all(sql) or []
 
     items = []
     for row in rows:
-        rate = calc_rate(
-            budget_amount=row.get("budget_amount") or 0,
-            target_users=row.get("target_users") or 0,
-            avg_spend_per_user=row.get("avg_spend_per_user") or 0,
-        )
-        icon_key = row["icon_key"]
+        rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
         items.append(
             {
                 "selection_id": None,
                 "category_id": row["category_id"],
                 "name": row["name"],
                 "subtitle": row["subtitle"],
-                "icon_key": icon_key,
-                "icon_url": f"/icons/{icon_key}.svg",
                 "rate": rate,
                 "expected_benefit_amount": None,
                 "availability_status": "available",
@@ -75,20 +62,13 @@ async def get_calculate_items(user_id: int) -> list[dict]:
 def _rows_to_items(rows: list) -> list[dict]:
     items = []
     for row in rows:
-        rate = calc_rate(
-            budget_amount=row.get("budget_amount") or 0,
-            target_users=row.get("target_users") or 0,
-            avg_spend_per_user=row.get("avg_spend_per_user") or 0,
-        )
-        icon_key = row["icon_key"]
+        rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
         items.append(
             {
                 "selection_id": str(row["selection_id"]),
                 "category_id": str(row["category_id"]),
                 "name": row["name"],
                 "subtitle": row["subtitle"],
-                "icon_key": icon_key,
-                "icon_url": f"/icons/{icon_key}.svg",
                 "rate": rate,
                 "expected_benefit_amount": row.get("expected_benefit_amount"),
                 "availability_status": row.get("availability_status"),

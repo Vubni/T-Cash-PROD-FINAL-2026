@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS categories (
     subtitle        TEXT        NOT NULL,
     icon_key        TEXT        NOT NULL,
     budget_amount   BIGINT      NOT NULL,
-    target_users    INT         NOT NULL,
-    avg_spend_per_user BIGINT   NOT NULL,
     audience_segments TEXT[]    NOT NULL,
     rule_id         UUID        NOT NULL REFERENCES rules(rule_id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -52,7 +50,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS admin_users (
     admin_id   BIGSERIAL PRIMARY KEY,
-    main_admin BOOLEAN   NOT NULL,
+    main_admin BOOLEAN   NOT NULL DEFAULT FALSE,
     login      TEXT      NOT NULL UNIQUE,
     password   TEXT      NOT NULL,
     approved   BOOLEAN   NOT NULL DEFAULT FALSE

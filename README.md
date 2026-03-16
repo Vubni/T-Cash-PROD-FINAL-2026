@@ -30,7 +30,6 @@ backend/
 │   ├── audit.py              # эндпоинты /api/v1/admin/audit
 │   ├── calculate.py          # эндпоинты /api/v1/client/calculate
 │   ├── categories.py         # эндпоинты /api/v1/admin/categories
-│   ├── icons.py              # загрузка иконок
 │   ├── offers.py             # эндпоинт /api/v1/client/offers/run
 │   ├── progress.py           # эндпоинт /api/v1/client/progress
 │   ├── rules.py              # эндпоинты /api/v1/admin/rules
@@ -87,7 +86,6 @@ docker compose down
 Админские эндпоинты:
 - **categories**: `GET` / `POST` /api/v1/admin/categories, `GET` / `PATCH` /api/v1/admin/categories/{category_id}.
 - **rules**: `GET` / `POST` /api/v1/admin/rules, `GET` / `PATCH` /api/v1/admin/rules/{rule_id}.
-- `POST /api/v1/admin/icons/{icon_key}` — загрузка иконки.
 - **audit**: `GET /api/v1/admin/audit` — журнал аудита.
 
 Клиентские эндпоинты:
@@ -136,10 +134,8 @@ PostgreSQL поднимается из `docker-compose.yml` и инициали�
 - Таблица `categories`
   - `id` — внутренний автоинкрементный ID.
   - `category_id` — бизнес‑ID категории (уникальный).
-  - `name`, `subtitle`, `icon_key` — метаданные категории.
-  - `budget_amount` — общий бюджет.
-  - `target_users` — целевое число уникальных пользователей в период.
-  - `avg_spend_per_user` — средний чек/траты одного пользователя по категории.
+  - `name`, `subtitle` — метаданные категории.
+  - `budget_amount` — бюджет на одного пользователя по категории за период.
   - `audience_segments` — список сегментов аудитории.
   - `rule_id` — ссылка на `rules.rule_id` (правило отбора: возраст, пол, заработок).
   - `created_at`, `updated_at` — временные метки.

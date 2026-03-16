@@ -61,7 +61,6 @@
 {
   "name": "Restaurants",
   "subtitle": "Кэшбэк в кафе и ресторанах",
-  "icon_key": "utensils",
   "status": "draft",
   "rate_min": 0.03,
   "rate_max": 0.10,

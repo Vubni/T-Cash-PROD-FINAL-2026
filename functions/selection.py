@@ -6,21 +6,14 @@ REQUIRED_SELECTION_COUNT = 5
 
 
 def row_to_selection_detail(row: dict) -> dict:
-    rate = calc_rate(
-        budget_amount=row.get("budget_amount") or 0,
-        target_users=row.get("target_users") or 0,
-        avg_spend_per_user=row.get("avg_spend_per_user") or 0,
-    )
-    icon_key = row["icon_key"]
+    rate = calc_rate(budget_amount=row.get("budget_amount") or 0)
     return {
         "selection_id": str(row["selection_id"]),
         "category_id": str(row["category_id"]),
         "name": row["name"],
         "subtitle": row["subtitle"],
-        "icon_key": icon_key,
-        "icon_url": f"/icons/{icon_key}.svg",
         "rate": rate,
-        "expected_benefit_amount": row["expected_benefit_amount"], 
+        "expected_benefit_amount": row["expected_benefit_amount"],
         "budget_message": row["availability_reason"],
     }
 
@@ -33,10 +26,7 @@ _SELECTION_JOIN_SQL = """
         s.availability_reason,
         c.name,
         c.subtitle,
-        c.icon_key,
-        c.budget_amount,
-        c.target_users,
-        c.avg_spend_per_user
+        c.budget_amount
     FROM selections s
     JOIN categories c ON c.category_id = s.category_id
     WHERE s.idempotency_key = $1

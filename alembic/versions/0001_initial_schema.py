@@ -17,8 +17,6 @@ def upgrade() -> None:
         sa.Column("subtitle", sa.Text, nullable=False),
         sa.Column("icon_key", sa.Text, nullable=False),
         sa.Column("budget_amount", sa.BigInteger, nullable=False),
-        sa.Column("target_users", sa.Integer, nullable=False),
-        sa.Column("avg_spend_per_user", sa.BigInteger, nullable=False),
         sa.Column("audience_segments", postgresql.ARRAY(sa.Text), nullable=False),
         sa.Column("rule_personalized", sa.Boolean, nullable=False),
         sa.Column("rule_budget_mode", sa.Text, nullable=False),

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from aiohttp import web
 from aiohttp_apispec import docs
@@ -32,7 +31,8 @@ class Audit_list(BaseModel):
 @docs(
     tags=["Admin"],
     summary="Журнал аудита",
-    description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке.",
+    description="Возвращает список событий аудита по изменениям категорий и связанным действиям в админке. Требуется JWT админа.",
+    security=validate.SECURITY_ADMIN_BEARER,
     responses={
         200: {"description": "Журнал аудита получен", "schema": sh.AuditListResponseSchema},
         **sh.RESPONSES_HTTP_ERROR,
@@ -43,32 +43,33 @@ class Audit_list(BaseModel):
             "name": "entity_type",
             "type": "string",
             "required": False,
-            "description": "Фильтр по типу сущности",
+            "description": "Фильтр по типу сущности. Опционально.",
         },
         {
             "in": "query",
             "name": "entity_id",
             "type": "string",
             "required": False,
-            "description": "Фильтр по идентификатору сущности",
+            "description": "Фильтр по идентификатору сущности. Опционально.",
         },
         {
             "in": "query",
             "name": "action",
             "type": "string",
             "required": False,
-            "description": "Фильтр по действию",
+            "description": "Фильтр по действию. Опционально.",
         },
         {
             "in": "query",
             "name": "limit",
             "type": "integer",
             "required": False,
-            "description": "Максимальное количество событий в ответе",
+            "description": "Максимальное количество событий в ответе. Опционально, по умолчанию 50.",
+            "default": 50,
         },
     ],
 )
-@validate.validate(Audit_list)
+@validate.validate(Audit_list, require_admin=True)
 async def list_audit(request: web.Request, parsed: Audit_list) -> web.Response:
     try:
         limit = parsed.limit or 50
