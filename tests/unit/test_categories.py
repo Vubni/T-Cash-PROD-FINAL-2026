@@ -116,7 +116,7 @@ class TestCreateCategory:
                             "Test Category",
                             "Test subtitle",
                             100000,
-                            0,
+                            1,
                             100,
                             None,
                         ),
