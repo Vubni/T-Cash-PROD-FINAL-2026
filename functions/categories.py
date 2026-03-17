@@ -26,13 +26,14 @@ def row_to_category(item: dict) -> dict:
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
-        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "avg_cashback_amount": float(item["avg_cashback_amount"]) if item.get("avg_cashback_amount") is not None else None,
         "rule": _rule_from_row(item) if has_rule else None,
         "history": [],
     }
 
 
 def row_to_category_list_item(item: dict) -> dict:
+    has_rule = item.get("rule_id") is not None
     return {
         "id": str(item["category_id"]),
         "name": item["name"],
@@ -41,7 +42,8 @@ def row_to_category_list_item(item: dict) -> dict:
         "budget": {"amount": item["budget_amount"]},
         "rate": {"min": item["rate_min"], "max": item["rate_max"]},
         "status": item.get("status") or "running",
-        "avg_cashback_percent": float(item["avg_cashback_percent"]) if item.get("avg_cashback_percent") is not None else None,
+        "avg_cashback_amount": float(item["avg_cashback_amount"]) if item.get("avg_cashback_amount") is not None else None,
+        "rule": _rule_from_row(item) if has_rule else None,
     }
 
 
@@ -59,7 +61,7 @@ _CATEGORY_SELECT_FIELDS = """
     r.max_age,
     r.gender,
     r.income,
-    stats.avg_cashback_percent
+    stats.avg_cashback_amount
 """
 _CATEGORY_FROM_JOIN = """
 FROM categories c
@@ -67,8 +69,8 @@ LEFT JOIN rules r ON r.rule_id = c.rule_id
 LEFT JOIN LATERAL (
     SELECT
         AVG(
-            (s.cashback::numeric * 100.0) / NULLIF(s.estimated_spend, 0)
-        ) AS avg_cashback_percent
+            (s.cashback::numeric / 100.0) * s.estimated_spend
+        ) AS avg_cashback_amount
     FROM selections s
     WHERE
         s.category_id = c.category_id
@@ -106,6 +108,7 @@ def _build_create_category_request_hash(
     budget_amount: int,
     rate_min: int,
     rate_max: int,
+    icon_url: str | None = None,
 ) -> str:
     payload = {
         "name": name,
@@ -113,6 +116,7 @@ def _build_create_category_request_hash(
         "budget_amount": budget_amount,
         "rate_min": rate_min,
         "rate_max": rate_max,
+        "icon_url": icon_url,
     }
     canonical_payload = json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(canonical_payload.encode("utf-8")).hexdigest()
@@ -156,9 +160,17 @@ async def create_category(
     budget_amount: int,
     rate_min: int,
     rate_max: int,
+    icon_url: str | None = None,
     idempotency_key: str | None = None,
 ) -> tuple[dict | None, bool]:
-    request_hash = _build_create_category_request_hash(name, subtitle, budget_amount, rate_min, rate_max)
+    request_hash = _build_create_category_request_hash(
+        name,
+        subtitle,
+        budget_amount,
+        rate_min,
+        rate_max,
+        icon_url,
+    )
 
     async with Database() as db:
         if idempotency_key is not None:
@@ -178,16 +190,16 @@ async def create_category(
 
         sql = """
             INSERT INTO categories (
-                name, subtitle,
+                name, subtitle, icon_url,
                 budget_amount, rate_min, rate_max
             )
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING category_id
         """
         try:
             category_id = await db.fetchval(
                 sql,
-                (name, subtitle, budget_amount, rate_min, rate_max),
+                (name, subtitle, icon_url, budget_amount, rate_min, rate_max),
             )
         except UniqueViolationError as exc:
             raise DuplicateCategoryNameError("Категория с таким названием уже существует") from exc

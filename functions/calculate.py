@@ -2,6 +2,7 @@ import aiohttp
 from database.database import Database
 from config import CALC_SERVICE_URL, logger
 from core import serialize_json, FALLBACK_CATEGORY_NAMES, get_all_categories
+from functions.wordly import get_user_status
 
 _offers_run_cache: dict[int, list[dict]] = {}
 
@@ -26,7 +27,6 @@ def _set_offers_run_cache(user_id: int, items: list[dict]) -> None:
 
 
 async def get_calculate_items(user_id: int) -> dict:
-    items = []
     async with Database() as db:
         sql = """
             SELECT
@@ -61,7 +61,15 @@ async def get_calculate_items(user_id: int) -> dict:
                 for r in rows
             ],
         )
-        return {"items": items_serialized, "already_selected_categories": True}
+        return {
+            "items": items_serialized,
+            "already_selected_categories": True,
+            "has_bonus_category": False,
+        }
+
+    items: list[dict] = []
+    user_status = await get_user_status(user_id=user_id)
+    is_tword_winner = bool(user_status.get("winners"))
 
     async with Database() as db:
         sql = """
@@ -92,10 +100,12 @@ async def get_calculate_items(user_id: int) -> dict:
             category_names = FALLBACK_CATEGORY_NAMES
 
         logger.info("Calculating categories for user %s: %s", user_id, category_names)
+        base_top_n = max(1, get_all_categories())
+        top_n = base_top_n + 1 if is_tword_winner else base_top_n
         payload = {
             "categories": category_names,
             "client_id": str(user_id),
-            "top_n": max(1, get_all_categories()),
+            "top_n": top_n,
         }
         logger.info(
             "Calculate request: url=%s categories_count=%s client_id=%s top_n=%s",
@@ -132,16 +142,53 @@ async def get_calculate_items(user_id: int) -> dict:
                 continue
             percent = int(category["budget_amount"] * 100 / estimated)
             logger.info("Category: %s, Estimated: %s, Percent: %s", category["budget_amount"], estimated, percent)
+            ITEMS_REASONS = {
+                # Базовые причины
+                "У клиента уже была недавняя активность в этой категории за последние 3 месяца": "RecentCategoryActivity_3M",
+                "Категория находится среди лидеров по внутреннему offer score для этого клиента": "HighOfferScoreCategory",
+                "История клиента по этой категории лучше среднего по категории": "CustomerAboveCategoryAvg",
+                "Категория исторически сильнее работает в сегменте пола и возраста клиента": "StrongInDemographicSegment",
+                "Категория занимает заметную долю в недавнем обороте клиента": "HighShareInRecentTurnover",
+                "Для части признаков использован последний доступный исторический срез по клиенту": "UsedLatestAvailableSnapshot",
+                "Категория выбрана по совокупности исторических паттернов клиента и глобального спроса": "SelectedByPatternsAndDemand",
+                # Если категория mapped
+                "Категория сопоставлена с модельной категорией '...'": "MappedToModelCategory",
+                "Источник нормализации категории: alias": "CategorySourceAlias",
+                "Источник нормализации категории: llm": "CategorySourceLLM",
+                "Источник нормализации категории: embedding": "CategorySourceEmbedding",
+                "Источник нормализации категории: heuristic": "CategorySourceHeuristic",
+                "Для сопоставления была использована локальная LLM для подбора ближайшей канонической категории": "LocalLLMForMapping",
+                # Если категория novel
+                "Категория новая для основной модели и оценена через low-level novel-category логику": "NovelCategoryLowLevelLogic",
+                "Для оценки использованы история клиента и ближайшая каноническая категория в embedding-пространстве": "NovelCategoryWithNearestEmbedding",
+                "Ближайшая каноническая категория: '...' (similarity=...)": "NearestCanonicalCategoryInfo",
+                # Если категория fallback
+                "Категория отсутствует в тренировочном словаре модели и оценена через консервативную fallback-логику": "FallbackLogicUsed",
+                "Во fallback использованы общая склонность клиента к активации и слабый embedding-сосед": "FallbackWithWeakNeighbor",
+                "Слабый ближайший сосед в embedding-пространстве: '...' (similarity=...)": "WeakNearestNeighborInfo",
+                # Если категория совсем непонятная и идёт отказ
+                "Категория слишком непонятная для надежного сопоставления и поэтому получила score=0": "RejectedCategoryScoreZero",
+                "Ни alias, ни LLM, ни embedding similarity не дали достаточно уверенного соответствия": "RejectedNoConfidentMatch",
+                "Backend может безопасно обработать категорию '...' как отказ ML-слоя": "BackendSafeReject",
+                # Если сервис ушёл в резервный режим
+                "Основная модель временно недоступна, поэтому сервис перешел в резервный режим с популярными категориями": "ReserveModeEnabled",
+                "Категория выбрана из популярного fallback-каталога (global_category_history)": "FromPopularFallbackCatalog",
+                "Причина деградации: ...": "DegradationReasonInfo",
+            }
             items.append(
                 {
                     "category_id": category["category_id"],
                     "name": category["name"],
                     "subtitle": category["subtitle"],
                     "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
-                    "reasons": predict.get("reasons", []),
-                    "estimated_spend": predict.get("estimated_spend")
+                    "reasons": [ITEMS_REASONS.get(reason) for reason in predict.get("reasons", [])],
+                    "estimated_spend": predict.get("estimated_spend"),
                 }
             )
 
     _set_offers_run_cache(user_id, items)
-    return {"items": serialize_json(items), "already_selected_categories": False}
+    return {
+        "items": serialize_json(items),
+        "already_selected_categories": False,
+        "has_bonus_category": is_tword_winner,
+    }

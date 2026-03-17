@@ -453,7 +453,7 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
         logger.warning("Файл с категориями не найден: %s", csv_path)
         return
 
-    rows: list[tuple[str, str, str, int, str]] = []
+    rows: list[tuple[str, str, str, int, int, int, str, str | None]] = []
 
     try:
         with open(csv_path, newline="", encoding="utf-8") as f:
@@ -479,8 +479,29 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                     except (ValueError, TypeError):
                         pass
 
+                rate_min = 5
+                if len(row) > 5 and row[5].strip():
+                    try:
+                        rate_min = max(0, min(100, int(float(row[5].strip()))))
+                    except (ValueError, TypeError):
+                        pass
+
+                rate_max = 30
+                if len(row) > 6 and row[6].strip():
+                    try:
+                        rate_max = max(0, min(100, int(float(row[6].strip()))))
+                    except (ValueError, TypeError):
+                        pass
+
                 rule_id = "a0000000-0000-0000-0000-000000000001"
-                rows.append((category_id, name, subtitle, budget_amount, rule_id))
+                if len(row) > 8 and row[8].strip():
+                    rule_id = row[8].strip()
+
+                icon_url: str | None = None
+                if len(row) > 12 and row[12].strip():
+                    icon_url = row[12].strip()
+
+                rows.append((category_id, name, subtitle, budget_amount, rate_min, rate_max, rule_id, icon_url))
     except OSError as e:
         logger.error(f"Не удалось прочитать файл категорий {csv_path}: {e}")
         return
@@ -490,16 +511,17 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
         return
 
     params: list[tuple] = []
-    for category_id, name, subtitle, budget_amount, rule_id in rows:
+    for category_id, name, subtitle, budget_amount, rate_min, rate_max, rule_id, icon_url in rows:
         params.append(
             (
                 category_id,
                 name,
                 subtitle,
                 budget_amount,
-                5,
-                15,
+                rate_min,
+                rate_max,
                 rule_id,
+                icon_url,
             )
         )
 
@@ -514,16 +536,20 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                     budget_amount,
                     rate_min,
                     rate_max,
-                    rule_id
+                    rule_id,
+                    icon_url
                 )
                 VALUES (
-                    $1, $2, $3, $4, $5, $6, $7
+                    $1, $2, $3, $4, $5, $6, $7, $8
                 )
                 ON CONFLICT (category_id) DO UPDATE SET
                     name = EXCLUDED.name,
                     subtitle = EXCLUDED.subtitle,
                     budget_amount = EXCLUDED.budget_amount,
-                    rule_id = EXCLUDED.rule_id
+                    rate_min = EXCLUDED.rate_min,
+                    rate_max = EXCLUDED.rate_max,
+                    rule_id = EXCLUDED.rule_id,
+                    icon_url = EXCLUDED.icon_url
                 """,
                 params,
             )

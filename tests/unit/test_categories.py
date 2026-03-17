@@ -111,7 +111,17 @@ class TestCreateCategory:
             mock_conn.execute = AsyncMock(
                 side_effect=[
                     {},
-                    {"request_hash": categories_fns._build_create_category_request_hash("Test Category", "Test subtitle", 100000, 0, 100), "response_body": saved_response},
+                    {
+                        "request_hash": categories_fns._build_create_category_request_hash(
+                            "Test Category",
+                            "Test subtitle",
+                            100000,
+                            0,
+                            100,
+                            None,
+                        ),
+                        "response_body": saved_response,
+                    },
                 ]
             )
             MockDB.return_value.__aenter__ = AsyncMock(return_value=mock_conn)

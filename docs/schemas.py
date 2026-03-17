@@ -378,11 +378,20 @@ class CategoryListItemSchema(Schema):
         validate=validate.OneOf(["running", "paused", "archived"]),
         description="Статус категории в системе: running - активна и участвует в расчёте; paused - временно выключена; archived - в архиве (скрыта для клиентов). Обязательное поле.",
     )
-    avg_cashback_percent = fields.Float(
+    avg_cashback_amount = fields.Float(
         required=False,
         allow_none=True,
-        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
-        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
+        description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback / 100 * estimated_spend) по таблице selections; null - ещё никто не выбирал категорию.",
+    )
+    rule = fields.Nested(
+        CategoryRuleSchema,
+        required=False,
+        allow_none=True,
+        description=(
+            "Правило отбора категории (rule_id, min_age, max_age, gender, income). "
+            "Может быть null, если для категории ещё не создано правило."
+        ),
     )
 
 
@@ -408,11 +417,11 @@ class CategoryDetailSchema(Schema):
         validate=validate.OneOf(["running", "paused", "archived"]),
         description="Текущий статус категории: running - запущена, paused - на паузе, archived - в архиве (аналог мягкого удаления). Обязательное поле.",
     )
-    avg_cashback_percent = fields.Float(
+    avg_cashback_amount = fields.Float(
         required=False,
         allow_none=True,
-        description="Средний фактический кэшбэк в процентах на пользователя по этой категории среди тех, кто её выбрал. "
-        "Считается как AVG(cashback * 100 / expected_spend) по таблице selections; null - ещё никто не выбирал категорию.",
+        description="Средний фактический кэшбэк в рублях на пользователя по этой категории среди тех, кто её выбрал. "
+        "Считается как AVG(cashback / 100 * estimated_spend) по таблице selections; null - ещё никто не выбирал категорию.",
     )
     rule = fields.Nested(
         CategoryRuleSchema,
@@ -453,6 +462,12 @@ class CategoryCreateSchema(Schema):
         validate=validate.Length(min=1, max=NAME_SUBTITLE_MAX),
         description="Подзаголовок/краткое описание категории (1–500 символов). Обязательное поле.",
     )
+    icon_url = fields.Str(
+        required=False,
+        allow_none=True,
+        validate=validate.Length(max=NAME_SUBTITLE_MAX),
+        description="URL иконки категории. Опционально при создании.",
+    )
     budget_amount = fields.Float(
         required=True,
         description="Бюджет на одного пользователя по категории за период, в рублях. Не может быть отрицательным. Обязательное поле.",
@@ -484,6 +499,15 @@ class CategoryUpdateSchema(Schema):
     )
     rate_min = fields.Int(required=False, description="Новый минимальный кэшбек в процентах (0–100). Опционально.")
     rate_max = fields.Int(required=False, description="Новый максимальный кэшбек в процентах (0–100). Опционально.")
+    rule = fields.Dict(
+        required=False,
+        allow_none=True,
+        description=(
+            "Изменение правила категории. Семантика: rule = null — не менять правило; "
+            "rule = {} — отвязать и удалить текущее правило; "
+            "Иначе rule частично обновить существующее правило или создать новое, если его ещё нет."
+        ),
+    )
 
 
 class RuleDetailSchema(Schema):
@@ -769,6 +793,10 @@ class CalculateResponseSchema(Schema):
         required=True,
         description="true - данные взяты из кэша (уже выбранные пользователем категории из selections); false - категории рассчитаны заново.",
     )
+    has_bonus_category = fields.Bool(
+        required=True,
+        description="true - в списке категорий присутствует дополнительная бонусная категория, выданная за победу в игре T-Word; false - бонусной категории нет.",
+    )
 
 
 class SelectionDetailSchema(Schema):
@@ -915,3 +943,130 @@ class ProgressListResponseSchema(Schema):
         description="Список элементов прогресса по выборам/категориям. Обязательное поле.",
     )
     total = fields.Int(required=True, description="Общее количество записей; для пагинации. Обязательное поле.")
+
+
+class WordlyStartResponseSchema(Schema):
+    game_id = fields.Str(
+        required=True,
+        description="Идентификатор игры T-Word. Используется во всех последующих запросах для этой игры.",
+    )
+    word_length = fields.Int(
+        required=True,
+        description="Длина загаданного слова (количество букв). Использовать для валидации длины попытки на фронте.",
+    )
+    max_attempts = fields.Int(
+        required=True,
+        description="Максимальное количество попыток в игре.",
+    )
+    status = fields.Str(
+        required=True,
+        description="Статус игры: in_progress, won или lost.",
+    )
+    attempts_made = fields.Int(
+        required=True,
+        description="Сколько попыток уже сделано (изначально 0).",
+    )
+
+
+class WordlyLetterFeedbackSchema(Schema):
+    letter = fields.Str(
+        required=True,
+        description="Буква из угадываемого слова (в нижнем регистре).",
+    )
+    result = fields.Str(
+        required=True,
+        validate=validate.OneOf(["correct", "present", "absent"]),
+        description=(
+            "Результат по букве: "
+            "correct - буква на своём месте, "
+            "present - буква есть в слове, но в другой позиции, "
+            "absent - буквы нет в слове."
+        ),
+    )
+
+
+class WordlyGuessRequestSchema(Schema):
+    game_id = fields.Str(
+        required=True,
+        description="Идентификатор игры, полученный из ответа /wordly/start.",
+    )
+    guess = fields.Str(
+        required=True,
+        description="Слово, которое пытается угадать игрок. Должно быть той же длины, что и загаданное слово.",
+    )
+
+
+class WordlyGuessResponseSchema(Schema):
+    game_id = fields.Str(required=True, description="Идентификатор игры.")
+    guess = fields.Str(required=True, description="Попытка, нормализованная (в нижнем регистре).")
+    feedback = fields.List(
+        fields.Nested(WordlyLetterFeedbackSchema),
+        required=True,
+        description="Массив результатов по каждой букве угадываемого слова.",
+    )
+    attempt = fields.Int(
+        required=True,
+        description="Номер попытки (начиная с 1).",
+    )
+    remaining_attempts = fields.Int(
+        required=True,
+        description="Сколько попыток осталось после этой.",
+    )
+    status = fields.Str(
+        required=True,
+        description="Текущий статус игры: in_progress, won или lost.",
+    )
+    is_win = fields.Bool(
+        required=True,
+        description="true, если игрок угадал слово на этой попытке.",
+    )
+    is_finished = fields.Bool(
+        required=True,
+        description="true, если игра завершена (победа или поражение).",
+    )
+    target_word_revealed = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Секретное слово, раскрывается только если игра завершена поражением; иначе null.",
+    )
+
+
+class WordlyStateAttemptSchema(Schema):
+    guess = fields.Str(required=True, description="Слово, которое вводил игрок.")
+    feedback = fields.List(
+        fields.Nested(WordlyLetterFeedbackSchema),
+        required=True,
+        description="Результат по буквам для этой попытки.",
+    )
+    attempt = fields.Int(required=True, description="Порядковый номер попытки (начиная с 1).")
+
+
+class WordlyStateResponseSchema(Schema):
+    game_id = fields.Str(required=True, description="Идентификатор игры.")
+    word_length = fields.Int(required=True, description="Длина загаданного слова.")
+    max_attempts = fields.Int(required=True, description="Максимальное количество попыток.")
+    status = fields.Str(required=True, description="Текущий статус игры: in_progress, won или lost.")
+    attempts_made = fields.Int(required=True, description="Сколько попыток уже сделано.")
+    attempts = fields.List(
+        fields.Nested(WordlyStateAttemptSchema),
+        required=True,
+        description="История всех попыток в игре.",
+    )
+    target_word_revealed = fields.Str(
+        required=False,
+        allow_none=True,
+        description="Секретное слово, если игра завершена поражением; иначе null.",
+    )
+
+
+class WordlyUserStatusResponseSchema(Schema):
+    played = fields.Bool(
+        required=True,
+        description="true, если по пользователю есть запись в таблице user_winners (он завершал хотя бы одну игру); "
+        "false, если записей нет или БД недоступна.",
+    )
+    winners = fields.Bool(
+        required=True,
+        description="true, если поле winners в таблице user_winners для пользователя установлено в true "
+        "(то есть он выигрывал хотя бы одну игру); иначе false.",
+    )

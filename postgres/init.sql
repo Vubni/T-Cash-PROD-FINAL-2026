@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS categories (
     subtitle        VARCHAR(500) NOT NULL CHECK (char_length(subtitle) >= 1 AND char_length(subtitle) <= 500),
     budget_amount   BIGINT   NOT NULL CHECK (budget_amount >= 0),
     rate_min        INT         NOT NULL CHECK (rate_min >= 0 AND rate_min <= 100) DEFAULT 1,
-    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 17,
+    rate_max        INT         NOT NULL CHECK (rate_max >= 0 AND rate_max <= 100 AND rate_max >= rate_min) DEFAULT 30,
     rule_id         UUID        NULL REFERENCES rules(rule_id),
     icon_url        VARCHAR(500) NULL,
     status          VARCHAR(20) NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'paused', 'archived')),
@@ -87,3 +87,33 @@ CREATE TABLE IF NOT EXISTS category_creation_idempotency_requests (
 INSERT INTO rules (rule_id, min_age, max_age, gender, income)
 VALUES ('a0000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, NULL, NULL)
 ON CONFLICT (rule_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS wordly_words (
+    id    BIGSERIAL PRIMARY KEY,
+    word  VARCHAR(5) NOT NULL,
+    active BOOLEAN   NOT NULL DEFAULT TRUE,
+    CONSTRAINT wordly_words_word_length_check CHECK (char_length(word) = 5),
+    CONSTRAINT wordly_words_word_key UNIQUE (word)
+);
+
+INSERT INTO wordly_words (word)
+VALUES
+    ('домик'),
+    ('книга'),
+    ('мосты'),
+    ('школа'),
+    ('ветер'),
+    ('листы'),
+    ('город'),
+    ('мячик'),
+    ('берег'),
+    ('лимон')
+ON CONFLICT (word) DO NOTHING;
+
+
+CREATE TABLE IF NOT EXISTS user_winners(
+    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    winners BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id)
+);
