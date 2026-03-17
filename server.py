@@ -124,6 +124,7 @@ def register_routes(app: web.Application, cors: aiohttp_cors.CorsConfig) -> None
 
         web.post(prefix + "/offers/run", calculate.calculate),
 
+        web.get(prefix + "/client/categories/settings", selection.get_client_category_settings),
         web.post(prefix + "/client/selection", selection.confirm_selection),
 
         web.post(prefix + "/wordly/start", wordly.start_game),

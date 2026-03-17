@@ -479,7 +479,7 @@ async def ensure_categories_from_csv(csv_path: str | None = None) -> None:
                     except (ValueError, TypeError):
                         pass
 
-                rate_min = 5
+                rate_min = 1
                 if len(row) > 5 and row[5].strip():
                     try:
                         rate_min = max(0, min(100, int(float(row[5].strip()))))
