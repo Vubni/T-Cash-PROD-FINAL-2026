@@ -39,6 +39,10 @@ class Admin_selection_settings_empty(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class Client_category_settings_empty(BaseModel):
+    model_config = {"extra": "forbid"}
+
+
 class Admin_selection_settings(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -114,6 +118,33 @@ async def confirm_selection(request: web.Request, parsed: Selection_submit_body)
         )
     except Exception:
         logger.exception("confirm_selection handler failed")
+        return validate.format_500_error(request)
+
+
+@docs(
+    tags=["Client"],
+    summary="Получить глобальные настройки выбора категорий",
+    description=(
+        "Возвращает глобальные настройки выбора категорий для отображения клиенту: "
+        "all_categories (0 — ограниченный набор, 1 — все категории) и max_selection_count (сколько категорий нужно выбрать). "
+        "Требуется JWT токен пользователя."
+    ),
+    security=validate.SECURITY_USER_BEARER,
+    responses={
+        200: {
+            "description": "Текущие настройки",
+            "schema": sh.CategorySelectionSettingsResponseSchema,
+        },
+        **sh.RESPONSES_HTTP_ERROR,
+    },
+)
+@validate.validate(Client_category_settings_empty, require_auth=True)
+async def get_client_category_settings(request: web.Request, parsed: Client_category_settings_empty) -> web.Response:
+    try:
+        settings = sel_fns.get_selection_settings()
+        return web.json_response(settings, status=200)
+    except Exception:
+        logger.exception("get_client_category_settings handler failed")
         return validate.format_500_error(request)
 
 

@@ -20,7 +20,7 @@ def upgrade() -> None:
         "categories",
         sa.Column("rate_max", sa.Integer(), nullable=True),
     )
-    op.execute("UPDATE categories SET rate_min = 5, rate_max = 15 WHERE rate_min IS NULL OR rate_max IS NULL")
+    op.execute("UPDATE categories SET rate_min = 1, rate_max = 15 WHERE rate_min IS NULL OR rate_max IS NULL")
     op.alter_column(
         "categories",
         "rate_min",

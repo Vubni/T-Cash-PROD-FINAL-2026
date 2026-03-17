@@ -429,7 +429,8 @@ class CategoryDetailSchema(Schema):
         allow_none=True,
         description=(
             "Правило отбора: rule_id, min_age, max_age, gender, income - условия показа категории пользователю. "
-            "Может быть null, если для категории ещё не создано правило."
+            "Может быть null, если для категории ещё не создано правило. "
+            "Если у правила все поля null — категория без ограничений (правило по умолчанию)."
         ),
     )
     history = fields.List(

@@ -13,7 +13,7 @@ def get_offers_run_cache(user_id: int) -> list[dict] | None:
 
 
 def _set_offers_run_cache(user_id: int, items: list[dict]) -> None:
-    """Сохраняет в кэш по user_id только поля category_id, cashback, estimated_spend, name, subtitle."""
+    """Сохраняет в кэш по user_id поля category_id, cashback, estimated_spend, name, subtitle, icon_url."""
     _offers_run_cache[user_id] = [
         {
             "category_id": it.get("category_id"),
@@ -21,6 +21,7 @@ def _set_offers_run_cache(user_id: int, items: list[dict]) -> None:
             "estimated_spend": it.get("estimated_spend"),
             "name": it.get("name"),
             "subtitle": it.get("subtitle"),
+            "icon_url": it.get("icon_url"),
         }
         for it in items
     ]
@@ -57,6 +58,7 @@ async def get_calculate_items(user_id: int) -> dict:
                     "estimated_spend": r.get("estimated_spend"),
                     "name": r["name"],
                     "subtitle": r.get("subtitle"),
+                    "icon_url": r.get("icon_url"),
                 }
                 for r in rows
             ],
@@ -180,6 +182,7 @@ async def get_calculate_items(user_id: int) -> dict:
                     "category_id": category["category_id"],
                     "name": category["name"],
                     "subtitle": category["subtitle"],
+                    "icon_url": category.get("icon_url"),
                     "cashback": max(category["rate_min"], min(category["rate_max"], percent)),
                     "reasons": [ITEMS_REASONS.get(reason) for reason in predict.get("reasons", [])],
                     "estimated_spend": predict.get("estimated_spend"),

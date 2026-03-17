@@ -32,6 +32,32 @@ def _auth_headers(
     }
 
 
+async def test_get_client_category_settings_success(aiohttp_client, app):
+    """Тест: GET /client/categories/settings возвращает глобальные настройки для авторизованного пользователя."""
+    with patch("functions.selection.get_selection_settings") as mock_get_settings:
+        mock_get_settings.return_value = {"all_categories": 10, "max_selection_count": 5}
+        async with aiohttp_client(app) as client:
+            resp = await client.request(
+                "GET",
+                "/api/v1/client/categories/settings",
+                headers=_auth_headers(),
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert data["all_categories"] == 10
+            assert data["max_selection_count"] == 5
+            mock_get_settings.assert_called_once()
+
+
+async def test_get_client_category_settings_unauthorized(aiohttp_client, app):
+    """Тест: GET /client/categories/settings без JWT возвращает 401."""
+    async with aiohttp_client(app) as client:
+        resp = await client.request("GET", "/api/v1/client/categories/settings")
+        assert resp.status == 401
+        data = await resp.json()
+        assert data["code"] == "UNAUTHORIZED"
+
+
 async def test_selection_success(aiohttp_client, app):
     """Тест: успешное сохранение выбора категорий"""
     selection_data = {"category_ids": _SELECTION_CATEGORY_IDS.copy()}

@@ -15,7 +15,7 @@ async def test_get_categories_success(aiohttp_client, app):
             "name": "Category 1",
             "subtitle": "Subtitle 1",
             "budget": {"amount": 100000},
-            "rate": {"min": 0, "max": 100},
+            "rate": {"min": 1, "max": 100},
             "status": "running",
         },
         {
@@ -23,7 +23,7 @@ async def test_get_categories_success(aiohttp_client, app):
             "name": "Category 2",
             "subtitle": "Subtitle 2",
             "budget": {"amount": 200000},
-            "rate": {"min": 0, "max": 100},
+            "rate": {"min": 1, "max": 100},
             "status": "running",
         },
     ]
@@ -80,7 +80,7 @@ async def test_create_category_success(aiohttp_client, app):
         "name": "Test Category",
         "subtitle": "Test subtitle",
         "budget_amount": 100000,
-        "rate_min": 0,
+        "rate_min": 1,
         "rate_max": 100,
     }
 
@@ -104,7 +104,7 @@ async def test_create_category_duplicate_name_conflict(aiohttp_client, app):
         "name": "Test Category",
         "subtitle": "Test subtitle",
         "budget_amount": 100000,
-        "rate_min": 0,
+        "rate_min": 1,
         "rate_max": 100,
     }
 
@@ -127,7 +127,7 @@ async def test_create_category_idempotency_conflict(aiohttp_client, app):
         "name": "Test Category",
         "subtitle": "Test subtitle",
         "budget_amount": 100000,
-        "rate_min": 0,
+        "rate_min": 1,
         "rate_max": 100,
     }
 
@@ -171,7 +171,7 @@ async def test_create_category_negative_budget(aiohttp_client, app):
         "name": "Test Category",
         "subtitle": "Test subtitle",
         "budget_amount": -1000,
-        "rate_min": 0,
+        "rate_min": 1,
         "rate_max": 100,
     }
 
@@ -194,7 +194,7 @@ async def test_get_category_success(aiohttp_client, app):
         "name": "Category 1",
         "subtitle": "Subtitle 1",
         "budget": {"amount": 100000},
-        "rate": {"min": 0, "max": 100},
+        "rate": {"min": 1, "max": 100},
         "status": "running",
     }
 
@@ -244,7 +244,7 @@ async def test_update_category_success(aiohttp_client, app):
         "name": "Old Name",
         "subtitle": "Old",
         "budget": {"amount": 100000},
-        "rate": {"min": 0, "max": 100},
+        "rate": {"min": 1, "max": 100},
         "status": "running",
     }
 
@@ -274,7 +274,7 @@ async def test_update_category_icon_url_success(aiohttp_client, app):
         "subtitle": "Old",
         "icon_url": None,
         "budget": {"amount": 100000},
-        "rate": {"min": 0, "max": 100},
+        "rate": {"min": 1, "max": 100},
         "status": "running",
     }
 
@@ -349,7 +349,7 @@ async def test_get_category_returns_status(aiohttp_client, app):
         "name": "Category 1",
         "subtitle": "Subtitle 1",
         "budget": {"amount": 100000},
-        "rate": {"min": 0, "max": 100},
+        "rate": {"min": 1, "max": 100},
         "status": "running",
     }
 
@@ -467,7 +467,7 @@ async def test_update_category_status_via_patch(aiohttp_client, app):
         "name": "Test",
         "subtitle": "Sub",
         "budget": {"amount": 100000},
-        "rate": {"min": 0, "max": 100},
+        "rate": {"min": 1, "max": 100},
         "status": "running",
     }
     with (

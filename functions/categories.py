@@ -6,6 +6,7 @@ from asyncpg import UniqueViolationError
 from database.database import Database
 
 def _rule_from_row(item: dict) -> dict:
+    """Собирает объект rule из строки (JOIN с rules). NULL в min_age/max_age/gender/income означает «без ограничений» (правило по умолчанию)."""
     r = item.get("rule_id")
     return {
         "rule_id": str(r) if r is not None else None,
