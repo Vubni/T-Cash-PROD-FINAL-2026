@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 from database.database import Database
+from config import logger
 
 
 ResultType = Literal["correct", "present", "absent"]
@@ -236,8 +237,8 @@ async def get_user_status(user_id: int) -> dict:
                 "SELECT winners FROM user_winners WHERE user_id = $1::bigint",
                 (user_id,),
             )
-    except Exception:
-        # При проблемах с БД не блокируем фронт, возвращаем «не играл / не выиграл»
+    except Exception as e:
+        logger.exception("wordly get_user_status handler failed: %s", e)
         return {
             "played": False,
             "winners": False,
